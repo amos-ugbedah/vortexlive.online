@@ -1,6 +1,6 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
-import { DollarSign, Zap, Crown, Award, ExternalLink } from 'lucide-react';
+import { DollarSign, Zap, Crown, Award, ExternalLink, MessageSquare } from 'lucide-react';
 
 const Navbar = ({ partners }) => {
   const rollingPartners = [...partners, ...partners, ...partners];
@@ -16,10 +16,21 @@ const Navbar = ({ partners }) => {
           </div>
         </Link>
         
-        <div className="flex items-center gap-4">
-           <Link to="/admin" className="p-2 bg-white/5 hover:bg-red-600 hover:text-white rounded-lg transition-all border border-white/10 text-white/40">
-             <DollarSign size={20}/>
-           </Link>
+        <div className="flex items-center gap-3">
+            {/* NEW TELEGRAM NAV BUTTON */}
+            <a 
+              href="https://t.me/+ZAygoaZr9VA2NGE0" 
+              target="_blank" 
+              rel="noreferrer"
+              className="hidden md:flex items-center gap-2 px-4 py-2 bg-[#229ED9]/10 border border-[#229ED9]/20 rounded-xl text-[#229ED9] hover:bg-[#229ED9] hover:text-white transition-all text-[10px] font-black uppercase tracking-widest"
+            >
+              <MessageSquare size={14} fill="currentColor" />
+              Join Community
+            </a>
+
+            <Link to="/admin" className="p-2 bg-white/5 hover:bg-red-600 hover:text-white rounded-lg transition-all border border-white/10 text-white/40">
+              <DollarSign size={20}/>
+            </Link>
         </div>
       </div>
 
@@ -39,7 +50,6 @@ const Navbar = ({ partners }) => {
               className="flex items-center px-10 group transition-all h-full border-r border-white/10"
             >
               {p.highlight ? (
-                /* 1XBET PREMIUM BANNER STYLE */
                 <div className="flex items-center gap-3 bg-white text-black px-4 py-1.5 rounded-lg border-2 border-yellow-400 group-hover:bg-yellow-400 transition-colors">
                     <Award size={16} className="text-blue-700" />
                     <div className="flex flex-col leading-none">
@@ -48,7 +58,6 @@ const Navbar = ({ partners }) => {
                     </div>
                 </div>
               ) : (
-                /* STANDARD STYLE */
                 <div className="flex items-center gap-3 group-hover:scale-105 transition-transform text-white">
                     {p.name === "STAKE" ? <Crown size={14} /> : <Zap size={14} />}
                     <span className="text-[11px] font-black uppercase tracking-tighter">

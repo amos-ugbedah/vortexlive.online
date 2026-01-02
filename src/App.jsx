@@ -6,7 +6,7 @@ import PrivacyPolicy from './pages/PrivacyPolicy';
 import ContactUs from './pages/ContactUs';
 import Navbar from './components/Navbar';
 import Footer from './components/Footer';
-import { ExternalLink, Trophy, Gift, Zap, TrendingUp } from 'lucide-react';
+import { ExternalLink, Trophy, Gift, Zap, TrendingUp, MessageCircle } from 'lucide-react';
 
 function App() {
   const partners = [
@@ -25,7 +25,7 @@ function App() {
     {
       name: "FAST STREAM",
       offer: "AD-FREE BACKUP",
-      link: "https://otieu.com/4/10407921", // PropellerAds Direct Link
+      link: "https://otieu.com/4/10407921",
       highlight: false
     }
   ];
@@ -37,7 +37,6 @@ function App() {
 
         <div className="flex justify-center items-start gap-6 px-4 py-8 max-w-[1600px] mx-auto w-full flex-1">
           
-          {/* LEFT SIDEBAR: 1XBET */}
           <aside className="hidden xl:block w-[180px] sticky top-32 shrink-0">
             <a href="https://reffpa.com/L?tag=d_5098529m_97c_&site=5098529&ad=97" target="_blank" rel="noreferrer" 
                className="group relative flex flex-col items-center bg-[#003566] border-2 border-yellow-400 rounded-[2.5rem] h-[600px] overflow-hidden shadow-[0_0_30px_rgba(0,53,102,0.4)] transition-transform hover:scale-[1.02]">
@@ -54,7 +53,6 @@ function App() {
             </a>
           </aside>
 
-          {/* MAIN CONTENT AREA */}
           <main className="flex-1 w-full max-w-5xl overflow-hidden min-h-[70vh]">
             <Routes>
               <Route path="/" element={<Home />} />
@@ -64,7 +62,6 @@ function App() {
             </Routes>
           </main>
 
-          {/* RIGHT SIDEBAR: STAKE + PROPELLER ADS */}
           <aside className="hidden xl:block w-[180px] sticky top-32 shrink-0 space-y-4">
             <a href="https://stake.com/?c=eEPcMjrA" target="_blank" rel="noreferrer"
                className="group relative flex flex-col items-center bg-black border-2 border-red-600 rounded-[2rem] h-[350px] overflow-hidden transition-transform hover:scale-[1.02]">
@@ -77,7 +74,6 @@ function App() {
                </div>
             </a>
 
-            {/* PROPELLER ADS DIRECT LINK SLOT */}
             <a href="https://otieu.com/4/10407921" target="_blank" rel="noreferrer"
                className="group block bg-gradient-to-br from-green-600 to-green-900 rounded-[2rem] p-4 text-center border-2 border-white/10 hover:border-green-400 transition-all">
                <Zap className="mx-auto text-yellow-400 mb-2 animate-pulse" size={24} />
@@ -89,6 +85,19 @@ function App() {
         </div>
 
         <Footer />
+
+        {/* FLOATING TELEGRAM ACTION BUTTON */}
+        <a 
+          href="https://t.me/+ZAygoaZr9VA2NGE0" 
+          target="_blank" 
+          rel="noreferrer"
+          className="fixed bottom-6 right-6 z-[200] bg-[#229ED9] text-white p-4 rounded-full shadow-[0_10px_30px_rgba(34,158,217,0.5)] hover:scale-110 active:scale-95 transition-all group flex items-center gap-3"
+        >
+          <MessageCircle size={28} fill="currentColor" />
+          <span className="max-w-0 overflow-hidden group-hover:max-w-xs transition-all duration-500 ease-in-out font-black text-[10px] uppercase tracking-[0.2em] whitespace-nowrap">
+            Join Telegram
+          </span>
+        </a>
       </div>
     </Router>
   );
