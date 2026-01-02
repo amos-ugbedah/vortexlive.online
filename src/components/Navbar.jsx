@@ -1,6 +1,6 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
-import { DollarSign } from 'lucide-react';
+import { DollarSign, ExternalLink } from 'lucide-react';
 
 const Navbar = ({ partners }) => {
   return (
@@ -11,6 +11,14 @@ const Navbar = ({ partners }) => {
           <span className="font-black tracking-tighter text-lg italic uppercase">VORTEX<span className="text-red-600">LIVE</span></span>
         </Link>
         
+        {/* CENTER STAKE BANNER (Desktop Only) */}
+        <a href="https://stake.com/?c=eEPcMjrA" target="_blank" rel="noreferrer" 
+           className="hidden md:flex items-center gap-2 bg-white/5 border border-white/10 px-4 py-1.5 rounded-full hover:bg-white/10 transition-all group">
+          <span className="text-[10px] font-black italic text-gray-400 group-hover:text-red-500 transition-colors">OFFICIAL PARTNER:</span>
+          <span className="text-[10px] font-black text-white uppercase tracking-widest">STAKE.COM</span>
+          <ExternalLink size={10} className="text-gray-600" />
+        </a>
+
         <div className="flex items-center gap-3">
            <div className="flex items-center gap-1.5 px-2.5 py-1 bg-green-500/10 rounded-full border border-green-500/20">
              <div className="w-1.5 h-1.5 bg-green-500 rounded-full animate-pulse"></div>
@@ -33,7 +41,7 @@ const Navbar = ({ partners }) => {
               rel="noopener noreferrer" 
               className="text-[10px] font-black uppercase flex items-center gap-2 tracking-tighter hover:text-black transition-colors cursor-pointer"
             >
-              <span className="bg-white text-red-600 px-1.5 py-0.5 rounded-[2px] text-[8px] font-black">PROMO</span> 
+              <span className="bg-white text-red-600 px-1.5 py-0.5 rounded-[2px] text-[8px] font-black uppercase">PROMO</span> 
               {p.name}: {p.offer}
             </a>
           ))}
