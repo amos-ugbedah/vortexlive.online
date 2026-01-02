@@ -6,28 +6,13 @@ import PrivacyPolicy from './pages/PrivacyPolicy';
 import ContactUs from './pages/ContactUs';
 import Navbar from './components/Navbar';
 import Footer from './components/Footer';
-import { ExternalLink, Trophy, Gift, Zap, TrendingUp, MessageCircle } from 'lucide-react';
+import { Trophy, Gift, Zap, MessageCircle } from 'lucide-react';
 
 function App() {
   const partners = [
-    { 
-      name: "1XBET", 
-      offer: "CODE: 9236312", 
-      link: "https://reffpa.com/L?tag=d_5098529m_97c_&site=5098529&ad=97",
-      highlight: true 
-    },
-    { 
-      name: "STAKE", 
-      offer: "BEST ODDS + CRYPTO", 
-      link: "https://stake.com/?c=eEPcMjrA",
-      highlight: false
-    },
-    {
-      name: "FAST STREAM",
-      offer: "AD-FREE BACKUP",
-      link: "https://otieu.com/4/10407921",
-      highlight: false
-    }
+    { name: "1XBET", offer: "CODE: 9236312", link: "https://reffpa.com/L?tag=d_5098529m_97c_&site=5098529&ad=97", highlight: true },
+    { name: "STAKE", offer: "BEST ODDS + CRYPTO", link: "https://stake.com/?c=eEPcMjrA", highlight: false },
+    { name: "FAST STREAM", offer: "AD-FREE BACKUP", link: "https://otieu.com/4/10407921", highlight: false }
   ];
 
   return (
@@ -40,7 +25,7 @@ function App() {
           <aside className="hidden xl:block w-[180px] sticky top-32 shrink-0">
             <a href="https://reffpa.com/L?tag=d_5098529m_97c_&site=5098529&ad=97" target="_blank" rel="noreferrer" 
                className="group relative flex flex-col items-center bg-[#003566] border-2 border-yellow-400 rounded-[2.5rem] h-[600px] overflow-hidden shadow-[0_0_30px_rgba(0,53,102,0.4)] transition-transform hover:scale-[1.02]">
-               <div className="bg-yellow-400 w-full py-2 text-center text-[#003566] font-black text-[10px] uppercase tracking-widest uppercase">Official Partner</div>
+               <div className="bg-yellow-400 w-full py-2 text-center text-[#003566] font-black text-[10px] uppercase tracking-widest">Official Partner</div>
                <div className="flex-1 flex flex-col items-center justify-center p-6 text-center">
                   <Trophy className="text-yellow-400 mb-6 animate-bounce" size={40} />
                   <h2 className="text-white font-black text-2xl italic leading-none mb-2">1XBET</h2>
@@ -69,8 +54,7 @@ function App() {
                <div className="flex-1 flex flex-col items-center justify-center p-4 text-center">
                   <Gift className="text-red-600 mb-4" size={32} />
                   <h2 className="text-white font-black text-xl italic mb-1 uppercase">STAKE</h2>
-                  <p className="text-gray-500 text-[9px] font-black uppercase mb-4">Crypto Betting</p>
-                  <span className="bg-red-600 text-white px-4 py-2 rounded-lg font-black text-[10px]">CLAIM BONUS</span>
+                  <span className="bg-red-600 text-white px-4 py-2 rounded-lg font-black text-[10px] mt-4">CLAIM BONUS</span>
                </div>
             </a>
 
@@ -86,12 +70,11 @@ function App() {
 
         <Footer />
 
-        {/* FLOATING TELEGRAM ACTION BUTTON */}
         <a 
           href="https://t.me/+ZAygoaZr9VA2NGE0" 
           target="_blank" 
           rel="noreferrer"
-          className="fixed bottom-6 right-6 z-[200] bg-[#229ED9] text-white p-4 rounded-full shadow-[0_10px_30px_rgba(34,158,217,0.5)] hover:scale-110 active:scale-95 transition-all group flex items-center gap-3"
+          className="fixed bottom-6 right-6 z-[200] bg-[#229ED9] text-white p-4 rounded-full shadow-lg hover:scale-110 active:scale-95 transition-all group flex items-center gap-3"
         >
           <MessageCircle size={28} fill="currentColor" />
           <span className="max-w-0 overflow-hidden group-hover:max-w-xs transition-all duration-500 ease-in-out font-black text-[10px] uppercase tracking-[0.2em] whitespace-nowrap">
