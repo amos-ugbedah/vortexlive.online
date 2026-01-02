@@ -52,7 +52,7 @@ const Home = () => {
         <input 
           type="text" 
           placeholder="Search teams or leagues (e.g. Arsenal, La Liga)..." 
-          className="w-full bg-white/5 border border-white/10 rounded-2xl py-4 pl-12 pr-4 outline-none focus:border-red-500/50 focus:bg-white/[0.07] transition-all text-sm font-medium"
+          className="w-full bg-white/5 border border-white/10 rounded-2xl py-4 pl-12 pr-4 outline-none focus:border-red-500/50 focus:bg-white/[0.07] transition-all text-sm font-medium text-white"
           onChange={(e) => setSearchTerm(e.target.value)}
         />
       </div>
@@ -70,13 +70,12 @@ const Home = () => {
               <Zap size={20} className="text-white" fill="white" />
             </div>
             <div>
-              <h3 className="text-sm font-black uppercase italic tracking-tighter">Lagging? Try VIP High-Speed Server</h3>
+              <h3 className="text-sm font-black uppercase italic tracking-tighter text-white">Lagging? Try VIP High-Speed Server</h3>
               <p className="text-[10px] text-green-500 font-bold uppercase tracking-widest">No Buffering • Ultra HD • Ad-Free backup</p>
             </div>
           </div>
           <ExternalLink size={18} className="text-white/20 group-hover:text-green-500 transition-colors" />
         </div>
-        {/* Animated Background Glow */}
         <div className="absolute -inset-x-full top-0 bottom-0 bg-gradient-to-r from-transparent via-white/5 to-transparent skew-x-12 animate-marquee-fast group-hover:duration-75"></div>
       </a>
 
@@ -87,7 +86,7 @@ const Home = () => {
         <div className="text-white/5 text-[9px] italic mb-2">Premium Partner Advertisement</div>
       </div>
 
-      <h2 className="text-xl font-black italic uppercase mb-6 flex items-center gap-2">
+      <h2 className="text-xl font-black italic uppercase mb-6 flex items-center gap-2 text-white">
         <span className="w-2 h-6 bg-red-600 rounded-full"></span>
         {searchTerm ? `Results for "${searchTerm}"` : 'Top Live Matches'}
       </h2>
@@ -103,14 +102,25 @@ const Home = () => {
                     <Trophy size={10}/> {match.league}
                   </span>
                   {match.status?.toLowerCase() === 'live' && (
-                    <span className="bg-red-600 text-[9px] px-2 py-0.5 rounded-full font-black animate-pulse shadow-lg shadow-red-600/40">LIVE</span>
+                    <span className="bg-red-600 text-[9px] px-2 py-0.5 rounded-full font-black animate-pulse shadow-lg shadow-red-600/40 text-white">LIVE</span>
                   )}
                 </div>
 
                 <div className="flex flex-col gap-1 mb-6 text-center">
-                  <div className="font-bold text-lg tracking-tighter truncate">{match.home}</div>
-                  <div className="text-white/10 text-[10px] font-black italic uppercase">VS</div>
-                  <div className="font-bold text-lg tracking-tighter truncate">{match.away}</div>
+                  <div className="font-bold text-lg tracking-tighter truncate text-white">{match.home}</div>
+                  
+                  {/* LIVE SCORE SECTION */}
+                  {match.status?.toLowerCase() === 'live' ? (
+                    <div className="flex items-center justify-center gap-3 my-2 bg-red-600/10 py-2 rounded-2xl border border-red-600/20">
+                        <span className="text-2xl font-black text-red-600 tracking-tighter animate-in fade-in zoom-in duration-500">
+                          {match.score || '0 - 0'}
+                        </span>
+                    </div>
+                  ) : (
+                    <div className="text-white/10 text-[10px] font-black italic uppercase my-2">VS</div>
+                  )}
+
+                  <div className="font-bold text-lg tracking-tighter truncate text-white">{match.away}</div>
                   <div className="mt-2 flex items-center justify-center gap-1 text-[10px] text-white/40 font-bold uppercase tracking-widest">
                     <Clock size={10} /> {match.time}
                   </div>
