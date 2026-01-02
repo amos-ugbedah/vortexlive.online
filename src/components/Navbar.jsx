@@ -1,48 +1,63 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
-import { DollarSign, ExternalLink } from 'lucide-react';
+import { DollarSign, Zap, Crown, Award, ExternalLink } from 'lucide-react';
 
 const Navbar = ({ partners }) => {
+  const rollingPartners = [...partners, ...partners, ...partners];
+
   return (
-    <nav className="sticky top-0 z-[120] bg-[#0a0a0c]/95 backdrop-blur-md border-b border-white/5">
-      <div className="px-4 py-3 flex justify-between items-center max-w-7xl mx-auto">
-        <Link to="/" className="flex items-center gap-2 scale-90 origin-left">
-          <div className="w-8 h-8 bg-red-600 rounded-lg flex items-center justify-center font-black italic text-lg shadow-lg shadow-red-600/20">V</div>
-          <span className="font-black tracking-tighter text-lg italic uppercase">VORTEX<span className="text-red-600">LIVE</span></span>
+    <nav className="sticky top-0 z-[120] bg-[#0a0a0c] border-b border-white/5">
+      <div className="px-6 py-4 flex justify-between items-center max-w-[1600px] mx-auto">
+        <Link to="/" className="flex items-center gap-3">
+          <div className="w-10 h-10 bg-red-600 rounded-xl flex items-center justify-center font-black italic text-xl shadow-[0_0_20px_rgba(220,38,38,0.3)] text-white">V</div>
+          <div className="flex flex-col">
+            <span className="font-black tracking-tighter text-2xl italic uppercase leading-none text-white">VORTEX<span className="text-red-600">LIVE</span></span>
+            <span className="text-[8px] font-bold tracking-[0.4em] text-gray-600 uppercase">Premium Network</span>
+          </div>
         </Link>
         
-        {/* CENTER STAKE BANNER (Desktop Only) */}
-        <a href="https://stake.com/?c=eEPcMjrA" target="_blank" rel="noreferrer" 
-           className="hidden md:flex items-center gap-2 bg-white/5 border border-white/10 px-4 py-1.5 rounded-full hover:bg-white/10 transition-all group">
-          <span className="text-[10px] font-black italic text-gray-400 group-hover:text-red-500 transition-colors">OFFICIAL PARTNER:</span>
-          <span className="text-[10px] font-black text-white uppercase tracking-widest">STAKE.COM</span>
-          <ExternalLink size={10} className="text-gray-600" />
-        </a>
-
-        <div className="flex items-center gap-3">
-           <div className="flex items-center gap-1.5 px-2.5 py-1 bg-green-500/10 rounded-full border border-green-500/20">
-             <div className="w-1.5 h-1.5 bg-green-500 rounded-full animate-pulse"></div>
-             <span className="text-[9px] font-bold text-green-500 uppercase tracking-widest">Live</span>
-           </div>
-           <Link to="/admin" className="p-1.5 text-white/20 hover:text-red-500 transition-colors">
+        <div className="flex items-center gap-4">
+           <Link to="/admin" className="p-2 bg-white/5 hover:bg-red-600 hover:text-white rounded-lg transition-all border border-white/10 text-white/40">
              <DollarSign size={20}/>
            </Link>
         </div>
       </div>
 
-      {/* CLICKABLE MICRO-TICKER */}
-      <div className="bg-red-600 text-white py-2 overflow-hidden border-t border-white/5 shadow-inner relative z-[110]">
-        <div className="animate-marquee flex gap-12 items-center whitespace-nowrap group">
-          {[...partners, ...partners, ...partners].map((p, i) => (
+      {/* THE TICKER */}
+      <div className="bg-red-600 border-y border-white/10 h-12 flex items-center overflow-hidden relative">
+        <div className="absolute left-0 top-0 bottom-0 bg-black z-20 px-4 flex items-center border-r border-white/10 shadow-[5px_0_15px_rgba(0,0,0,0.5)]">
+            <span className="text-[9px] font-black italic uppercase tracking-widest text-white">Live Offers</span>
+        </div>
+
+        <div className="flex whitespace-nowrap animate-marquee-fast h-full">
+          {rollingPartners.map((p, i) => (
             <a 
               key={i} 
               href={p.link} 
               target="_blank" 
               rel="noopener noreferrer" 
-              className="text-[10px] font-black uppercase flex items-center gap-2 tracking-tighter hover:text-black transition-colors cursor-pointer"
+              className="flex items-center px-10 group transition-all h-full border-r border-white/10"
             >
-              <span className="bg-white text-red-600 px-1.5 py-0.5 rounded-[2px] text-[8px] font-black uppercase">PROMO</span> 
-              {p.name}: {p.offer}
+              {p.highlight ? (
+                /* 1XBET PREMIUM BANNER STYLE */
+                <div className="flex items-center gap-3 bg-white text-black px-4 py-1.5 rounded-lg border-2 border-yellow-400 group-hover:bg-yellow-400 transition-colors">
+                    <Award size={16} className="text-blue-700" />
+                    <div className="flex flex-col leading-none">
+                        <span className="text-[9px] font-black uppercase">{p.name} OFFICIAL</span>
+                        <span className="text-[11px] font-black text-blue-800">{p.offer}</span>
+                    </div>
+                </div>
+              ) : (
+                /* STANDARD STYLE */
+                <div className="flex items-center gap-3 group-hover:scale-105 transition-transform text-white">
+                    {p.name === "STAKE" ? <Crown size={14} /> : <Zap size={14} />}
+                    <span className="text-[11px] font-black uppercase tracking-tighter">
+                        {p.name} <span className="mx-2 opacity-40">|</span> 
+                        <span className="text-white/90">{p.offer}</span>
+                    </span>
+                    <ExternalLink size={10} className="opacity-0 group-hover:opacity-100 transition-opacity" />
+                </div>
+              )}
             </a>
           ))}
         </div>

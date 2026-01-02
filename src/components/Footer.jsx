@@ -16,7 +16,7 @@ const Footer = () => {
 
       <div className="flex justify-center gap-8 grayscale opacity-10 mb-6 scale-75 font-black italic tracking-widest uppercase">
         <span className="text-red-600 opacity-50">Stake</span>
-        <span>SportyBet</span>
+        <span>Stake</span>
         <span>1xBet</span>
         <span>Bet9ja</span>
       </div>
