@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { db } from "../lib/firebase"; 
-import { collection, getDocs, deleteDoc, doc, setDoc, query, where } from "firebase/firestore";
-import { Upload, Trash2, Lock, LayoutDashboard, CheckCircle, AlertTriangle, Eye } from "lucide-react";
+import { collection, getDocs, deleteDoc, doc, setDoc, writeBatch } from "firebase/firestore";
+import { Upload, Trash2, Lock, LayoutDashboard, CheckCircle, AlertTriangle, Eye, RefreshCw } from "lucide-react";
 
 function Admin() {
   const [password, setPassword] = useState("");
@@ -35,20 +35,30 @@ function Admin() {
     }
   };
 
-  const clearOldMatches = async () => {
-    if (!window.confirm("CRITICAL: This will wipe all matches dated before today. Proceed?")) return;
+  // UPDATED: Hard Reset function to clear ALL data instantly
+  const clearAllData = async () => {
+    if (!window.confirm("⚠️ ACTION REQUIRED: This will delete EVERY match currently on the home page. Continue?")) return;
+    
     try {
-      setStatus("🔄 Purging legacy data...");
-      const today = new Date().toISOString().split('T')[0];
-      const q = query(collection(db, "fixtures"), where("date", "<", today));
-      const snapshot = await getDocs(q);
+      setStatus("🔄 Purging all database entries...");
+      const snapshot = await getDocs(collection(db, "fixtures"));
       
-      const deletePromises = snapshot.docs.map(m => deleteDoc(doc(db, "fixtures", m.id)));
-      await Promise.all(deletePromises);
+      if (snapshot.empty) {
+        setStatus("✅ Database is already empty.");
+        return;
+      }
+
+      // Using a batch for faster deletion
+      const batch = writeBatch(db);
+      snapshot.docs.forEach((m) => {
+        batch.delete(doc(db, "fixtures", m.id));
+      });
       
-      setStatus(`✅ Purge Complete: ${snapshot.size} entries removed.`);
+      await batch.commit();
+      setStatus(`✅ Success: ${snapshot.size} matches removed. Site is clean.`);
     } catch (err) { 
-      setStatus("❌ Database Error. Check Firebase permissions."); 
+      console.error(err);
+      setStatus("❌ Error: Could not clear database. Try again."); 
     }
   };
 
@@ -60,8 +70,9 @@ function Admin() {
       const matchArray = Array.isArray(matches) ? matches : [matches];
 
       for (const match of matchArray) {
-        // Generate a clean ID if one doesn't exist
+        // Generate a clean ID (Slug) based on teams and date
         const id = match.id || `${match.home}-${match.away}-${match.date}`.toLowerCase().replace(/\s+/g, '-');
+        
         await setDoc(doc(db, "fixtures", id), {
           ...match,
           updatedAt: new Date().toISOString()
@@ -70,7 +81,7 @@ function Admin() {
       setStatus(`✅ Deployment Successful! ${matchArray.length} matches live.`);
       setJsonInput("");
     } catch (e) { 
-      setStatus("❌ Syntax Error: Invalid JSON structure."); 
+      setStatus("❌ Syntax Error: Check your JSON commas/brackets."); 
     }
   };
 
@@ -110,10 +121,10 @@ function Admin() {
             <p className="text-gray-500 text-[10px] font-bold tracking-[0.4em] uppercase">Global Fixture Management Suite</p>
           </div>
           <button 
-            onClick={clearOldMatches} 
-            className="flex items-center gap-2 bg-red-600/10 text-red-500 border border-red-600/20 px-6 py-3 rounded-2xl hover:bg-red-600 hover:text-white transition-all text-[10px] font-black uppercase tracking-widest"
+            onClick={clearAllData} 
+            className="flex items-center gap-2 bg-red-600 text-white px-6 py-3 rounded-2xl hover:bg-red-700 transition-all text-[10px] font-black uppercase tracking-widest shadow-lg shadow-red-600/20"
           >
-            <Trash2 size={14} /> Wipe Expired Data
+            <Trash2 size={14} /> Wipe All Matches
           </button>
         </div>
 
@@ -127,7 +138,7 @@ function Admin() {
             <textarea 
               value={jsonInput} 
               onChange={(e) => setJsonInput(e.target.value)} 
-              placeholder='[ { "home": "Arsenal", "away": "Man City", "date": "2026-01-05", "links": [...] } ]' 
+              placeholder='[ { "home": "Team A", "away": "Team B", "league": "League Name", "date": "2026-01-02", "time": "15:35", "status": "live", "links": [...] } ]' 
               className="w-full h-[450px] bg-white/[0.03] border border-white/10 rounded-[2rem] p-6 font-mono text-sm text-green-400 focus:outline-none focus:border-red-600/50 transition-all placeholder:text-gray-700 shadow-inner" 
             />
             <button 
@@ -148,7 +159,7 @@ function Admin() {
                 preview.map((m, idx) => (
                   <div key={idx} className="bg-white/5 border border-white/10 p-5 rounded-2xl flex items-center justify-between animate-in slide-in-from-right-4 duration-300">
                     <div>
-                        <p className="text-[10px] font-black text-red-600 uppercase mb-1">{m.date || 'No Date'}</p>
+                        <p className="text-[10px] font-black text-red-600 uppercase mb-1">{m.date || 'No Date'} @ {m.time || 'No Time'}</p>
                         <h3 className="font-black italic uppercase text-sm">{m.home} vs {m.away}</h3>
                         <p className="text-[10px] text-gray-500 font-bold">{m.links?.length || 0} Stream Servers Ready</p>
                     </div>
@@ -168,8 +179,8 @@ function Admin() {
         </div>
         
         {status && (
-          <div className="mt-8 p-4 bg-red-600/10 border border-red-600/20 rounded-2xl text-center font-black text-[10px] uppercase tracking-[0.2em] text-red-500 animate-pulse">
-            {status}
+          <div className="mt-8 p-4 bg-white/5 border border-white/10 rounded-2xl text-center font-black text-[10px] uppercase tracking-[0.2em] text-red-500 animate-pulse">
+            <RefreshCw size={12} className="inline mr-2 animate-spin" /> {status}
           </div>
         )}
       </div>
