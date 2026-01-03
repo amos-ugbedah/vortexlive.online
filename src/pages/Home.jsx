@@ -2,31 +2,24 @@ import React, { useState, useEffect, useMemo } from 'react';
 import { db } from '../lib/firebase';
 import { collection, onSnapshot } from 'firebase/firestore';
 import { ExternalLink, Zap } from 'lucide-react';
-
-// Modular components
 import SearchBar from '../components/SearchBar';
 import MatchCard from '../components/MatchCard';
 import EmptyState from '../components/EmptyState';
 import AdManager from '../components/AdManager';
 
-/**
- * Helper to convert time strings (e.g., "18:30") to minutes for numerical sorting
- */
 const parseTime = (timeStr) => {
   if (!timeStr || ['TBD', '--', 'NS', 'LIVE', 'HT', 'FT'].includes(timeStr.toUpperCase())) {
-    return { totalMinutes: 9999, sortableTime: '99:99' };
+    return { totalMinutes: 9999 };
   }
   try {
-    let time = timeStr.toString().toUpperCase().trim().replace(/\./g, ':');
+    let time = timeStr.toString().toUpperCase().trim();
     let isPM = time.includes('PM');
     time = time.replace(/AM|PM/, '').trim();
     const parts = time.split(':');
     let hours = parseInt(parts[0]) || 0;
     const minutes = parseInt(parts[1]) || 0;
-    
     if (isPM && hours < 12) hours += 12;
     if (!isPM && hours === 12) hours = 0;
-    
     return { totalMinutes: hours * 60 + minutes };
   } catch (e) { 
     return { totalMinutes: 9999 }; 
@@ -38,7 +31,6 @@ const Home = () => {
   const [searchTerm, setSearchTerm] = useState("");
   const [isLoading, setIsLoading] = useState(true);
 
-  // 1. Firebase Data Sync with Enhanced Mapping
   useEffect(() => {
     const unsub = onSnapshot(collection(db, 'fixtures'), (snapshot) => {
       const matchesData = snapshot.docs.map(doc => {
@@ -52,14 +44,13 @@ const Home = () => {
           status: data.status || 'NS',
           homeScore: data.homeScore || 0,
           awayScore: data.awayScore || 0,
-          // CRITICAL: Normalizing the stream URL for the AdManager
-          streamUrl: data.streamUrl || data.streamUrl1 || data.links?.[0]?.url || '#', 
+          // Normalizing stream URL for AdManager to handle
+          streamUrl: data.streamUrl || data.streamUrl1 || data.links?.[0]?.url || '#',
           ...data
         };
       });
 
-      // 2. Enhanced Sorting Logic
-      // Priority: LIVE (1) > UPCOMING (2) > FINISHED (3)
+      // Sorting: LIVE > UPCOMING > FINISHED
       matchesData.sort((a, b) => {
         const getPriority = (s) => {
           const status = s?.toUpperCase();
@@ -67,26 +58,18 @@ const Home = () => {
           if (status === 'FT') return 3;
           return 2;
         };
-
         const priorityA = getPriority(a.status);
         const priorityB = getPriority(b.status);
-
-        if (priorityA !== priorityB) {
-          return priorityA - priorityB;
-        }
-        
-        // If same priority, sort by kickoff time
+        if (priorityA !== priorityB) return priorityA - priorityB;
         return parseTime(a.time).totalMinutes - parseTime(b.time).totalMinutes;
       });
 
       setMatches(matchesData);
       setIsLoading(false);
     });
-
     return () => unsub();
   }, []);
 
-  // 3. Search and Grouping Logic
   const groupMatches = useMemo(() => {
     const term = searchTerm.toLowerCase().trim();
     const filtered = matches.filter(m => 
@@ -100,14 +83,8 @@ const Home = () => {
     };
   }, [matches, searchTerm]);
 
-  // Click handler (Functionality is handled by AdManager global listener)
-  const handleStreamClick = (match, e) => {
-    console.log("Stream request for:", match.home);
-  };
-
   return (
     <div className="min-h-screen p-4 mx-auto font-sans text-white bg-black md:p-8 max-w-7xl">
-      {/* Global Ad Logic - Intercepts 'WATCH' button clicks */}
       <AdManager />
 
       <SearchBar 
@@ -116,7 +93,7 @@ const Home = () => {
         placeholder="SEARCH TEAMS, LEAGUES..." 
       />
 
-      {/* VIP AFFILIATE BANNER */}
+      {/* FAST SERVER PROMO */}
       <a href="https://otieu.com/4/10407921" target="_blank" rel="noreferrer" 
          className="relative block w-full p-1 mb-8 overflow-hidden transition-all border group rounded-3xl border-green-500/30 bg-gradient-to-r from-green-600/10 to-transparent hover:from-green-600/20">
         <div className="flex items-center justify-between px-6 py-4">
@@ -140,7 +117,7 @@ const Home = () => {
         </div>
       ) : (
         <>
-          {/* LIVE MATCHES SECTION */}
+          {/* LIVE SECTION */}
           {groupMatches.live.length > 0 && (
             <section className="mb-12">
               <h2 className="flex items-center gap-2 mb-6 text-xl italic font-black text-white uppercase">
@@ -158,14 +135,14 @@ const Home = () => {
                       statusBadge: {text: m.status, color: 'bg-red-600'}, 
                       liveMinute: 'LIVE'
                     }} 
-                    handleStreamClick={handleStreamClick} 
+                    handleStreamClick={() => {}} 
                   />
                 ))}
               </div>
             </section>
           )}
 
-          {/* UPCOMING MATCHES SECTION */}
+          {/* UPCOMING SECTION */}
           {groupMatches.upcoming.length > 0 && (
             <section className="mb-12">
               <h2 className="flex items-center gap-2 mb-6 text-xl italic font-black text-white uppercase">
@@ -183,28 +160,23 @@ const Home = () => {
                       statusBadge: {text: m.time, color: 'bg-white/10'}, 
                       liveMinute: m.time
                     }} 
-                    handleStreamClick={handleStreamClick} 
+                    handleStreamClick={() => {}} 
                   />
                 ))}
               </div>
             </section>
           )}
 
-          {/* Empty State Check */}
           {groupMatches.live.length === 0 && groupMatches.upcoming.length === 0 && (
             <EmptyState searchTerm={searchTerm} onClearSearch={() => setSearchTerm('')} />
           )}
         </>
       )}
 
-      {/* FOOTER AD SLOT */}
+      {/* Adsterra Slot */}
       <div id="container-adsterra-native" className="mt-12 w-full min-h-[250px] bg-white/5 rounded-2xl flex items-center justify-center border border-white/5">
         <span className="text-[8px] text-white/10 uppercase tracking-widest">Partner Advertisement</span>
       </div>
-
-      <footer className="py-10 text-center opacity-20">
-        <p className="text-[9px] font-black uppercase tracking-[0.4em]">Vortex Stream System &copy; 2026</p>
-      </footer>
     </div>
   );
 };
