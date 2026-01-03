@@ -1,5 +1,5 @@
 import React from 'react';
-import { Clock, Server, ExternalLink } from 'lucide-react';
+import { Clock, Server, PlayCircle } from 'lucide-react';
 
 const MatchCard = ({ match, displayData, handleStreamClick }) => {
   // 1. Safety Guards for props
@@ -12,12 +12,12 @@ const MatchCard = ({ match, displayData, handleStreamClick }) => {
   };
 
   // 2. Stream Availability Check
-  const hasStream = (m.streamUrl1 && m.streamUrl1 !== '#') || 
-                    (m.streamUrl2 && m.streamUrl2 !== '#') || 
-                    (m.streamUrl && m.streamUrl !== '#');
+  const primaryUrl = m.streamUrl1 || m.streamUrl || (m.links && m.links[0]?.url) || '#';
+  const secondaryUrl = m.streamUrl2 || (m.links && m.links[1]?.url) || null;
+  const hasStream = primaryUrl !== '#';
 
   return (
-    <div className="bg-zinc-900/40 border border-white/5 rounded-[2.5rem] p-6 flex flex-col justify-between hover:border-red-600/30 transition-all hover:-translate-y-1 group">
+    <div className="bg-zinc-900/40 border border-white/5 rounded-[2.5rem] p-6 flex flex-col justify-between hover:border-red-600/40 transition-all hover:-translate-y-1 group">
       
       {/* Header: League & Status */}
       <div className="flex items-center justify-between mb-6">
@@ -30,13 +30,13 @@ const MatchCard = ({ match, displayData, handleStreamClick }) => {
       </div>
 
       {/* Main Scoreboard Area */}
-      <div className="mb-8 space-y-3 text-center">
+      <div className="mb-6 space-y-3 text-center">
         <h2 className="text-lg font-black tracking-tighter text-white uppercase truncate">
           {m.home || 'TBD'}
         </h2>
         
         <div className="relative inline-block">
-          <div className={`text-3xl font-black italic tracking-tighter ${d.isLive ? 'text-red-600' : 'text-white/90'}`}>
+          <div className={`text-4xl font-black italic tracking-tighter ${d.isLive ? 'text-red-600' : 'text-white/90'}`}>
             {d.scoreDisplay}
           </div>
         </div>
@@ -52,32 +52,45 @@ const MatchCard = ({ match, displayData, handleStreamClick }) => {
         </div>
       </div>
 
-      {/* Footer: Stream Controls */}
-      <div className="flex items-center gap-2">
+      {/* Footer: Server Selection & Massive Watch Button */}
+      <div className="space-y-3">
         {/* Server Select */}
-        <div className="relative flex-1 group/select">
+        <div className="relative group/select">
           <Server size={12} className="absolute transition-colors -translate-y-1/2 left-3 top-1/2 text-white/20 group-focus-within/select:text-red-600" />
           <select 
             id={`server-${m.id}`}
             className="w-full bg-black/60 border border-white/5 py-3 pl-9 pr-4 rounded-xl text-[9px] font-black uppercase text-white/70 outline-none appearance-none cursor-pointer hover:border-white/10 transition-colors"
-            defaultValue={m.streamUrl1 || m.streamUrl || '#'}
           >
-            {m.streamUrl1 && <option value={m.streamUrl1}>Server 01</option>}
-            {m.streamUrl2 && <option value={m.streamUrl2}>Server 02</option>}
-            {m.streamUrl && !m.streamUrl1 && <option value={m.streamUrl}>Primary Server</option>}
+            <option value={primaryUrl}>Server 01 (HD)</option>
+            {secondaryUrl && <option value={secondaryUrl}>Server 02 (Fast)</option>}
             {!hasStream && <option value="#">Offline</option>}
           </select>
         </div>
 
-        {/* Watch Button */}
+        {/* Big Watch Button - The "Revenue Generator" */}
         <button 
           onClick={(e) => handleStreamClick(m, e)}
           disabled={!hasStream}
-          className={`p-3.5 rounded-xl transition-all shadow-xl active:scale-90 flex items-center justify-center
-            ${!hasStream ? 'bg-zinc-800 text-white/10 cursor-not-allowed' : 
-              d.isLive ? 'bg-red-600 text-white hover:bg-red-700' : 'bg-white text-black hover:bg-red-600 hover:text-white'}`}
+          className={`w-full py-4 rounded-2xl font-black uppercase text-[11px] tracking-[0.2em] transition-all shadow-xl active:scale-95 flex items-center justify-center gap-3
+            ${!hasStream 
+              ? 'bg-zinc-800 text-white/10 cursor-not-allowed' 
+              : 'bg-red-600 text-white hover:bg-white hover:text-black shadow-[0_10px_20px_rgba(220,38,38,0.3)]'
+            }`}
         >
-          <ExternalLink size={18} strokeWidth={3} />
+          {d.isLive ? (
+            <>
+              <div className="relative flex w-2 h-2">
+                <span className="absolute inline-flex w-full h-full bg-white rounded-full opacity-75 animate-ping"></span>
+                <span className="relative inline-flex w-2 h-2 bg-white rounded-full"></span>
+              </div>
+              WATCH LIVE NOW
+            </>
+          ) : (
+            <>
+              <PlayCircle size={16} />
+              WATCH STREAM
+            </>
+          )}
         </button>
       </div>
     </div>
