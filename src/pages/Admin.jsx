@@ -1,368 +1,296 @@
 import React, { useState, useEffect, useCallback } from "react";
 import { db } from "../lib/firebase"; 
-import { collection, getDocs, doc, setDoc, writeBatch, updateDoc, serverTimestamp } from "firebase/firestore";
-import { Upload, Trash2, Lock, LayoutDashboard, CheckCircle, AlertTriangle, Eye, RefreshCw, Play, Pause, Square } from "lucide-react";
+import { collection, getDocs, doc, setDoc, updateDoc, deleteDoc, serverTimestamp } from "firebase/firestore";
+import { Lock, Trash2, Database, Play, Pause, Square, RefreshCw, CheckCircle, Clock } from "lucide-react";
 
 function Admin() {
   const [password, setPassword] = useState("");
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [jsonInput, setJsonInput] = useState("");
   const [status, setStatus] = useState("");
-  const [preview, setPreview] = useState([]);
-  const [selectedMatchId, setSelectedMatchId] = useState(""); 
   const [isProcessing, setIsProcessing] = useState(false);
+  const [liveMatches, setLiveMatches] = useState([]);
+  const [selectedMatchId, setSelectedMatchId] = useState("");
 
-  const ADMIN_PASSWORD = "vortex_admin_2026"; 
+  const ADMIN_PASSWORD = "vortex_admin_2026";
 
-  // Optimized Preview Logic with error boundary
-  useEffect(() => {
-    if (!jsonInput.trim()) {
-      setPreview([]);
-      return;
-    }
-
+  // Fetch current matches from DB - Fixed with useCallback
+  const fetchMatches = useCallback(async () => {
     try {
-      const parsed = JSON.parse(jsonInput);
-      const normalized = Array.isArray(parsed) ? parsed : [parsed];
-      
-      // Ensure every item has a temporary ID for the preview clicker to work
-      const safePreview = normalized.map(match => ({
-        ...match,
-        previewId: match.id || `${match.home || 'h'}-${match.away || 'a'}-${match.date || 'd'}`.toLowerCase().replace(/\s+/g, '-')
+      const querySnapshot = await getDocs(collection(db, "fixtures"));
+      const matches = querySnapshot.docs.map(docSnapshot => ({ 
+        id: docSnapshot.id, 
+        ...docSnapshot.data() 
       }));
-      
-      setPreview(safePreview);
+      setLiveMatches(matches);
     } catch (error) {
-      console.error("JSON parsing error:", error);
-      setPreview([]);
+      console.error("Error fetching matches:", error);
+      setStatus("❌ Failed to fetch matches");
     }
-  }, [jsonInput]);
+  }, []);
 
-  const handleLogin = (e) => {
-    e.preventDefault();
+  useEffect(() => {
+    if (isAuthenticated) {
+      fetchMatches();
+    }
+  }, [isAuthenticated, fetchMatches]);
+
+  const handleLogin = (event) => {
+    event.preventDefault();
     if (password === ADMIN_PASSWORD) {
       setIsAuthenticated(true);
       setPassword("");
     } else {
-      setStatus("❌ Unauthorized Access Attempt");
+      setStatus("❌ ACCESS DENIED");
       setTimeout(() => setStatus(""), 3000);
     }
+  };
+
+  // Live timer control - Fixed error parameter
+  const updateMatchStatus = async (statusLabel, baseMin) => {
+    if (!selectedMatchId) {
+      setStatus("⚠️ SELECT A MATCH FIRST");
+      setTimeout(() => setStatus(""), 3000);
+      return;
+    }
+    
+    setIsProcessing(true);
+    try {
+      const matchRef = doc(db, "fixtures", selectedMatchId);
+      await updateDoc(matchRef, {
+        status: statusLabel,
+        baseMinute: baseMin,
+        lastUpdate: serverTimestamp()
+      });
+      setStatus(`✅ ${selectedMatchId} -> ${statusLabel}`);
+      fetchMatches(); // Refresh list
+    } catch (error) {
+      console.error("Update error:", error);
+      setStatus("❌ UPDATE FAILED");
+    }
+    setIsProcessing(false);
+    
+    setTimeout(() => setStatus(""), 5000);
+  };
+
+  const handleUpload = async () => {
+    if (!jsonInput.trim()) {
+      setStatus("⚠️ JSON input is empty");
+      setTimeout(() => setStatus(""), 3000);
+      return;
+    }
+    
+    try {
+      setIsProcessing(true);
+      const data = JSON.parse(jsonInput);
+      const matches = Array.isArray(data) ? data : [data];
+      
+      for (const match of matches) {
+        const id = match.id || `${match.home || 'team'}-${match.away || 'team'}`
+          .toLowerCase()
+          .replace(/\s+/g, '-')
+          .replace(/[^a-z0-9-]/g, '');
+        
+        await setDoc(doc(db, "fixtures", id), { 
+          ...match, 
+          id, 
+          lastUpdate: serverTimestamp() 
+        });
+      }
+      
+      setStatus(`🚀 ${matches.length} match(es) deployed successfully`);
+      setJsonInput("");
+      fetchMatches();
+    } catch (error) {
+      console.error("Upload error:", error);
+      if (error instanceof SyntaxError) {
+        setStatus("❌ Invalid JSON syntax");
+      } else {
+        setStatus("❌ Upload failed");
+      }
+    }
+    setIsProcessing(false);
+    
+    setTimeout(() => setStatus(""), 6000);
+  };
+
+  const handleWipe = async () => {
+    if (!window.confirm("⚠️ DELETE ALL MATCHES FROM DATABASE?\nThis cannot be undone!")) return;
+    
+    setIsProcessing(true);
+    try {
+      const snap = await getDocs(collection(db, "fixtures"));
+      const deletePromises = snap.docs.map(docSnapshot => 
+        deleteDoc(doc(db, "fixtures", docSnapshot.id))
+      );
+      await Promise.all(deletePromises);
+      setStatus(`🗑️ Cleared ${snap.size} match(es) from database`);
+      setLiveMatches([]);
+      setSelectedMatchId("");
+    } catch (error) {
+      console.error("Wipe error:", error);
+      setStatus("❌ Failed to clear database");
+    }
+    setIsProcessing(false);
+    
+    setTimeout(() => setStatus(""), 5000);
   };
 
   const handleLogout = () => {
     setIsAuthenticated(false);
     setJsonInput("");
-    setPreview([]);
     setStatus("");
     setSelectedMatchId("");
+    setLiveMatches([]);
   };
 
-  const triggerMatchControl = async (id, matchStatus, baseMin) => {
-    if (!id.trim()) {
-      setStatus("⚠️ Please select or enter a Match ID first.");
-      setTimeout(() => setStatus(""), 3000);
-      return;
-    }
-    
-    try {
-      setIsProcessing(true);
-      setStatus(`🔄 Updating ${id}...`);
-      
-      const matchRef = doc(db, "fixtures", id);
-      await updateDoc(matchRef, {
-        status: matchStatus,
-        baseMinute: baseMin,
-        lastUpdate: serverTimestamp()
-      });
-      
-      setStatus(`✅ Match ${id} updated to ${matchStatus}`);
-    } catch (error) {
-      console.error("Error updating match:", error);
-      setStatus("❌ Error: Document not found or update failed.");
-    } finally {
-      setIsProcessing(false);
-      setTimeout(() => setStatus(""), 5000);
-    }
-  };
-
-  const clearAllData = async () => {
-    if (!window.confirm("⚠️ CRITICAL ACTION: Delete ALL matches from database? This cannot be undone.")) return;
-    
-    try {
-      setIsProcessing(true);
-      setStatus("🔄 Purging database...");
-      
-      const snapshot = await getDocs(collection(db, "fixtures"));
-      
-      if (snapshot.empty) {
-        setStatus("✅ Database already empty.");
-        setTimeout(() => setStatus(""), 3000);
-        return;
-      }
-      
-      const batch = writeBatch(db);
-      snapshot.docs.forEach((docSnapshot) => {
-        batch.delete(doc(db, "fixtures", docSnapshot.id));
-      });
-      
-      await batch.commit();
-      setStatus(`✅ Success: ${snapshot.size} matches removed.`);
-      setPreview([]);
-      setSelectedMatchId("");
-    } catch (error) {
-      console.error("Error clearing data:", error);
-      setStatus("❌ Error: Could not clear database.");
-    } finally {
-      setIsProcessing(false);
-      setTimeout(() => setStatus(""), 5000);
-    }
-  };
-
-  const handleUpload = async () => {
-    if (!jsonInput.trim()) {
-      setStatus("⚠️ Input is empty.");
-      setTimeout(() => setStatus(""), 3000);
-      return;
-    }
-    
-    try {
-      setIsProcessing(true);
-      setStatus("🚀 Deploying to production...");
-      
-      const matches = JSON.parse(jsonInput);
-      const matchArray = Array.isArray(matches) ? matches : [matches];
-      
-      // Validate required fields
-      const invalidMatches = matchArray.filter(match => !match.home || !match.away);
-      if (invalidMatches.length > 0) {
-        setStatus(`⚠️ ${invalidMatches.length} matches missing home/away teams`);
-        setTimeout(() => setStatus(""), 4000);
-        return;
-      }
-      
-      // Upload matches sequentially to avoid Firebase batch limits
-      for (const match of matchArray) {
-        const id = match.id || `${match.home}-${match.away}-${match.date || new Date().toISOString().split('T')[0]}`
-          .toLowerCase()
-          .replace(/\s+/g, '-')
-          .replace(/[^a-z0-9-]/g, '');
-        
-        await setDoc(doc(db, "fixtures", id), {
-          ...match,
-          id,
-          uploadedAt: new Date().toISOString(),
-          lastUpdated: serverTimestamp()
-        });
-      }
-      
-      setStatus(`✅ Success! ${matchArray.length} matches deployed to production.`);
-      setJsonInput("");
-      setPreview([]);
-      setSelectedMatchId("");
-    } catch (error) {
-      console.error("Upload error:", error);
-      if (error instanceof SyntaxError) {
-        setStatus("❌ Syntax Error: Invalid JSON format. Check brackets, commas, and quotes.");
-      } else {
-        setStatus("❌ Upload failed. Check Firebase connection.");
-      }
-    } finally {
-      setIsProcessing(false);
-      setTimeout(() => setStatus(""), 6000);
-    }
-  };
-
-  if (!isAuthenticated) {
-    return (
-      <div className="min-h-screen bg-[#0a0a0c] flex items-center justify-center p-6 text-white font-sans">
-        <form onSubmit={handleLogin} className="bg-white/5 p-10 rounded-[2.5rem] border border-white/10 w-full max-w-sm text-center shadow-2xl backdrop-blur-sm">
-          <div className="w-16 h-16 bg-red-600/20 rounded-2xl flex items-center justify-center mx-auto mb-6">
-            <Lock className="text-red-600" size={32} />
-          </div>
-          <h1 className="text-2xl font-black mb-2 italic uppercase tracking-tighter">Vortex<span className="text-red-600">Secure</span></h1>
-          <p className="text-gray-500 text-xs mb-6">Admin Command Center v2.1</p>
-          <input 
-            type="password" 
-            placeholder="Enter Encrypted Key" 
-            value={password}
-            className="w-full bg-black border border-white/10 rounded-2xl p-4 mb-4 text-center outline-none focus:border-red-600 transition-all font-mono" 
-            onChange={(e) => setPassword(e.target.value)} 
-            autoComplete="current-password"
-          />
-          <button 
-            type="submit" 
-            className="w-full bg-red-600 font-black py-4 rounded-2xl uppercase tracking-widest text-xs hover:bg-red-700 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
-            disabled={!password.trim()}
-          >
-            Access Command Center
-          </button>
-        </form>
-        
-        {status && (
-          <div className="fixed bottom-6 left-1/2 -translate-x-1/2 px-6 py-3 bg-red-600 text-white rounded-full font-black text-xs uppercase shadow-2xl animate-pulse">
-            {status}
-          </div>
-        )}
-      </div>
-    );
-  }
+  if (!isAuthenticated) return (
+    <div className="flex items-center justify-center min-h-screen p-6 bg-black">
+      <form onSubmit={handleLogin} className="bg-white/5 p-10 rounded-[3rem] border border-white/10 w-full max-w-sm text-center">
+        <Lock className="mx-auto mb-6 text-red-600" size={40} />
+        <input 
+          type="password" 
+          placeholder="ADMIN KEY" 
+          className="w-full p-5 mb-4 text-center text-white transition-all bg-black border outline-none border-white/10 rounded-2xl focus:border-red-600"
+          onChange={(e) => setPassword(e.target.value)}
+          value={password}
+        />
+        <button 
+          type="submit"
+          className="w-full py-5 font-black tracking-widest text-white uppercase transition-all bg-red-600 rounded-2xl hover:bg-red-700 disabled:opacity-50"
+          disabled={!password.trim()}
+        >
+          Authorize
+        </button>
+        {status && <p className="mt-4 text-xs font-bold text-red-500 animate-pulse">{status}</p>}
+      </form>
+    </div>
+  );
 
   return (
-    <div className="min-h-screen bg-[#0a0a0c] text-white p-4 md:p-10 font-sans">
+    <div className="min-h-screen bg-[#070708] text-white p-4 md:p-10">
       <div className="max-w-6xl mx-auto">
-        <header className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-10 gap-4">
+        <header className="flex flex-col items-start justify-between gap-4 mb-10 sm:flex-row sm:items-center">
           <div>
             <div className="flex items-center gap-3 mb-2">
-              <h1 className="text-3xl font-black italic uppercase tracking-tighter">
-                Broadcast Control
-              </h1>
+              <h1 className="text-2xl italic font-black uppercase">Vortex <span className="text-red-600">Command</span></h1>
               <button 
                 onClick={handleLogout}
-                className="text-xs bg-white/10 hover:bg-white/20 px-3 py-1 rounded-full transition-all"
+                className="px-3 py-1 text-xs transition-all rounded-full bg-white/10 hover:bg-white/20"
               >
                 Logout
               </button>
             </div>
-            <p className="text-gray-500 text-[10px] font-bold tracking-[0.4em] uppercase">VortexLive Engine v2.1</p>
+            <p className="text-[10px] text-gray-500 uppercase tracking-widest font-bold">
+              {liveMatches.length} match(es) in database
+            </p>
           </div>
           <button 
-            onClick={clearAllData} 
-            className="flex items-center gap-2 bg-red-600 px-6 py-3 rounded-2xl font-black uppercase text-[10px] tracking-widest hover:bg-red-700 transition-all shadow-lg shadow-red-600/20 disabled:opacity-50 disabled:cursor-not-allowed"
+            onClick={handleWipe} 
             disabled={isProcessing}
+            className="bg-red-600/20 text-red-500 border border-red-600/30 px-6 py-2 rounded-xl text-[10px] font-black uppercase hover:bg-red-600 hover:text-white transition-all disabled:opacity-50"
           >
-            <Trash2 size={14} /> Wipe All Data
+            <Trash2 size={12} className="inline mr-2" /> Wipe All
           </button>
         </header>
 
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-          {/* JSON Input Area */}
-          <div className="space-y-4">
-            <div className="flex justify-between px-2 text-[10px] font-black uppercase tracking-widest text-gray-500">
-              <span>JSON Payload</span>
-              <Eye size={14} />
-            </div>
+        <div className="grid grid-cols-1 gap-8 lg:grid-cols-2">
+          {/* Left: JSON Upload */}
+          <section>
+            <p className="text-[10px] font-black uppercase tracking-widest text-gray-500 mb-4">Batch Upload (JSON)</p>
             <textarea 
-              value={jsonInput} 
-              onChange={(e) => setJsonInput(e.target.value)} 
-              placeholder='[ { "id": "match-1", "home": "Team A", "away": "Team B", "date": "2024-01-01", "status": "NS" } ]' 
-              className="w-full h-[400px] bg-white/[0.03] border border-white/10 rounded-[2rem] p-6 font-mono text-sm text-green-400 focus:outline-none focus:border-red-600/50 transition-all shadow-inner resize-none" 
+              className="w-full h-80 bg-white/5 border border-white/10 rounded-[2rem] p-6 font-mono text-xs text-blue-400 outline-none focus:border-red-600 transition-all resize-none"
+              value={jsonInput}
+              onChange={(e) => setJsonInput(e.target.value)}
+              placeholder='[{ "home": "Arsenal", "away": "Chelsea", "status": "NS", "time": "20:00" }]'
               disabled={isProcessing}
             />
             <button 
               onClick={handleUpload} 
-              className="w-full bg-white text-black font-black py-5 rounded-[1.5rem] hover:bg-red-600 hover:text-white transition-all flex items-center justify-center gap-3 shadow-xl transform active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed"
               disabled={isProcessing || !jsonInput.trim()}
+              className="flex items-center justify-center w-full gap-2 py-5 mt-4 text-xs font-black text-black uppercase transition-all bg-white rounded-2xl hover:bg-red-600 hover:text-white disabled:opacity-50"
             >
-              <Upload size={20} /> 
-              {isProcessing ? "PROCESSING..." : "PUSH TO PRODUCTION"}
+              <Database size={16} /> {isProcessing ? "PROCESSING..." : "Push Matches Live"}
             </button>
-          </div>
+          </section>
 
-          {/* Controls & Preview */}
-          <div className="space-y-6">
-            <div className="bg-red-600/10 border border-red-600/20 rounded-[2rem] p-6 backdrop-blur-sm">
-              <h2 className="text-[10px] font-black uppercase tracking-widest mb-4 flex items-center gap-2 text-red-500">
-                <RefreshCw size={14} className={`${isProcessing ? 'animate-spin' : 'animate-spin-slow'}`}/> 
-                Live Timer Control
-              </h2>
-              <input 
-                placeholder="Match ID (auto-fills from preview click)" 
-                className="w-full bg-black border border-white/10 rounded-xl p-3 mb-4 text-xs focus:border-red-600 outline-none transition-all font-mono"
+          {/* Right: Live Timer Controls */}
+          <section className="space-y-6">
+            <div className="bg-red-600/5 border border-red-600/20 rounded-[2.5rem] p-8">
+              <div className="flex items-center gap-2 mb-6 text-red-500">
+                <Clock size={18} />
+                <h2 className="text-[10px] font-black uppercase tracking-widest">Live Match Controller</h2>
+              </div>
+              
+              <select 
+                className="w-full p-4 mb-6 text-xs font-bold transition-all bg-black border outline-none cursor-pointer border-white/10 rounded-xl focus:border-red-600"
                 value={selectedMatchId}
                 onChange={(e) => setSelectedMatchId(e.target.value)}
-                disabled={isProcessing}
-              />
-              <div className="grid grid-cols-2 gap-2">
+                disabled={isProcessing || liveMatches.length === 0}
+              >
+                <option value="">-- SELECT ACTIVE MATCH --</option>
+                {liveMatches.map(match => (
+                  <option key={match.id} value={match.id}>
+                    {match.home || 'TBD'} vs {match.away || 'TBD'} ({match.status || 'NS'})
+                  </option>
+                ))}
+              </select>
+
+              <div className="grid grid-cols-2 gap-3">
                 <button 
-                  onClick={() => triggerMatchControl(selectedMatchId, '1H', 0)} 
-                  className="bg-green-600 p-3 rounded-xl text-[10px] font-black uppercase flex items-center justify-center gap-2 hover:bg-green-500 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+                  onClick={() => updateMatchStatus('1H', 0)} 
                   disabled={isProcessing || !selectedMatchId}
+                  className="bg-green-600/20 border border-green-600/30 text-green-500 p-4 rounded-xl text-[10px] font-black uppercase flex items-center justify-center gap-2 hover:bg-green-600 hover:text-white transition-all disabled:opacity-50"
                 >
-                  <Play size={12}/> Kickoff 1H
+                  <Play size={12}/> 1st Half
                 </button>
                 <button 
-                  onClick={() => triggerMatchControl(selectedMatchId, 'HT', 45)} 
-                  className="bg-yellow-600 p-3 rounded-xl text-[10px] font-black uppercase flex items-center justify-center gap-2 hover:bg-yellow-500 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+                  onClick={() => updateMatchStatus('HT', 45)} 
                   disabled={isProcessing || !selectedMatchId}
+                  className="bg-yellow-600/20 border border-yellow-600/30 text-yellow-500 p-4 rounded-xl text-[10px] font-black uppercase flex items-center justify-center gap-2 hover:bg-yellow-600 hover:text-white transition-all disabled:opacity-50"
                 >
                   <Pause size={12}/> Halftime
                 </button>
                 <button 
-                  onClick={() => triggerMatchControl(selectedMatchId, '2H', 45)} 
-                  className="bg-green-600 p-3 rounded-xl text-[10px] font-black uppercase flex items-center justify-center gap-2 hover:bg-green-500 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+                  onClick={() => updateMatchStatus('2H', 45)} 
                   disabled={isProcessing || !selectedMatchId}
+                  className="bg-green-600/20 border border-green-600/30 text-green-500 p-4 rounded-xl text-[10px] font-black uppercase flex items-center justify-center gap-2 hover:bg-green-600 hover:text-white transition-all disabled:opacity-50"
                 >
-                  <Play size={12}/> Kickoff 2H
+                  <Play size={12}/> 2nd Half
                 </button>
                 <button 
-                  onClick={() => triggerMatchControl(selectedMatchId, 'FT', 90)} 
-                  className="bg-gray-700 p-3 rounded-xl text-[10px] font-black uppercase flex items-center justify-center gap-2 hover:bg-gray-600 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+                  onClick={() => updateMatchStatus('FT', 90)} 
                   disabled={isProcessing || !selectedMatchId}
+                  className="bg-white/5 border border-white/10 text-gray-400 p-4 rounded-xl text-[10px] font-black uppercase flex items-center justify-center gap-2 hover:bg-red-600 hover:text-white transition-all disabled:opacity-50"
                 >
                   <Square size={12}/> Full Time
                 </button>
               </div>
             </div>
 
-            <div className="bg-white/[0.02] border border-white/5 rounded-[2rem] p-6 h-[250px] overflow-y-auto space-y-4 border-dashed">
-              <div className="flex justify-between items-center mb-2">
-                <span className="text-[10px] font-black uppercase tracking-widest text-gray-600">
-                  Click match below to control:
-                </span>
-                <span className="text-[10px] text-gray-500 font-mono">
-                  {preview.length} matches
-                </span>
-              </div>
-              
-              {preview.length > 0 ? (
-                preview.map((match, index) => (
-                  <div 
-                    key={`${match.previewId}-${index}`}
-                    onClick={() => !isProcessing && setSelectedMatchId(match.previewId)} 
-                    className={`cursor-pointer border p-4 rounded-2xl flex justify-between items-center transition-all ${selectedMatchId === match.previewId ? 'bg-red-600/20 border-red-600' : 'bg-white/5 border-white/10 hover:border-white/30'} ${isProcessing ? 'opacity-50 cursor-not-allowed' : ''}`}
-                  >
-                    <div className="overflow-hidden">
-                      <h3 className="font-black uppercase text-xs italic truncate">
-                        {match.home || '???'} vs {match.away || '???'}
-                      </h3>
-                      <p className="text-[9px] text-gray-500 uppercase font-mono truncate">
-                        {match.previewId}
-                      </p>
-                      {match.date && (
-                        <p className="text-[8px] text-gray-600 mt-1">
-                          {match.date}
-                        </p>
-                      )}
-                    </div>
-                    <CheckCircle 
-                      size={14} 
-                      className={selectedMatchId === match.previewId ? "text-red-500" : "text-green-500"} 
-                    />
-                  </div>
-                ))
-              ) : (
-                <div className="h-full flex flex-col items-center justify-center text-center opacity-20">
-                  <AlertTriangle size={32} className="mb-2" />
-                  <p className="text-[10px] font-black uppercase">Awaiting Valid JSON...</p>
-                  <p className="text-[8px] text-gray-600 mt-1">Paste JSON array to preview</p>
-                </div>
-              )}
-            </div>
-          </div>
+            {/* Quick Sync Button */}
+            <button 
+              onClick={fetchMatches} 
+              disabled={isProcessing}
+              className="w-full py-3 border border-white/5 rounded-xl text-[9px] font-black text-gray-500 uppercase tracking-[0.3em] flex items-center justify-center gap-2 hover:text-white transition-all disabled:opacity-50"
+            >
+              <RefreshCw size={12} /> Refresh Match List ({liveMatches.length})
+            </button>
+          </section>
         </div>
-        
+
         {status && (
-          <div className="fixed bottom-6 left-1/2 -translate-x-1/2 px-6 py-3 bg-white text-black rounded-full font-black text-xs uppercase shadow-2xl z-50 animate-bounce">
-            {status}
+          <div className="fixed bottom-10 left-1/2 -translate-x-1/2 bg-white text-black px-8 py-4 rounded-full font-black text-[10px] uppercase flex items-center gap-2 shadow-2xl animate-bounce border border-red-600 z-50">
+            <CheckCircle size={14} className="text-green-600" /> {status}
           </div>
         )}
         
         {isProcessing && (
-          <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-40">
-            <div className="bg-[#0a0a0c] border border-white/10 rounded-2xl p-8 text-center">
-              <RefreshCw size={32} className="animate-spin mx-auto mb-4 text-red-600" />
-              <p className="text-sm font-bold uppercase tracking-wider">Processing...</p>
-              <p className="text-xs text-gray-500 mt-2">Please wait</p>
+          <div className="fixed inset-0 z-40 flex items-center justify-center bg-black/50 backdrop-blur-sm">
+            <div className="bg-[#070708] border border-white/10 rounded-2xl p-8 text-center">
+              <RefreshCw size={32} className="mx-auto mb-4 text-red-600 animate-spin" />
+              <p className="text-sm font-bold tracking-wider uppercase">Processing...</p>
+              <p className="mt-2 text-xs text-gray-500">Please wait</p>
             </div>
           </div>
         )}

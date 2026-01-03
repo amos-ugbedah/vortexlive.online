@@ -1,52 +1,71 @@
 import React, { useState, useEffect } from 'react';
 
 const MatchTimer = ({ match }) => {
-  const [displayTime, setDisplayTime] = useState('');
+  const [displayTime, setDisplayTime] = useState('--');
 
   useEffect(() => {
     const updateClock = () => {
-      if (match.status === 'upcoming') {
-        setDisplayTime(match.time || 'Upcoming');
-        return;
-      }
-      
-      if (match.status === 'HT') {
+      if (!match) return;
+
+      const status = String(match.status || '').toUpperCase();
+
+      // 1. Static Statuses
+      if (status === 'HT') {
         setDisplayTime('HT');
         return;
       }
-
-      if (match.status === 'FT') {
+      if (status === 'FT') {
         setDisplayTime('FT');
         return;
       }
+      if (status === 'NS' || status === 'UPCOMING') {
+        setDisplayTime(match.time || 'Upcoming');
+        return;
+      }
 
-      // If match is Live (1H or 2H)
-      if (match.status === '1H' || match.status === '2H') {
-        const lastUpdate = match.lastUpdate?.seconds 
-          ? match.lastUpdate.seconds * 1000 
-          : Date.now();
-        
-        const diffInMs = Date.now() - lastUpdate;
-        const diffInMins = Math.floor(diffInMs / 60000);
-        const currentMin = (match.baseMinute || 0) + diffInMins;
+      // 2. Live Match Logic (1H or 2H)
+      if (status === '1H' || status === '2H') {
+        try {
+          // Convert Firebase timestamp or String to Milliseconds
+          const lastUpdate = match.lastUpdate?.seconds 
+            ? match.lastUpdate.seconds * 1000 
+            : new Date(match.lastUpdate).getTime();
 
-        // Handle Stoppage Time logic
-        if (match.status === '1H' && currentMin > 45) {
-          setDisplayTime(`45+${currentMin - 45}'`);
-        } else if (match.status === '2H' && currentMin > 90) {
-          setDisplayTime(`90+${currentMin - 90}'`);
-        } else {
-          setDisplayTime(`${currentMin}'`);
+          if (isNaN(lastUpdate)) {
+            setDisplayTime(status); // Fallback to '1H' or '2H' if date is invalid
+            return;
+          }
+
+          const diffInMins = Math.floor((Date.now() - lastUpdate) / 60000);
+          const currentMin = (Number(match.baseMinute) || 0) + diffInMins;
+
+          // 3. Stoppage Time formatting (e.g., 45+2')
+          if (status === '1H') {
+            if (currentMin > 45) setDisplayTime(`45+${currentMin - 45}'`);
+            else setDisplayTime(`${Math.max(1, currentMin)}'`);
+          } else if (status === '2H') {
+            if (currentMin > 90) setDisplayTime(`90+${currentMin - 90}'`);
+            else setDisplayTime(`${Math.max(46, currentMin)}'`);
+          }
+        } catch (e) {
+          setDisplayTime(status);
         }
+      } else {
+        setDisplayTime(status || 'NS');
       }
     };
 
     updateClock();
-    const interval = setInterval(updateClock, 30000); // Update every 30 seconds
+    // Update every 30 seconds to keep it accurate without killing performance
+    const interval = setInterval(updateClock, 30000); 
     return () => clearInterval(interval);
   }, [match]);
 
-  return <span className="timer-badge">{displayTime}</span>;
+  return (
+    <span className="italic font-black tracking-tighter tabular-nums text-inherit">
+      {displayTime}
+    </span>
+  );
 };
 
 export default MatchTimer;
