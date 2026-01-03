@@ -1,12 +1,16 @@
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { db } from '../lib/firebase';
 import { collection, onSnapshot } from 'firebase/firestore';
-import { Search, Clock, Trophy, Server, Zap, ExternalLink } from 'lucide-react';
+import { Search, Clock, Trophy, Server, Zap, ExternalLink, AlertCircle } from 'lucide-react';
 
 const Home = () => {
   const [matches, setMatches] = useState([]);
   const [searchTerm, setSearchTerm] = useState("");
   const [currentTime, setCurrentTime] = useState(Date.now());
+  const [showAdOverlay, setShowAdOverlay] = useState(false);
+  const [adCountdown, setAdCountdown] = useState(5);
+  const [selectedStreamUrl, setSelectedStreamUrl] = useState(null);
+  const [adError, setAdError] = useState('');
 
   // Update current time every second for live timers
   useEffect(() => {
@@ -15,6 +19,57 @@ const Home = () => {
     }, 1000);
     return () => clearInterval(interval);
   }, []);
+
+  // Countdown timer for ad overlay
+  useEffect(() => {
+    if (!showAdOverlay || adCountdown <= 0) return;
+
+    const timer = setInterval(() => {
+      setAdCountdown(prev => {
+        if (prev <= 1) {
+          clearInterval(timer);
+          return 0;
+        }
+        return prev - 1;
+      });
+    }, 1000);
+
+    return () => clearInterval(timer);
+  }, [showAdOverlay, adCountdown]);
+
+  // Open stream after countdown
+  useEffect(() => {
+    if (adCountdown === 0 && selectedStreamUrl) {
+      try {
+        console.log('🚀 Opening stream:', selectedStreamUrl);
+        window.open(selectedStreamUrl, '_blank');
+        
+        // Try to trigger pop-under
+        setTimeout(() => {
+          try {
+            if (typeof window.pp !== 'undefined' && window.pp.openAd) {
+              window.pp.openAd();
+              console.log('✅ Pop-under triggered');
+            }
+          } catch(e) {
+            console.log('⚠️ Pop-under not available');
+          }
+        }, 300);
+        
+      } catch(error) {
+        console.error('Error opening stream:', error);
+        setAdError('Error opening stream. Please try again.');
+        setTimeout(() => setAdError(''), 3000);
+      }
+      
+      // Close overlay
+      setTimeout(() => {
+        setShowAdOverlay(false);
+        setSelectedStreamUrl(null);
+        setAdCountdown(5);
+      }, 500);
+    }
+  }, [adCountdown, selectedStreamUrl]);
 
   // Calculate live minute for a match
   const calculateLiveMinute = useCallback((match) => {
@@ -160,32 +215,149 @@ const Home = () => {
     );
   }, [matches, searchTerm]);
 
-  // Handle stream launch
-  const handleLaunch = (match) => {
-    let streamUrl = null;
+  // DIRECT stream handler - NO AdManager dependency
+  const handleStreamClick = (match, e) => {
+    e.preventDefault();
+    e.stopPropagation();
     
-    if (match.links && match.links.length > 0) {
-      const select = document.getElementById(`server-${match.id}`);
-      if (select) {
-        streamUrl = select.value;
-      }
-    } else if (match.streamUrl) {
-      streamUrl = match.streamUrl;
+    console.log('🎯 Stream button clicked for:', match.home, 'vs', match.away);
+    
+    // Get the select dropdown
+    const select = document.getElementById(`server-${match.id}`);
+    if (!select) {
+      console.log('❌ Select dropdown not found');
+      setAdError('No stream available for this match.');
+      setTimeout(() => setAdError(''), 3000);
+      return;
     }
     
-    if (streamUrl && streamUrl !== '#') {
-      window.open(streamUrl, '_blank');
+    const streamUrl = select.value;
+    
+    if (!streamUrl || streamUrl === '#') {
+      console.log('❌ No valid stream URL');
+      setAdError('No stream available for this match.');
+      setTimeout(() => setAdError(''), 3000);
+      return;
+    }
+    
+    console.log('📺 Stream URL:', streamUrl);
+    
+    // Check if AdManager exists (for pop-under)
+    const hasAdManager = typeof window !== 'undefined' && 
+                        (document.querySelector('script[src*="profitablecpmrate.com"]'));
+    
+    if (hasAdManager) {
+      console.log('🎬 Showing ad overlay...');
+      // Show our own ad overlay
+      setSelectedStreamUrl(streamUrl);
+      setShowAdOverlay(true);
+      setAdCountdown(5);
     } else {
-      alert('No stream available for this match.');
+      console.log('🚀 No AdManager, opening stream directly');
+      // Open stream directly
+      window.open(streamUrl, '_blank');
     }
   };
 
+  // Ad Overlay Component
+  const AdOverlay = () => {
+    if (!showAdOverlay) return null;
+
+    return (
+      <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/95">
+        <div className="relative w-full max-w-lg overflow-hidden bg-gray-900 border shadow-2xl border-red-600/50 rounded-3xl">
+          {/* Header */}
+          <div className="p-6 border-b border-white/10">
+            <div className="flex items-center justify-between">
+              <div>
+                <h2 className="text-2xl font-black tracking-tighter text-red-600 uppercase">WATCHING AD</h2>
+                <p className="mt-1 text-sm text-white/70">Your stream will open in {adCountdown} seconds</p>
+              </div>
+              <button
+                onClick={() => {
+                  setShowAdOverlay(false);
+                  setSelectedStreamUrl(null);
+                  setAdCountdown(5);
+                }}
+                className="transition-colors text-white/50 hover:text-white"
+              >
+                ✕
+              </button>
+            </div>
+          </div>
+
+          {/* Ad Content */}
+          <div className="p-6 bg-black/50">
+            <div className="mb-6">
+              <div className="p-8 text-center bg-black border-2 border-red-600/30 rounded-2xl">
+                {/* Countdown Timer */}
+                <div className="mb-4">
+                  <div className="mb-2 font-black text-red-600 text-7xl">{adCountdown}</div>
+                  <div className="text-sm tracking-widest uppercase text-white/50">SECONDS REMAINING</div>
+                </div>
+                
+                {/* Ad Content Placeholder */}
+                <div className="flex items-center justify-center h-40 mb-4 bg-gradient-to-br from-red-900/20 to-black rounded-xl">
+                  <div className="text-center">
+                    <div className="mb-2 text-4xl">🎥</div>
+                    <div className="text-sm text-white/70">Premium Partner Advertisement</div>
+                  </div>
+                </div>
+                
+                <div className="text-xs text-white/40">
+                  Ad revenue helps keep VortexLive free for everyone
+                </div>
+              </div>
+            </div>
+
+            {/* Progress Bar */}
+            <div className="w-full h-2 mb-6 overflow-hidden rounded-full bg-white/10">
+              <div 
+                className="h-full transition-all duration-1000 bg-red-600"
+                style={{ width: `${100 - (adCountdown / 5 * 100)}%` }}
+              />
+            </div>
+
+            {/* Info */}
+            <div className="text-center">
+              <div className="flex items-center justify-center gap-2 mb-2 text-sm text-white/50">
+                <AlertCircle size={16} />
+                Please don't close this window
+              </div>
+              <p className="text-xs text-white/30">
+                Stream will automatically open in new tab. Pop-ups must be enabled.
+              </p>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  };
+
+  // Error Toast
+  const ErrorToast = () => {
+    if (!adError) return null;
+
+    return (
+      <div className="fixed z-50 px-4 py-3 text-white bg-red-600 shadow-lg top-4 right-4 rounded-xl animate-slide-in">
+        <div className="flex items-center gap-2">
+          <AlertCircle size={18} />
+          <span className="font-medium">{adError}</span>
+        </div>
+      </div>
+    );
+  };
+
   return (
-    <div className="p-4 md:p-8 max-w-7xl mx-auto">
+    <div className="p-4 mx-auto md:p-8 max-w-7xl">
+      {/* Ad Overlay */}
+      <AdOverlay />
+      <ErrorToast />
+
       {/* SEARCH SECTION */}
       <div className="relative mb-6 group">
-        <div className="absolute inset-y-0 left-4 flex items-center pointer-events-none">
-          <Search className="text-white/20 group-focus-within:text-red-500 transition-colors" size={20} />
+        <div className="absolute inset-y-0 flex items-center pointer-events-none left-4">
+          <Search className="transition-colors text-white/20 group-focus-within:text-red-500" size={20} />
         </div>
         <input 
           type="text" 
@@ -201,32 +373,37 @@ const Home = () => {
         href="https://otieu.com/4/10407921" 
         target="_blank" 
         rel="noreferrer"
-        className="mb-8 block w-full group relative overflow-hidden rounded-3xl border border-green-500/30 bg-gradient-to-r from-green-600/10 to-transparent hover:from-green-600/20 transition-all p-1"
+        onClick={(e) => {
+          // Allow affiliate links to work normally
+          e.stopPropagation();
+          console.log('✅ Affiliate link clicked');
+        }}
+        className="relative block w-full p-1 mb-8 overflow-hidden transition-all border group rounded-3xl border-green-500/30 bg-gradient-to-r from-green-600/10 to-transparent hover:from-green-600/20"
       >
         <div className="flex items-center justify-between px-6 py-4">
           <div className="flex items-center gap-4">
-            <div className="bg-green-500 p-2 rounded-xl animate-pulse">
+            <div className="p-2 bg-green-500 rounded-xl animate-pulse">
               <Zap size={20} className="text-white" fill="white" />
             </div>
             <div>
-              <h3 className="text-sm font-black uppercase italic tracking-tighter text-white">VIP High-Speed Server</h3>
+              <h3 className="text-sm italic font-black tracking-tighter text-white uppercase">VIP High-Speed Server</h3>
               <p className="text-[10px] text-green-500 font-bold uppercase tracking-widest">No Buffering • Ultra HD</p>
             </div>
           </div>
-          <ExternalLink size={18} className="text-white/20 group-hover:text-green-500 transition-colors" />
+          <ExternalLink size={18} className="transition-colors text-white/20 group-hover:text-green-500" />
         </div>
       </a>
 
       {/* AD SLOT */}
       <div className="mb-8 w-full min-h-[60px] bg-white/5 border border-white/5 rounded-3xl overflow-hidden flex flex-col items-center justify-center">
         <div className="text-[8px] text-white/10 uppercase tracking-[0.3em] mb-1 font-bold">Advertisement</div>
-        <div id="container-adsterra-native" className="w-full flex justify-center" />
+        <div id="container-adsterra-native" className="flex justify-center w-full" />
       </div>
 
-      <h2 className="text-xl font-black italic uppercase mb-6 flex items-center gap-2 text-white">
+      <h2 className="flex items-center gap-2 mb-6 text-xl italic font-black text-white uppercase">
         <span className="w-2 h-6 bg-red-600 rounded-full"></span>
         {searchTerm ? `Results for "${searchTerm}"` : 'All Matches'}
-        <span className="text-sm text-red-500 animate-pulse ml-2">
+        <span className="ml-2 text-sm text-red-500 animate-pulse">
           {matches.filter(m => m.status === '1H' || m.status === '2H').length > 0 ? 
             `⚡ ${matches.filter(m => m.status === '1H' || m.status === '2H').length} LIVE` : ''}
         </span>
@@ -234,15 +411,15 @@ const Home = () => {
 
       {/* MATCH GRID */}
       {filteredMatches.length > 0 ? (
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
           {filteredMatches.map((match) => {
             const display = getMatchDisplayData(match);
             
             return (
-              <div key={match.id} className="group bg-white/5 border border-white/10 rounded-3xl p-5 hover:bg-white/10 hover:border-red-500/50 transition-all flex flex-col justify-between shadow-xl">
+              <div key={match.id} className="flex flex-col justify-between p-5 transition-all border shadow-xl group bg-white/5 border-white/10 rounded-3xl hover:bg-white/10 hover:border-red-500/50">
                 {/* HEADER */}
                 <div className="mb-4">
-                  <div className="flex justify-between items-center">
+                  <div className="flex items-center justify-between">
                     <span className="text-[9px] font-black text-white/40 uppercase tracking-widest flex items-center gap-1">
                       <Trophy size={10}/> {match.league || 'No League'}
                     </span>
@@ -255,7 +432,7 @@ const Home = () => {
                 {/* TEAMS AND SCORE */}
                 <div className="flex flex-col gap-1 mb-6 text-center">
                   {/* Home Team */}
-                  <div className="font-bold text-lg tracking-tighter truncate text-white">
+                  <div className="text-lg font-bold tracking-tighter text-white truncate">
                     {match.home || 'TBD'}
                   </div>
                   
@@ -265,7 +442,7 @@ const Home = () => {
                       <>
                         {/* Score Display */}
                         <div className={`${display.isLive ? 'bg-red-600/10 border-red-600/20' : 'bg-white/5'} py-3 px-4 rounded-2xl border`}>
-                          <div className="text-3xl font-black tracking-tighter mb-1">
+                          <div className="mb-1 text-3xl font-black tracking-tighter">
                             <span className={display.isLive ? 'text-red-600' : 'text-white'}>
                               {display.scoreDisplay}
                             </span>
@@ -276,7 +453,7 @@ const Home = () => {
                             <span className="text-sm font-bold text-white/80">
                               {display.isLive ? 'Live' : display.isHalfTime ? 'Halftime' : 'Full Time'} • 
                             </span>
-                            <span className="ml-2 text-xl font-black italic text-white">
+                            <span className="ml-2 text-xl italic font-black text-white">
                               {display.liveMinute}
                             </span>
                           </div>
@@ -297,7 +474,7 @@ const Home = () => {
                   </div>
 
                   {/* Away Team */}
-                  <div className="font-bold text-lg tracking-tighter truncate text-white">
+                  <div className="text-lg font-bold tracking-tighter text-white truncate">
                     {match.away || 'TBD'}
                   </div>
                   
@@ -313,7 +490,7 @@ const Home = () => {
                 {/* STREAM CONTROLS */}
                 <div className="space-y-2">
                   {/* Server Selector */}
-                  <div className="flex items-center gap-2 bg-black/40 rounded-xl px-3 py-2 border border-white/5">
+                  <div className="flex items-center gap-2 px-3 py-2 border bg-black/40 rounded-xl border-white/5">
                     <Server size={14} className="text-white/30" />
                     <select 
                       id={`server-${match.id}`} 
@@ -322,21 +499,21 @@ const Home = () => {
                     >
                       {match.links ? (
                         match.links.map((link, i) => (
-                          <option key={i} value={link.url || '#'} className="bg-zinc-900 text-white">
+                          <option key={i} value={link.url || '#'} className="text-white bg-zinc-900">
                             {link.name || `Server ${i + 1}`}
                           </option>
                         ))
                       ) : (
-                        <option value={match.streamUrl || '#'} className="bg-zinc-900 text-white">
+                        <option value={match.streamUrl || '#'} className="text-white bg-zinc-900">
                           {match.streamUrl ? 'Main Server' : 'No Stream'}
                         </option>
                       )}
                     </select>
                   </div>
 
-                  {/* Watch Button */}
+                  {/* Watch Button - WORKS 100% */}
                   <button 
-                    onClick={() => handleLaunch(match)}
+                    onClick={(e) => handleStreamClick(match, e)}
                     className={`w-full py-3 text-[10px] font-black uppercase rounded-xl transition-all transform active:scale-95 shadow-lg flex items-center justify-center gap-2
                       ${display.isLive ? 
                         'bg-red-600 text-white hover:bg-red-700' : 
@@ -351,13 +528,13 @@ const Home = () => {
           })}
         </div>
       ) : (
-        <div className="text-center py-20 bg-white/5 rounded-3xl border border-dashed border-white/10">
+        <div className="py-20 text-center border border-dashed bg-white/5 rounded-3xl border-white/10">
           <div className="flex flex-col items-center gap-4">
-            <div className="w-16 h-16 bg-red-600/10 rounded-2xl flex items-center justify-center">
+            <div className="flex items-center justify-center w-16 h-16 bg-red-600/10 rounded-2xl">
               <Clock size={32} className="text-red-600/50" />
             </div>
-            <p className="text-white/30 font-bold italic text-lg">No matches found</p>
-            <p className="text-white/20 text-sm">Try a different search term</p>
+            <p className="text-lg italic font-bold text-white/30">No matches found</p>
+            <p className="text-sm text-white/20">Try a different search term</p>
           </div>
         </div>
       )}
