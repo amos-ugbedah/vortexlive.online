@@ -1,59 +1,78 @@
 import React, { useEffect, useCallback } from 'react';
 
 const AdManager = () => {
-  const showAdOverlay = useCallback((streamUrl) => {
+  const showAdOverlay = useCallback((url) => {
+    // Remove existing if any
+    const existing = document.getElementById('vortex-ad-overlay');
+    if (existing) existing.remove();
+
     const overlay = document.createElement('div');
     overlay.id = 'vortex-ad-overlay';
     overlay.style.cssText = `
       position: fixed; top: 0; left: 0; width: 100%; height: 100%;
-      background: rgba(0,0,0,0.98); z-index: 99999; display: flex;
-      align-items: center; justify-center: center; backdrop-filter: blur(10px);
+      background: rgba(0,0,0,0.95); z-index: 999999; display: flex;
+      align-items: center; justify-content: center; backdrop-filter: blur(8px);
     `;
     
     overlay.innerHTML = `
-      <div style="text-align: center; width: 100%; max-width: 400px; margin: auto; padding: 40px; background: #0a0a0a; border-radius: 30px; border: 1px solid #dc2626;">
+      <div style="text-align: center; width: 90%; max-width: 400px; padding: 40px; background: #0a0a0a; border-radius: 30px; border: 1px solid #dc2626;">
         <div style="font-size: 50px; margin-bottom: 20px;">⚡</div>
-        <h2 style="color: white; font-weight: 900; font-style: italic; margin-bottom: 10px;">CONNECTING TO SERVER...</h2>
-        <div style="height: 4px; background: #1a1a1a; border-radius: 2px; margin-bottom: 20px; overflow: hidden;">
-          <div id="ad-bar" style="width: 0%; height: 100%; background: #dc2626; transition: width 1s linear;"></div>
+        <h2 id="ad-status" style="color: white; font-weight: 900; margin-bottom: 10px; font-family: sans-serif;">ENCRYPTING CONNECTION...</h2>
+        <div style="height: 6px; background: #1a1a1a; border-radius: 3px; margin: 20px 0; overflow: hidden;">
+          <div id="ad-bar" style="width: 0%; height: 100%; background: #dc2626; transition: width 0.1s linear;"></div>
         </div>
-        <p style="color: #666; font-size: 10px; font-weight: bold; letter-spacing: 2px;">ADS SUPPORT OUR FREE HD STREAMS</p>
+        <div id="ad-btn-container">
+           <p style="color: #666; font-size: 10px; font-weight: bold; letter-spacing: 2px;">SECURE STREAM LOADING</p>
+        </div>
       </div>
     `;
 
     document.body.appendChild(overlay);
 
     let progress = 0;
+    const bar = document.getElementById('ad-bar');
+    const status = document.getElementById('ad-status');
+    const container = document.getElementById('ad-btn-container');
+
     const interval = setInterval(() => {
-      progress += 20;
-      const bar = document.getElementById('ad-bar');
+      progress += 2; // Smoother increments
       if (bar) bar.style.width = progress + '%';
 
       if (progress >= 100) {
         clearInterval(interval);
-        window.open(streamUrl, '_blank');
-        overlay.remove();
-        // Trigger Popunder
-        if (window.pp?.openAd) window.pp.openAd();
+        if (status) status.innerText = "READY TO WATCH!";
+        if (container) {
+          container.innerHTML = `
+            <button id="go-btn" style="width: 100%; background: #dc2626; color: white; border: none; padding: 18px; border-radius: 15px; font-weight: 900; cursor: pointer; margin-top: 10px;">
+              CLICK TO START STREAM
+            </button>
+          `;
+          document.getElementById('go-btn').onclick = () => {
+            window.open(url, '_blank');
+            overlay.remove();
+          };
+        }
       }
-    }, 1000);
+    }, 100); // 5 seconds total (50 steps of 100ms)
   }, []);
 
   useEffect(() => {
     const handleGlobalClick = (e) => {
       const btn = e.target.closest('button');
-      if (!btn) return;
+      if (!btn || btn.id === 'go-btn') return;
 
-      // Check if it's a "WATCH" button
-      if (btn.textContent.toUpperCase().includes('WATCH')) {
-        const card = btn.closest('div'); 
+      // Force detection of any button containing "WATCH"
+      if (btn.innerText.toUpperCase().includes('WATCH')) {
+        e.preventDefault();
+        e.stopPropagation();
+
+        const card = btn.closest('div');
+        // Check select first, then fallback to button data attributes
         const select = card?.querySelector('select');
-        const url = select?.value || btn.getAttribute('data-url');
+        const streamUrl = select?.value || btn.getAttribute('data-url');
 
-        if (url && url !== '#') {
-          e.preventDefault();
-          e.stopPropagation();
-          showAdOverlay(url);
+        if (streamUrl && streamUrl !== '#') {
+          showAdOverlay(streamUrl);
         }
       }
     };
