@@ -11,7 +11,7 @@ const MatchCard = ({ match, displayData, handleStreamClick }) => {
     liveMinute: '--'
   };
 
-  // 2. Stream Availability Check
+  // 2. Stream Availability Check - Correctly identifies primary and secondary
   const primaryUrl = m.streamUrl1 || m.streamUrl || (m.links && m.links[0]?.url) || '#';
   const secondaryUrl = m.streamUrl2 || (m.links && m.links[1]?.url) || null;
   const hasStream = primaryUrl !== '#';
@@ -52,24 +52,29 @@ const MatchCard = ({ match, displayData, handleStreamClick }) => {
         </div>
       </div>
 
-      {/* Footer: Server Selection & Massive Watch Button */}
+      {/* Footer: Server Selection & Watch Button */}
       <div className="space-y-3">
-        {/* Server Select */}
+        {/* Server Select - Always visible if stream exists */}
         <div className="relative group/select">
           <Server size={12} className="absolute transition-colors -translate-y-1/2 left-3 top-1/2 text-white/20 group-focus-within/select:text-red-600" />
           <select 
-            id={`server-${m.id}`}
+            id={`server-select-${m.id}`}
             className="w-full bg-black/60 border border-white/5 py-3 pl-9 pr-4 rounded-xl text-[9px] font-black uppercase text-white/70 outline-none appearance-none cursor-pointer hover:border-white/10 transition-colors"
           >
-            <option value={primaryUrl}>Server 01 (HD)</option>
-            {secondaryUrl && <option value={secondaryUrl}>Server 02 (Fast)</option>}
+            <option value={primaryUrl}>Server 01 (Direct HD)</option>
+            {secondaryUrl && <option value={secondaryUrl}>Server 02 (Backup SD)</option>}
             {!hasStream && <option value="#">Offline</option>}
           </select>
         </div>
 
-        {/* Big Watch Button - The "Revenue Generator" */}
+        {/* Watch Button */}
         <button 
-          onClick={(e) => handleStreamClick(m, e)}
+          onClick={(e) => {
+            // Logic to grab the selected value from the dropdown right before opening player
+            const selectEl = document.getElementById(`server-select-${m.id}`);
+            const selectedUrl = selectEl ? selectEl.value : primaryUrl;
+            handleStreamClick({ ...m, streamUrl: selectedUrl }, e);
+          }}
           disabled={!hasStream}
           className={`w-full py-4 rounded-2xl font-black uppercase text-[11px] tracking-[0.2em] transition-all shadow-xl active:scale-95 flex items-center justify-center gap-3
             ${!hasStream 

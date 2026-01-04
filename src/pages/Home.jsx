@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { db } from '../lib/firebase';
 import { collection, onSnapshot } from 'firebase/firestore';
 import { ExternalLink, Zap, Bell, X, Users } from 'lucide-react';
@@ -7,7 +7,6 @@ import MatchCard from '../components/MatchCard';
 import EmptyState from '../components/EmptyState';
 import AdManager from '../components/AdManager';
 
-// 1. HELPER: Time Parsing for Sorting
 const parseTime = (timeStr) => {
   if (!timeStr || ['TBD', '--', 'NS', 'LIVE', 'HT', 'FT'].includes(timeStr.toUpperCase())) {
     return { totalMinutes: 9999 };
@@ -27,7 +26,6 @@ const parseTime = (timeStr) => {
   }
 };
 
-// 2. COMPONENT: Subscription Modal (Vortex VIP)
 const SubscriptionModal = ({ onClose }) => (
   <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/90 backdrop-blur-md animate-in fade-in duration-300">
     <div className="relative w-full max-w-md p-8 overflow-hidden text-center border shadow-2xl bg-zinc-950 border-white/10 rounded-3xl">
@@ -61,8 +59,12 @@ const Home = () => {
   const [isLoading, setIsLoading] = useState(true);
   const [showSubModal, setShowSubModal] = useState(false);
   const [viewers, setViewers] = useState(Math.floor(Math.random() * (4800 - 3200 + 1) + 3200));
+  
+  // These states connect to AdManager
+  const [activeStream, setActiveStream] = useState(null);
 
-  // Auto-trigger Modal after 15 seconds
+  const SMART_LINK = "https://www.effectivegatecpm.com/m0hhxyhsj?key=2dc5d50b0220cf3243f77241e3c3114d";
+
   useEffect(() => {
     const timer = setTimeout(() => setShowSubModal(true), 15000);
     return () => clearTimeout(timer);
@@ -81,12 +83,10 @@ const Home = () => {
           status: data.status || 'NS',
           homeScore: data.homeScore || 0,
           awayScore: data.awayScore || 0,
-          streamUrl: data.streamUrl || data.streamUrl1 || data.links?.[0]?.url || '#',
           ...data
         };
       });
 
-      // Sorting: LIVE (1) > UPCOMING (2) > FINISHED (3)
       matchesData.sort((a, b) => {
         const getPriority = (s) => {
           const status = s?.toUpperCase();
@@ -106,6 +106,17 @@ const Home = () => {
     return () => unsub();
   }, []);
 
+  // NEW: Handle Server 2 selection from MatchCard
+  const handleWatchMatch = useCallback((matchWithSelectedUrl, event) => {
+    if (event) event.preventDefault();
+    
+    const selectedUrl = matchWithSelectedUrl.streamUrl;
+    if (selectedUrl && selectedUrl !== '#') {
+      // This sends the link to AdManager component
+      setActiveStream(selectedUrl);
+    }
+  }, []);
+
   const groupMatches = useMemo(() => {
     const term = searchTerm.toLowerCase().trim();
     const filtered = matches.filter(m => 
@@ -123,9 +134,9 @@ const Home = () => {
     <div className="min-h-screen p-4 mx-auto font-sans text-white bg-[#070708] md:p-8 max-w-7xl">
       {showSubModal && <SubscriptionModal onClose={() => setShowSubModal(false)} />}
       
-      <AdManager />
+      {/* AdManager now receives the active stream state */}
+      <AdManager externalStream={activeStream} setExternalStream={setActiveStream} />
 
-      {/* TOP HEADER / LOGO BAR */}
       <div className="flex flex-col justify-between gap-4 mb-8 md:flex-row md:items-center">
         <div>
            <h1 className="text-3xl italic font-black tracking-tighter text-white uppercase">VORTEX <span className="text-red-600">LIVE</span></h1>
@@ -151,8 +162,8 @@ const Home = () => {
         placeholder="SEARCH TEAMS, LEAGUES, OR COMPETITIONS..." 
       />
 
-      {/* PROMO BANNER */}
-      <a href="https://otieu.com/4/10407921" target="_blank" rel="noreferrer" 
+      {/* OPTION A: PROMO BANNER UPDATED WITH SMARTLINK */}
+      <a href={SMART_LINK} target="_blank" rel="noreferrer" 
          className="relative block w-full p-1 mb-8 overflow-hidden transition-all border group rounded-3xl border-white/5 bg-white/5 hover:bg-white/[0.08]">
         <div className="flex items-center justify-between px-6 py-4">
           <div className="flex items-center gap-4">
@@ -161,7 +172,7 @@ const Home = () => {
             </div>
             <div>
               <h3 className="text-sm italic font-black tracking-tighter text-white uppercase">Premium Ultra-HD Engine</h3>
-              <p className="text-[10px] text-gray-500 font-bold uppercase tracking-widest">Global CDN • 0ms Latency • No Ads</p>
+              <p className="text-[10px] text-gray-500 font-bold uppercase tracking-widest">Global CDN • 0ms Latency • Unlock Now</p>
             </div>
           </div>
           <ExternalLink size={18} className="transition-colors text-white/20 group-hover:text-red-600" />
@@ -175,7 +186,6 @@ const Home = () => {
         </div>
       ) : (
         <>
-          {/* LIVE SECTION */}
           {groupMatches.live.length > 0 && (
             <section className="mb-12">
               <div className="flex items-center justify-between mb-6">
@@ -196,14 +206,13 @@ const Home = () => {
                       statusBadge: {text: m.status, color: 'bg-red-600'}, 
                       liveMinute: 'LIVE'
                     }} 
-                    handleStreamClick={() => {}} 
+                    handleStreamClick={handleWatchMatch} 
                   />
                 ))}
               </div>
             </section>
           )}
 
-          {/* UPCOMING SECTION */}
           {groupMatches.upcoming.length > 0 && (
             <section className="mb-12">
               <h2 className="flex items-center gap-3 mb-6 text-2xl italic font-black tracking-tighter text-white uppercase">
@@ -221,7 +230,7 @@ const Home = () => {
                       statusBadge: {text: m.time, color: 'bg-white/5'}, 
                       liveMinute: m.time
                     }} 
-                    handleStreamClick={() => {}} 
+                    handleStreamClick={handleWatchMatch} 
                   />
                 ))}
               </div>
@@ -234,10 +243,21 @@ const Home = () => {
         </>
       )}
 
-      {/* Adsterra Native Section */}
-      <div id="container-adsterra-native" className="mt-20 w-full min-h-[300px] bg-white/[0.02] rounded-[2.5rem] flex flex-col items-center justify-center border border-white/5 border-dashed">
-        <Users size={24} className="mb-4 text-white/5" />
-        <span className="text-[9px] text-white/10 uppercase font-black tracking-[0.4em]">Official Vortex Partners</span>
+      {/* OPTION A: FOOTER BUTTON UPDATED WITH SMARTLINK */}
+      <div className="flex flex-col items-center gap-4 mt-20">
+          <a 
+            href={SMART_LINK} 
+            target="_blank" 
+            rel="noreferrer"
+            className="px-6 py-2 bg-red-600 rounded-md text-[10px] font-black text-white uppercase tracking-tighter animate-pulse"
+          >
+            HIGH CPM WITH ADSTERRA
+          </a>
+          
+          <div id="container-adsterra-native" className="w-full min-h-[150px] bg-white/[0.02] rounded-[2.5rem] flex flex-col items-center justify-center border border-white/5 border-dashed">
+            <Users size={24} className="mb-4 text-white/5" />
+            <span className="text-[9px] text-white/10 uppercase font-black tracking-[0.4em]">Official Vortex Partners</span>
+          </div>
       </div>
     </div>
   );
