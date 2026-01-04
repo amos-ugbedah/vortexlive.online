@@ -1,5 +1,10 @@
 import React, { useEffect, useCallback, useState, useRef } from 'react';
-import { X, Play, ShieldCheck, Server, RefreshCw, ChevronDown, DollarSign } from 'lucide-react';
+import { X, RefreshCw, ChevronDown } from 'lucide-react';
+
+// --- CONFIGURATION ---
+// Paste your Adsterra or Monetag "Direct Link" / "Smart Link" here
+const SMART_DIRECT_LINK = "https://www.highperformanceformat.com/your-code-here"; 
+// ---------------------
 
 const AdManager = () => {
   const [activeStream, setActiveStream] = useState(null);
@@ -7,15 +12,11 @@ const AdManager = () => {
   const [currentServer, setCurrentServer] = useState(1);
   const [showRealStream, setShowRealStream] = useState(false);
   const [countdown, setCountdown] = useState(10);
+  
   const midRollTimer = useRef(null);
-  const scrollContainerRef = useRef(null);
-  const adContainerRef = useRef(null);
+  const playerRef = useRef(null);
 
-  // --- CONFIGURATION ---
-  const SMART_LINK = "https://www.effectivegatecpm.com/m0hhxyhsj?key=2dc5d50b0220cf3243f77241e3c3114d";
-  const AD_INTERVAL = 15 * 60 * 1000; // 15 Minutes
-  const ADSTERRA_BANNER_KEY = "PASTE_YOUR_ADSTERRA_BANNER_KEY_HERE"; // <--- GET THIS FROM ADSTERRA
-  // ---------------------
+  const AD_INTERVAL = 15 * 60 * 1000; 
 
   const startAdSequence = useCallback((streamUrl, backupUrl = null) => {
     setActiveStream(streamUrl);
@@ -23,47 +24,39 @@ const AdManager = () => {
     setShowRealStream(false);
     setCountdown(10);
     setCurrentServer(1);
-    document.body.style.overflow = 'hidden';
+
+    setTimeout(() => {
+      playerRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }, 100);
+
     if (midRollTimer.current) clearTimeout(midRollTimer.current);
   }, []);
 
   const closePlayer = () => {
     setActiveStream(null);
-    document.body.style.overflow = 'auto';
+    window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
   const handleSkipAd = (e) => {
     e.stopPropagation();
+    
+    // 1. REVENUE TRIGGER: Opens your Direct Link in a new tab
+    // This is what will make your "Clicks" and "Revenue" go up in the dashboard
+    window.open(SMART_DIRECT_LINK, '_blank');
+
+    // 2. SHOW CONTENT: Reveals the iframe immediately
     setShowRealStream(true);
     
-    // 1. Auto-scroll to hide header
+    // 3. UX IMPROVEMENT: Auto-center the player for the user
     setTimeout(() => {
-      if (scrollContainerRef.current) {
-        scrollContainerRef.current.scrollTo({ top: 140, behavior: 'smooth' });
-      }
-    }, 500);
+      playerRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    }, 600);
 
-    // 2. SET THE 15-MINUTE TRAP
     midRollTimer.current = setTimeout(() => {
       setShowRealStream(false);
       setCountdown(10);
     }, AD_INTERVAL);
   };
-
-  // AD INJECTION LOGIC
-  useEffect(() => {
-    if (showRealStream && adContainerRef.current && ADSTERRA_BANNER_KEY !== "PASTE_YOUR_ADSTERRA_BANNER_KEY_HERE") {
-      const conf = document.createElement('script');
-      const script = document.createElement('script');
-      script.type = 'text/javascript';
-      script.src = `//www.profitabledisplaynetwork.com/${ADSTERRA_BANNER_KEY}/invoke.js`;
-      conf.innerHTML = `atOptions = { 'key' : '${ADSTERRA_BANNER_KEY}', 'format' : 'iframe', 'height' : 250, 'width' : 300, 'params' : {} };`;
-      
-      adContainerRef.current.innerHTML = ''; // Clear placeholder
-      adContainerRef.current.appendChild(conf);
-      adContainerRef.current.appendChild(script);
-    }
-  }, [showRealStream]);
 
   useEffect(() => {
     let interval;
@@ -78,6 +71,7 @@ const AdManager = () => {
       const btn = e.target.closest('button');
       if (!btn || !btn.innerText || btn.innerText.toUpperCase().indexOf('WATCH') === -1) return;
       if (['close-player', 'skip-btn'].includes(btn.id)) return;
+      
       e.preventDefault();
       const card = btn.closest('div');
       const select = card?.querySelector('select');
@@ -90,72 +84,90 @@ const AdManager = () => {
   }, [startAdSequence]);
 
   return (
-    <>
+    <div className="w-full">
       {activeStream && (
-        <div ref={scrollContainerRef} className="fixed inset-0 z-[1000] bg-black flex flex-col overflow-y-auto scroll-smooth">
+        <div ref={playerRef} className="flex flex-col w-full duration-500 bg-black border-b border-red-600/30 animate-in fade-in">
           
-          {/* STICKY HEADER */}
-          <div className="sticky top-0 w-full bg-[#0a0a0a] p-3 flex justify-between items-center border-b border-white/10 z-[1050]">
+          {/* PLAYER HEADER */}
+          <div className="w-full bg-[#0a0a0a] p-3 flex justify-between items-center border-b border-white/5">
             <div className="flex items-center gap-2">
-               <span className="text-[10px] font-black text-red-600 uppercase">Vortex Live HD</span>
-               {showRealStream && (
-                 <div className="flex bg-zinc-900 rounded p-0.5 ml-2 border border-white/5">
-                   <button onClick={() => setCurrentServer(1)} className={`px-2 py-1 rounded text-[8px] font-bold ${currentServer === 1 ? 'bg-red-600 text-white' : 'text-gray-500'}`}>S1</button>
-                   {backupStream && <button onClick={() => setCurrentServer(2)} className={`px-2 py-1 rounded text-[8px] font-bold ${currentServer === 2 ? 'bg-red-600 text-white' : 'text-gray-500'}`}>S2</button>}
-                 </div>
-               )}
+               <div className="bg-red-600 px-1.5 py-0.5 rounded text-[8px] font-black italic text-white uppercase animate-pulse">Live</div>
+               <span className="text-[10px] font-bold tracking-widest text-white/90 uppercase">Vortex Arena Feed</span>
             </div>
-            <button id="close-player" onClick={closePlayer} className="p-2 text-white bg-red-600 rounded-lg"><X size={18}/></button>
-          </div>
-
-          <div className="flex flex-col items-center w-full">
-            <div className="w-full h-[100px] flex items-center justify-center text-white/5 text-[8px] font-bold uppercase tracking-widest">Buffer Optimized</div>
-
-            {/* PLAYER AREA */}
-            <div className="relative w-full max-w-5xl overflow-hidden bg-black shadow-2xl aspect-video border-y border-white/5"
-                 onClick={() => !showRealStream && window.open(SMART_LINK, '_blank')}>
-              {!showRealStream && (
-                <div className="absolute inset-0 z-50 flex flex-col items-center justify-center p-6 text-center bg-black/90">
-                    <RefreshCw className="mb-4 text-red-600 animate-spin" size={32}/>
-                    <h2 className="mb-4 text-sm font-black text-white uppercase">Syncing HD Feed...</h2>
-                    {countdown > 0 ? (
-                      <div className="px-6 py-3 font-mono text-xs text-red-600 border border-red-600/30 rounded-xl">READY IN {countdown}s</div>
-                    ) : (
-                      <button id="skip-btn" onClick={handleSkipAd} className="px-10 py-5 text-xs font-black text-white uppercase bg-red-600 rounded-2xl animate-pulse">WATCH NOW</button>
+            
+            <div className="flex items-center gap-4">
+                <div className="flex bg-white/5 rounded-lg p-0.5 border border-white/10">
+                    <button 
+                        onClick={() => {
+                            setCurrentServer(1);
+                            // Optional: Open ad again when switching servers
+                            window.open(SMART_DIRECT_LINK, '_blank');
+                        }} 
+                        className={`px-3 py-1 text-[8px] font-bold rounded ${currentServer === 1 ? 'bg-red-600 text-white' : 'text-white/40'}`}
+                    >
+                        S1
+                    </button>
+                    {backupStream && backupStream !== "#" && (
+                        <button 
+                            onClick={() => {
+                                setCurrentServer(2);
+                                window.open(SMART_DIRECT_LINK, '_blank');
+                            }} 
+                            className={`px-3 py-1 text-[8px] font-bold rounded ${currentServer === 2 ? 'bg-red-600 text-white' : 'text-white/40'}`}
+                        >
+                            S2
+                        </button>
                     )}
                 </div>
-              )}
-              {showRealStream && (
-                <iframe src={currentServer === 1 ? activeStream : backupStream} className="w-full h-full border-none" allowFullScreen scrolling="yes" frameBorder="0" allow="autoplay; encrypted-media"></iframe>
-              )}
-            </div>
-
-            {/* MONETIZATION FOOTER */}
-            <div className="w-full bg-[#0a0a0a] p-8 flex flex-col items-center gap-6 min-h-[800px]">
-                {showRealStream && (
-                   <>
-                    <div className="flex flex-col items-center gap-2 py-2 text-red-500 animate-bounce">
-                        <ChevronDown size={20} />
-                        <span className="text-[10px] font-black uppercase tracking-widest">Scroll for Unmute</span>
-                    </div>
-
-                    {/* THE AD BOX - Where the money is made */}
-                    <div className="w-full max-w-[320px] min-h-[250px] bg-zinc-900 rounded-3xl border border-white/5 overflow-hidden flex flex-col items-center justify-center">
-                        <div ref={adContainerRef} className="w-full h-full">
-                           <p className="text-[9px] text-white/10 font-bold uppercase p-10 text-center">Loading Premium Content...</p>
-                        </div>
-                    </div>
-                   </>
-                )}
-                
-                <div className="flex gap-10 mt-10 opacity-20">
-                    <ShieldCheck size={24} className="text-white"/><Server size={24} className="text-white"/><Play size={24} className="text-white"/>
-                </div>
+                <button id="close-player" onClick={closePlayer} className="p-1 transition-colors text-white/50 hover:text-white"><X size={20}/></button>
             </div>
           </div>
+
+          {/* PLAYER CONTENT */}
+          <div className="relative w-full h-[55vh] md:h-[80vh] bg-black">
+            {!showRealStream && (
+              <div className="absolute inset-0 z-50 flex flex-col items-center justify-center p-8 text-center bg-[#080808]">
+                  <RefreshCw className="mb-4 text-red-600 animate-spin" size={32}/>
+                  <h2 className="mb-1 text-[10px] font-black tracking-widest text-white uppercase">Loading Premium Link</h2>
+                  
+                  {countdown > 0 ? (
+                    <div className="px-8 py-3 mt-4 font-mono text-lg font-bold text-red-600 border border-red-600/20 rounded-xl bg-red-600/5">
+                      {countdown}s
+                    </div>
+                  ) : (
+                    <button 
+                      id="skip-btn" 
+                      onClick={handleSkipAd} 
+                      className="mt-4 px-12 py-5 text-[10px] font-black text-white bg-red-600 shadow-2xl rounded-xl shadow-red-600/40 uppercase tracking-tighter active:scale-95 transition-transform"
+                    >
+                      Click to Watch Now
+                    </button>
+                  )}
+              </div>
+            )}
+            
+            {showRealStream && (
+              <div className="relative w-full h-full">
+                <iframe 
+                  src={currentServer === 1 ? activeStream : backupStream} 
+                  className="w-full h-full border-none" 
+                  allowFullScreen 
+                  allow="autoplay; encrypted-media; picture-in-picture"
+                ></iframe>
+              </div>
+            )}
+          </div>
+
+          {/* MAXIMIZE INSTRUCTION */}
+          {showRealStream && (
+            <div className="w-full py-3 bg-[#0a0a0a] flex flex-col items-center gap-1 opacity-60">
+                <ChevronDown size={14} className="text-red-600 animate-bounce" />
+                <span className="text-[8px] font-bold text-white uppercase tracking-[0.2em]">Scroll down to maximize fullscreen view</span>
+            </div>
+          )}
         </div>
       )}
-    </>
+    </div>
   );
 };
 
