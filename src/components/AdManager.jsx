@@ -2,9 +2,8 @@ import React, { useEffect, useCallback, useState, useRef } from 'react';
 import { X, RefreshCw, ChevronDown } from 'lucide-react';
 
 // --- CONFIGURATION ---
-// Paste your Adsterra or Monetag "Direct Link" / "Smart Link" here
+// Paste your "Direct Link" / "Smart Link" from Adsterra or Monetag here
 const SMART_DIRECT_LINK = "https://www.highperformanceformat.com/your-code-here"; 
-// ---------------------
 
 const AdManager = () => {
   const [activeStream, setActiveStream] = useState(null);
@@ -40,14 +39,12 @@ const AdManager = () => {
   const handleSkipAd = (e) => {
     e.stopPropagation();
     
-    // 1. REVENUE TRIGGER: Opens your Direct Link in a new tab
-    // This is what will make your "Clicks" and "Revenue" go up in the dashboard
+    // REVENUE TRIGGER: Opens your Direct Link in a new tab
+    // This will move your "Clicks" from 0 to 1+ in the dashboard
     window.open(SMART_DIRECT_LINK, '_blank');
 
-    // 2. SHOW CONTENT: Reveals the iframe immediately
     setShowRealStream(true);
     
-    // 3. UX IMPROVEMENT: Auto-center the player for the user
     setTimeout(() => {
       playerRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' });
     }, 600);
@@ -88,11 +85,10 @@ const AdManager = () => {
       {activeStream && (
         <div ref={playerRef} className="flex flex-col w-full duration-500 bg-black border-b border-red-600/30 animate-in fade-in">
           
-          {/* PLAYER HEADER */}
           <div className="w-full bg-[#0a0a0a] p-3 flex justify-between items-center border-b border-white/5">
             <div className="flex items-center gap-2">
                <div className="bg-red-600 px-1.5 py-0.5 rounded text-[8px] font-black italic text-white uppercase animate-pulse">Live</div>
-               <span className="text-[10px] font-bold tracking-widest text-white/90 uppercase">Vortex Arena Feed</span>
+               <span className="text-[10px] font-bold tracking-widest text-white/90 uppercase">Vortex Arena</span>
             </div>
             
             <div className="flex items-center gap-4">
@@ -100,8 +96,7 @@ const AdManager = () => {
                     <button 
                         onClick={() => {
                             setCurrentServer(1);
-                            // Optional: Open ad again when switching servers
-                            window.open(SMART_DIRECT_LINK, '_blank');
+                            window.open(SMART_DIRECT_LINK, '_blank'); // Secondary click revenue
                         }} 
                         className={`px-3 py-1 text-[8px] font-bold rounded ${currentServer === 1 ? 'bg-red-600 text-white' : 'text-white/40'}`}
                     >
@@ -111,7 +106,7 @@ const AdManager = () => {
                         <button 
                             onClick={() => {
                                 setCurrentServer(2);
-                                window.open(SMART_DIRECT_LINK, '_blank');
+                                window.open(SMART_DIRECT_LINK, '_blank'); // Secondary click revenue
                             }} 
                             className={`px-3 py-1 text-[8px] font-bold rounded ${currentServer === 2 ? 'bg-red-600 text-white' : 'text-white/40'}`}
                         >
@@ -123,12 +118,11 @@ const AdManager = () => {
             </div>
           </div>
 
-          {/* PLAYER CONTENT */}
           <div className="relative w-full h-[55vh] md:h-[80vh] bg-black">
             {!showRealStream && (
               <div className="absolute inset-0 z-50 flex flex-col items-center justify-center p-8 text-center bg-[#080808]">
                   <RefreshCw className="mb-4 text-red-600 animate-spin" size={32}/>
-                  <h2 className="mb-1 text-[10px] font-black tracking-widest text-white uppercase">Loading Premium Link</h2>
+                  <h2 className="mb-1 text-[10px] font-black tracking-widest text-white uppercase">Validating Stream Access</h2>
                   
                   {countdown > 0 ? (
                     <div className="px-8 py-3 mt-4 font-mono text-lg font-bold text-red-600 border border-red-600/20 rounded-xl bg-red-600/5">
@@ -158,7 +152,6 @@ const AdManager = () => {
             )}
           </div>
 
-          {/* MAXIMIZE INSTRUCTION */}
           {showRealStream && (
             <div className="w-full py-3 bg-[#0a0a0a] flex flex-col items-center gap-1 opacity-60">
                 <ChevronDown size={14} className="text-red-600 animate-bounce" />
