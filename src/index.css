@@ -4,25 +4,47 @@
 
 @layer base {
   body {
-    @apply bg-[#0a0a0c] text-white antialiased;
+    @apply bg-[#050505] text-white antialiased overflow-x-hidden;
   }
 }
 
+/* Glass Effect for Cards */
 .glass-card {
-  @apply bg-white/5 border border-white/10 backdrop-blur-md rounded-2xl;
+  @apply bg-white/5 border border-white/10 backdrop-blur-md rounded-[2rem] transition-all duration-300;
 }
 
-@keyframes marquee {
-  0% { transform: translateX(100%); }
-  100% { transform: translateX(-100%); }
+/* Professional Seamless Marquee */
+@keyframes marquee-fast {
+  0% { transform: translateX(0); }
+  100% { transform: translateX(-50%); }
 }
 
-.animate-marquee {
-  display: inline-block;
-  animation: marquee 20s linear infinite;
+.animate-marquee-fast {
+  display: flex;
+  width: fit-content;
+  animation: marquee-fast 30s linear infinite;
 }
 
-.animate-marquee:hover {
+.animate-marquee-fast:hover {
   animation-play-state: paused;
 }
 
+/* Video Player Glow */
+.player-glow {
+  box-shadow: 0 0 50px -12px rgba(220, 38, 38, 0.5);
+}
+
+/* Custom Scrollbar for Dark Theme */
+::-webkit-scrollbar {
+  width: 6px;
+}
+::-webkit-scrollbar-track {
+  background: #0a0a0c;
+}
+::-webkit-scrollbar-thumb {
+  background: #27272a;
+  border-radius: 10px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: #ef4444;
+}

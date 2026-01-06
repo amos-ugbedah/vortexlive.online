@@ -1,101 +1,79 @@
 import React from 'react';
-import { Clock, Server, PlayCircle } from 'lucide-react';
+import { Clock, Server, PlayCircle, Star } from 'lucide-react';
+import MatchTimer from './MatchTimer';
 
-const MatchCard = ({ match, displayData, handleStreamClick }) => {
-  // 1. Safety Guards for props
+const MatchCard = ({ match, handleStreamClick }) => {
   const m = match || {};
-  const d = displayData || {
-    isLive: false,
-    scoreDisplay: 'VS',
-    statusBadge: { text: 'UPCOMING', color: 'bg-blue-600/30' },
-    liveMinute: '--'
-  };
+  
+  // Identify available streams from our new structure
+  const servers = [
+    { id: 1, name: "Server 1 (Auto)", url: m.streamUrl1 },
+    { id: 2, name: "Server 2 (Backup)", url: m.streamUrl2 },
+    { id: 3, name: "Server 3 (Premium HQ)", url: m.streamUrl3, isGold: true }
+  ].filter(s => s.url && s.url.length > 5); // Only show if link exists
 
-  // 2. Stream Availability Check - Correctly identifies primary and secondary
-  const primaryUrl = m.streamUrl1 || m.streamUrl || (m.links && m.links[0]?.url) || '#';
-  const secondaryUrl = m.streamUrl2 || (m.links && m.links[1]?.url) || null;
-  const hasStream = primaryUrl !== '#';
+  const hasStream = servers.length > 0;
+  const isLive = m.status === 'LIVE' || m.status === '1H' || m.status === '2H' || m.status === 'HT';
 
   return (
     <div className="bg-zinc-900/40 border border-white/5 rounded-[2.5rem] p-6 flex flex-col justify-between hover:border-red-600/40 transition-all hover:-translate-y-1 group">
       
-      {/* Header: League & Status */}
       <div className="flex items-center justify-between mb-6">
         <span className="text-[10px] font-black text-white/30 uppercase tracking-widest truncate max-w-[60%]">
-          {m.league || 'Global Match'}
+          {m.league || 'Vortex Premium'}
         </span>
-        <div className={`px-3 py-1 rounded-full text-[8px] font-black uppercase tracking-tighter ${d.statusBadge.color} ${d.isLive ? 'animate-pulse text-white' : 'text-white/60'}`}>
-          {d.statusBadge.text}
+        <div className={`px-3 py-1 rounded-full text-[8px] font-black uppercase ${isLive ? 'bg-red-600 animate-pulse text-white' : 'bg-white/10 text-white/60'}`}>
+          {isLive ? 'LIVE' : m.status || 'UPCOMING'}
         </div>
       </div>
 
-      {/* Main Scoreboard Area */}
       <div className="mb-6 space-y-3 text-center">
-        <h2 className="text-lg font-black tracking-tighter text-white uppercase truncate">
-          {m.home || 'TBD'}
-        </h2>
+        <div className="flex items-center justify-center gap-4">
+          <img src={m.homeTeam?.logo} className="object-contain w-10 h-10" alt="" />
+          <h2 className="text-lg font-black tracking-tighter text-white uppercase">{m.homeTeam?.name}</h2>
+        </div>
         
-        <div className="relative inline-block">
-          <div className={`text-4xl font-black italic tracking-tighter ${d.isLive ? 'text-red-600' : 'text-white/90'}`}>
-            {d.scoreDisplay}
-          </div>
+        <div className="text-4xl italic font-black tracking-tighter text-white">
+          {m.score || 'VS'}
         </div>
 
-        <h2 className="text-lg font-black tracking-tighter text-white uppercase truncate">
-          {m.away || 'TBD'}
-        </h2>
+        <div className="flex items-center justify-center gap-4">
+          <h2 className="text-lg font-black tracking-tighter text-white uppercase">{m.awayTeam?.name}</h2>
+          <img src={m.awayTeam?.logo} className="object-contain w-10 h-10" alt="" />
+        </div>
 
-        {/* Live Timer / Kickoff Time */}
         <div className="flex items-center justify-center gap-2 text-[10px] font-bold uppercase italic text-white/30 tracking-widest">
-          <Clock size={12} className={d.isLive ? 'text-red-600' : ''} />
-          {d.liveMinute}
+          <Clock size={12} className={isLive ? 'text-red-600' : ''} />
+          <MatchTimer match={m} />
         </div>
       </div>
 
-      {/* Footer: Server Selection & Watch Button */}
       <div className="space-y-3">
-        {/* Server Select - Always visible if stream exists */}
-        <div className="relative group/select">
-          <Server size={12} className="absolute transition-colors -translate-y-1/2 left-3 top-1/2 text-white/20 group-focus-within/select:text-red-600" />
+        <div className="relative">
+          <Server size={12} className="absolute -translate-y-1/2 left-3 top-1/2 text-white/20" />
           <select 
-            id={`server-select-${m.id}`}
-            className="w-full bg-black/60 border border-white/5 py-3 pl-9 pr-4 rounded-xl text-[9px] font-black uppercase text-white/70 outline-none appearance-none cursor-pointer hover:border-white/10 transition-colors"
+            id={`select-${m.fixtureId}`}
+            className="w-full bg-black/60 border border-white/5 py-3 pl-9 pr-4 rounded-xl text-[9px] font-black uppercase text-white/70 outline-none appearance-none cursor-pointer"
           >
-            <option value={primaryUrl}>Server 01 (Direct HD)</option>
-            {secondaryUrl && <option value={secondaryUrl}>Server 02 (Backup SD)</option>}
-            {!hasStream && <option value="#">Offline</option>}
+            {servers.map(s => (
+              <option key={s.id} value={s.url}>
+                {s.isGold ? '⭐ ' : ''}{s.name}
+              </option>
+            ))}
+            {!hasStream && <option>Offline</option>}
           </select>
         </div>
 
-        {/* Watch Button */}
         <button 
           onClick={(e) => {
-            // Logic to grab the selected value from the dropdown right before opening player
-            const selectEl = document.getElementById(`server-select-${m.id}`);
-            const selectedUrl = selectEl ? selectEl.value : primaryUrl;
-            handleStreamClick({ ...m, streamUrl: selectedUrl }, e);
+            const url = document.getElementById(`select-${m.fixtureId}`).value;
+            handleStreamClick(url, e);
           }}
           disabled={!hasStream}
-          className={`w-full py-4 rounded-2xl font-black uppercase text-[11px] tracking-[0.2em] transition-all shadow-xl active:scale-95 flex items-center justify-center gap-3
-            ${!hasStream 
-              ? 'bg-zinc-800 text-white/10 cursor-not-allowed' 
-              : 'bg-red-600 text-white hover:bg-white hover:text-black shadow-[0_10px_20px_rgba(220,38,38,0.3)]'
-            }`}
+          className={`w-full py-4 rounded-2xl font-black uppercase text-[11px] tracking-[0.2em] transition-all flex items-center justify-center gap-3
+            ${!hasStream ? 'bg-zinc-800 text-white/10' : 'bg-red-600 text-white hover:bg-white hover:text-black'}`}
         >
-          {d.isLive ? (
-            <>
-              <div className="relative flex w-2 h-2">
-                <span className="absolute inline-flex w-full h-full bg-white rounded-full opacity-75 animate-ping"></span>
-                <span className="relative inline-flex w-2 h-2 bg-white rounded-full"></span>
-              </div>
-              WATCH LIVE NOW
-            </>
-          ) : (
-            <>
-              <PlayCircle size={16} />
-              WATCH STREAM
-            </>
-          )}
+          <PlayCircle size={16} /> {isLive ? 'WATCH LIVE' : 'PREVIEW STREAM'}
         </button>
       </div>
     </div>
