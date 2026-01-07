@@ -14,7 +14,7 @@ function Admin() {
 
   // --- CONFIGURATION ---
   const TELEGRAM_BOT_TOKEN = "8126112394:AAH7-da80z0C7tLco-ZBoZryH_6hhZBKfhE";
-  const TELEGRAM_CHAT_ID = "-1002418579730"; 
+  const TELEGRAM_CHAT_ID = "@Vortexlive_online"; // Note: Telegram handles usually replace dots with underscores. Try this if the dot fails.
 
   useEffect(() => {
     const auth = sessionStorage.getItem('vx_admin_auth');
@@ -59,27 +59,41 @@ function Admin() {
     }
   };
 
+  // --- IMPROVED TELEGRAM LOGIC ---
   const postToTelegram = async () => {
-    if (matches.length === 0) return alert("No matches found to post!");
+    if (matches.length === 0) return alert("No matches to post!");
     setIsSendingTelegram(true);
 
     const matchList = matches
-      .map(m => `⚽️ *${m.homeTeam?.name} vs ${m.awayTeam?.name}*\n⏰ ${m.time || m.kickOffTime || 'TBD'}\n`)
+      .map(m => `⚽️ *${m.homeTeam?.name} vs ${m.awayTeam?.name}*\n⏰ Time: ${m.time || m.kickOffTime || 'TBD'}\n`)
       .join("\n");
 
-    const text = `🏆 *TODAY'S LIVE FIXTURES* 🏆\n\n${matchList}\n🔥 *Watch every match in Ultra HD quality on our official platform below.*`;
+    const text = `🏆 *TODAY'S LIVE FIXTURES* 🏆\n-----------------------------------------\n${matchList}\n-----------------------------------------\n📺 *WATCH LIVE IN HD:*\n👉 https://vortexlive.online`;
 
-    const keyboard = {
-      inline_keyboard: [[{ text: "📺 WATCH LIVE NOW", url: "https://vortexlive.online" }]]
-    };
+    // Using URLSearchParams ensures that characters like '@' and '.' are handled correctly
+    const queryParams = new URLSearchParams({
+      chat_id: TELEGRAM_CHAT_ID,
+      text: text,
+      parse_mode: 'Markdown',
+      disable_web_page_preview: 'false'
+    }).toString();
 
-    const url = `https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage?chat_id=${TELEGRAM_CHAT_ID}&text=${encodeURIComponent(text)}&parse_mode=Markdown&reply_markup=${encodeURIComponent(JSON.stringify(keyboard))}`;
+    const url = `https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage?${queryParams}`;
 
     try {
-      await fetch(url, { mode: 'no-cors' });
-      alert("Broadcast request sent! Check Telegram.");
+      const response = await fetch(url);
+      const result = await response.json();
+
+      if (response.ok) {
+        alert("Schedule successfully posted to Telegram!");
+      } else {
+        // This will tell us EXACTLY why it failed (e.g. "chat not found")
+        console.error("Telegram API Detail:", result);
+        alert(`Telegram Error: ${result.description}`);
+      }
     } catch (error) {
-      alert("Failed to send.");
+      console.error("Fetch Error:", error);
+      alert("Failed to connect to Telegram. Check your internet or CORS.");
     } finally {
       setIsSendingTelegram(false);
     }
@@ -124,7 +138,7 @@ function Admin() {
     });
     await batch.commit();
     setIsUpdating(false);
-    alert("Links cleared.");
+    alert("All links wiped.");
   };
 
   const handleBan = async (idToBan) => {
@@ -141,97 +155,99 @@ function Admin() {
 
   return (
     <div className="min-h-screen p-4 md:p-10 font-sans text-white bg-[#050505]">
-      <div className="mx-auto max-w-7xl">
-        
-        {/* HEADER BAR */}
-        <div className="flex flex-col md:flex-row justify-between items-center gap-6 mb-12 bg-zinc-900/40 p-8 rounded-[2.5rem] border border-white/5">
-          <div className="flex items-center gap-4">
-            <Tv className="text-red-600" size={32} />
+      <section className="mb-12">
+        <div className="flex flex-col justify-between gap-4 mb-8 md:flex-row md:items-center">
+          <div className="flex items-center gap-3">
+            <Tv className="text-red-600" size={28} />
             <div>
-              <h2 className="text-3xl italic font-black tracking-tighter uppercase">Vortex Admin</h2>
-              <p className="text-[10px] text-zinc-500 font-bold uppercase tracking-widest">{matches.length} matches found</p>
+              <h2 className="text-2xl italic font-black tracking-tighter uppercase">Vortex Admin</h2>
+              <p className="text-[9px] text-zinc-500 font-bold uppercase tracking-widest">{matches.length} matches found</p>
             </div>
           </div>
 
-          <div className="flex flex-wrap items-center justify-center gap-3">
-            <button onClick={postToTelegram} disabled={isSendingTelegram} className="flex items-center gap-2 px-6 py-4 rounded-2xl font-black text-[10px] uppercase bg-[#0088cc] hover:bg-[#0077b5] transition-all">
-              <Send size={16} /> {isSendingTelegram ? "Sending..." : "Post To Telegram"}
+          <div className="flex flex-wrap items-center gap-3">
+            <button 
+              onClick={postToTelegram} 
+              disabled={isSendingTelegram}
+              className={`flex items-center gap-2 px-5 py-3 rounded-xl font-black text-[9px] uppercase transition-all shadow-lg ${isSendingTelegram ? 'bg-zinc-800 text-zinc-500' : 'bg-[#0088cc] hover:bg-[#0077b5] shadow-[#0088cc]/30'}`}
+            >
+              <Send size={14} className={isSendingTelegram ? "animate-pulse" : ""} /> 
+              {isSendingTelegram ? "Sending..." : "Post To Telegram"}
             </button>
-            <button onClick={handleSyncAll} className="flex items-center gap-2 px-6 py-4 rounded-2xl font-black text-[10px] uppercase bg-emerald-600 hover:bg-emerald-500 transition-all">
-              <RefreshCw size={16} className={isUpdating ? "animate-spin" : ""} /> Sync Links
+            <button onClick={handleSyncAll} className="flex items-center gap-2 px-5 py-3 rounded-xl font-black text-[9px] uppercase bg-emerald-600 hover:bg-emerald-500 transition-all">
+              <RefreshCw size={14} className={isUpdating ? "animate-spin" : ""} /> Auto-Fill All
             </button>
-            <button onClick={handleClearAllLinks} className="p-4 text-red-500 border bg-zinc-900 border-red-900/30 rounded-2xl hover:bg-red-900/10">
-              <Trash2 size={20} />
+            <button onClick={handleClearAllLinks} className="flex items-center gap-2 px-5 py-3 rounded-xl font-black text-[9px] uppercase bg-zinc-900 border border-red-900/30 text-red-500 hover:bg-red-900/10 transition-all">
+              <Trash2 size={14} /> Wipe
             </button>
-            <button onClick={handleLogout} className="p-4 border bg-zinc-900 border-white/5 rounded-2xl text-zinc-500 hover:text-white">
-              <LogOut size={20} />
+            <button onClick={handleLogout} className="p-3 transition-all border bg-zinc-900 border-white/5 rounded-xl text-zinc-500 hover:text-white">
+              <LogOut size={18} />
             </button>
           </div>
         </div>
 
-        {/* MATCH LIST SECTION - Fixed to ensure visibility */}
-        <div className="grid grid-cols-1 gap-6 mb-20 lg:grid-cols-2">
-          {matches.length > 0 ? (
-            matches.map((match) => (
-              <div key={match.id} className="p-6 border bg-zinc-900/30 border-white/5 rounded-[2.5rem] hover:border-white/10 transition-all">
-                <div className="flex items-center justify-between mb-8">
-                  <div className="flex items-center gap-4">
-                    <img src={match.homeTeam?.logo} className="object-contain w-10 h-10" alt="" />
-                    <div className="flex flex-col">
-                      <span className="text-sm font-black tracking-tight uppercase">{match.homeTeam?.name} vs {match.awayTeam?.name}</span>
-                      <span className="text-[9px] text-zinc-500 font-bold uppercase tracking-widest">{match.time || match.kickOffTime}</span>
+        <div className="grid gap-6">
+          {matches.map((match) => (
+            <div key={match.id} className="p-6 border bg-zinc-900/30 border-white/5 rounded-[2rem] hover:border-white/10 transition-all">
+              <div className="flex items-center justify-between mb-6">
+                <div className="flex items-center gap-4">
+                  <img src={match.homeTeam?.logo} className="object-contain w-8 h-8" alt="" />
+                  <div className="flex flex-col">
+                    <span className="text-xs font-black tracking-tight uppercase">{match.homeTeam?.name} vs {match.awayTeam?.name}</span>
+                    <span className="text-[8px] text-zinc-500 font-bold uppercase tracking-widest">{match.status} | {match.time || match.kickOffTime}</span>
+                  </div>
+                </div>
+                <button onClick={() => {
+                  const url = prompt("Force Override Server 1 (IPTV Link):");
+                  if(url) handleUpdateStream(match.id, 1, url);
+                }} className="px-3 py-1 bg-blue-600/10 border border-blue-600/20 rounded-full text-[8px] font-black text-blue-500 uppercase flex items-center gap-1">
+                  <Zap size={10}/> Override S1
+                </button>
+              </div>
+
+              <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
+                {[1, 2, 3].map((num) => (
+                  <div key={num} className="space-y-2">
+                    <label className="text-[9px] font-black text-zinc-500 uppercase flex items-center gap-2 px-1 tracking-widest">
+                      <Globe size={12} /> Server {num}
+                    </label>
+                    <input 
+                      type="text"
+                      placeholder="Paste Manual Link..."
+                      className="w-full bg-black/40 border border-white/5 rounded-xl p-3 text-[10px] outline-none focus:border-red-600 transition-all text-zinc-300"
+                      onBlur={(e) => handleUpdateStream(match.id, num, e.target.value)}
+                    />
+                    <div className="text-[8px] px-1">
+                      {match[`streamUrl${num}`] ? (
+                        <span className="flex items-center gap-1 font-bold uppercase text-emerald-500">
+                           <ShieldCheck size={10}/> {match[`streamUrl${num}`].length > 100 ? "Auto-Ready" : "Manual Live"}
+                        </span>
+                      ) : (
+                        <span className="uppercase text-zinc-700">∅ Not Synced</span>
+                      )}
                     </div>
                   </div>
-                  <button onClick={() => {
-                    const url = prompt("Direct IPTV Link:");
-                    if(url) handleUpdateStream(match.id, 1, url);
-                  }} className="px-4 py-2 bg-blue-600/10 text-blue-500 rounded-xl text-[9px] font-black uppercase border border-blue-600/20">
-                    Override
-                  </button>
-                </div>
-
-                <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
-                  {[1, 2, 3].map((num) => (
-                    <div key={num} className="space-y-2">
-                      <label className="text-[9px] font-black text-zinc-600 uppercase flex items-center gap-2 px-1">
-                        <Globe size={12} /> Server {num}
-                      </label>
-                      <input 
-                        type="text"
-                        placeholder="Paste URL..."
-                        className="w-full bg-black/60 border border-white/5 rounded-xl p-3 text-[10px] outline-none focus:border-red-600/50 transition-all text-zinc-400"
-                        onBlur={(e) => handleUpdateStream(match.id, num, e.target.value)}
-                      />
-                      <div className="px-1 text-[8px] font-bold uppercase">
-                        {match[`streamUrl${num}`] ? <span className="text-emerald-500">● Live</span> : <span className="text-zinc-800">○ Offline</span>}
-                      </div>
-                    </div>
-                  ))}
-                </div>
+                ))}
               </div>
-            ))
-          ) : (
-            <div className="col-span-full p-20 text-center bg-zinc-900/20 rounded-[3rem] border border-dashed border-white/5">
-              <p className="text-zinc-600 text-[10px] font-black uppercase tracking-[0.3em]">Waiting for match data from Firebase...</p>
             </div>
-          )}
+          ))}
         </div>
+      </section>
 
-        {/* SECURITY PANEL */}
-        <div className="p-10 border bg-zinc-900/20 rounded-[3rem] border-white/5 max-w-xl mx-auto">
-          <h3 className="flex items-center gap-3 text-[11px] font-black uppercase text-red-600 tracking-widest mb-8"><UserX size={20}/> Blacklist Management</h3>
-          <div className="flex gap-3 mb-8">
-            <input type="text" placeholder="User ID..." className="flex-1 p-4 text-xs text-white border outline-none bg-black/60 border-white/5 rounded-2xl" value={targetId} onChange={(e) => setTargetId(e.target.value)}/>
-            <button onClick={() => handleBan(targetId)} className="px-8 bg-red-600 rounded-2xl text-[11px] font-black uppercase">Ban</button>
-          </div>
-          <div className="space-y-2 overflow-y-auto max-h-48 custom-scrollbar">
-            {bannedList.map((user) => (
-              <div key={user.id} className="flex items-center justify-between p-4 border bg-black/40 border-white/5 rounded-2xl">
-                <span className="text-[10px] font-mono text-zinc-500">{user.id}</span>
-                <button onClick={() => handleUnban(user.id)} className="text-[10px] font-black text-emerald-500 uppercase">Revoke</button>
-              </div>
-            ))}
-          </div>
+      {/* SECURITY PANEL */}
+      <div className="p-8 border bg-zinc-900/50 rounded-[2.5rem] border-white/5 max-w-xl">
+        <h3 className="flex items-center gap-2 text-[10px] font-black uppercase text-red-600 tracking-widest mb-6"><UserX size={16}/> Security Blacklist</h3>
+        <div className="flex gap-2 mb-6">
+          <input type="text" placeholder="Enter User ID..." className="flex-1 p-4 text-xs text-white border outline-none bg-black/40 border-white/5 rounded-xl" value={targetId} onChange={(e) => setTargetId(e.target.value)}/>
+          <button onClick={() => handleBan(targetId)} className="px-6 bg-red-600 rounded-xl text-[10px] font-black uppercase">Block</button>
+        </div>
+        <div className="space-y-2 overflow-y-auto max-h-48 custom-scrollbar">
+          {bannedList.map((user) => (
+            <div key={user.id} className="flex items-center justify-between p-4 border bg-black/40 border-white/5 rounded-2xl">
+              <span className="text-[10px] font-mono text-zinc-400">{user.id}</span>
+              <button onClick={() => handleUnban(user.id)} className="text-[10px] font-black text-emerald-500 uppercase hover:text-white transition-colors">Revoke</button>
+            </div>
+          ))}
         </div>
       </div>
     </div>
