@@ -1,11 +1,16 @@
 import React, { useState, useEffect } from "react";
 import { db } from "../lib/firebase"; 
 import { collection, doc, updateDoc, onSnapshot, setDoc, deleteDoc, query, orderBy, writeBatch } from "firebase/firestore";
-import { ShieldAlert, UserX, ShieldCheck, Tv, Globe, RefreshCw, Zap, LogOut, Send, Trash2 } from "lucide-react";
+import { UserX, ShieldCheck, Tv, Globe, RefreshCw, Zap, LogOut, Send, Trash2 } from "lucide-react";
 import AdminLogin from "./AdminLogin";
 
 function Admin() {
-  const [isAuthenticated, setIsAuthenticated] = useState(false);
+  // Initialize state by checking storage immediately to prevent "flicker"
+  const [isAuthenticated, setIsAuthenticated] = useState(() => {
+    const auth = sessionStorage.getItem('vx_admin_auth');
+    return auth === btoa('authenticated_2026');
+  });
+
   const [matches, setMatches] = useState([]);
   const [bannedList, setBannedList] = useState([]);
   const [targetId, setTargetId] = useState("");
@@ -16,13 +21,19 @@ function Admin() {
   const TELEGRAM_BOT_TOKEN = "8126112394:AAH7-da80z0C7tLco-ZBoZryH_6hhZBKfhE";
   const TELEGRAM_CHAT_ID = "-1002418579730"; 
 
+  // Sync state with storage changes (Security)
   useEffect(() => {
-    const auth = sessionStorage.getItem('vx_admin_auth');
-    if (auth === btoa('authenticated_2026')) {
-      setIsAuthenticated(true);
-    }
+    const checkAuth = () => {
+      const auth = sessionStorage.getItem('vx_admin_auth');
+      if (auth !== btoa('authenticated_2026')) {
+        setIsAuthenticated(false);
+      }
+    };
+    window.addEventListener('storage', checkAuth);
+    return () => window.removeEventListener('storage', checkAuth);
   }, []);
 
+  // Firestore: Fetch Matches
   useEffect(() => {
     if (!isAuthenticated) return;
     const q = query(collection(db, "matches"), orderBy("timestamp", "desc"));
@@ -32,6 +43,7 @@ function Admin() {
     return () => unsub();
   }, [isAuthenticated]);
 
+  // Firestore: Fetch Blacklist
   useEffect(() => {
     if (!isAuthenticated) return;
     const unsub = onSnapshot(collection(db, "blacklist"), (snap) => {
@@ -59,7 +71,6 @@ function Admin() {
     }
   };
 
-  // --- OPTIMIZED TELEGRAM BROADCAST ---
   const postToTelegram = async () => {
     if (matches.length === 0) return alert("No matches found!");
     setIsSendingTelegram(true);
@@ -71,7 +82,6 @@ function Admin() {
 
     const text = `📅 *TODAY'S TOP FIXTURES* (${dateStr})\n\n${matchList}\n🔥 *Stream every match live in HD below!*`;
 
-    // Inline Keyboard "Big Button"
     const keyboard = {
       inline_keyboard: [[{ text: "📺 WATCH LIVE NOW", url: "https://vortexlive.online" }]]
     };
@@ -96,7 +106,7 @@ function Admin() {
         alert(`Telegram Error: ${result.description}`);
       }
     } catch (error) {
-      alert("Network error. Check your connection or browser security settings.");
+      alert("Network error. Check connection.");
     } finally {
       setIsSendingTelegram(false);
     }
@@ -141,7 +151,6 @@ function Admin() {
     });
     await batch.commit();
     setIsUpdating(false);
-    alert("All links wiped.");
   };
 
   const handleBan = async (idToBan) => {
@@ -154,7 +163,10 @@ function Admin() {
     await deleteDoc(doc(db, "blacklist", idToUnban));
   };
 
-  if (!isAuthenticated) return <AdminLogin onLogin={setIsAuthenticated} />;
+  // --- STRICT AUTH CHECK ---
+  if (!isAuthenticated) {
+    return <AdminLogin onLogin={() => setIsAuthenticated(true)} />;
+  }
 
   return (
     <div className="min-h-screen p-4 md:p-10 font-sans text-white bg-[#050505]">
@@ -263,9 +275,6 @@ function Admin() {
                 </button>
               </div>
             ))}
-            {bannedList.length === 0 && (
-              <p className="text-[10px] text-center text-zinc-700 font-bold uppercase py-4">No active bans</p>
-            )}
           </div>
         </div>
       </div>
