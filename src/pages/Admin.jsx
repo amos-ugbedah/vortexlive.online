@@ -14,7 +14,6 @@ function Admin() {
 
   // --- CONFIGURATION ---
   const TELEGRAM_BOT_TOKEN = "8126112394:AAH7-da80z0C7tLco-ZBoZryH_6hhZBKfhE";
-  // UPDATED: Using numeric ID to fix "Chat Not Found" error
   const TELEGRAM_CHAT_ID = "-1002418579730"; 
 
   useEffect(() => {
@@ -60,38 +59,44 @@ function Admin() {
     }
   };
 
+  // --- OPTIMIZED TELEGRAM BROADCAST ---
   const postToTelegram = async () => {
-    if (matches.length === 0) return alert("No matches to post!");
+    if (matches.length === 0) return alert("No matches found!");
     setIsSendingTelegram(true);
 
+    const dateStr = new Date().toISOString().split('T')[0];
     const matchList = matches
-      .map(m => `⚽️ *${m.homeTeam?.name} vs ${m.awayTeam?.name}*\n⏰ Time: ${m.time || m.kickOffTime || 'TBD'}\n`)
+      .map(m => `⏰ ${m.time || m.kickOffTime || 'TBD'} | *${m.homeTeam?.name} vs ${m.awayTeam?.name}*\n🔗 [Watch Now](https://vortexlive.online)\n`)
       .join("\n");
 
-    const text = `🏆 *TODAY'S LIVE FIXTURES* 🏆\n-----------------------------------------\n${matchList}\n-----------------------------------------\n📺 *WATCH LIVE IN HD:*\n👉 https://vortexlive.online`;
+    const text = `📅 *TODAY'S TOP FIXTURES* (${dateStr})\n\n${matchList}\n🔥 *Stream every match live in HD below!*`;
 
-    const queryParams = new URLSearchParams({
-      chat_id: TELEGRAM_CHAT_ID,
-      text: text,
-      parse_mode: 'Markdown',
-      disable_web_page_preview: 'false'
-    }).toString();
-
-    const url = `https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage?${queryParams}`;
+    // Inline Keyboard "Big Button"
+    const keyboard = {
+      inline_keyboard: [[{ text: "📺 WATCH LIVE NOW", url: "https://vortexlive.online" }]]
+    };
 
     try {
-      const response = await fetch(url);
-      const result = await response.json();
+      const response = await fetch(`https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          chat_id: TELEGRAM_CHAT_ID,
+          text: text,
+          parse_mode: 'Markdown',
+          reply_markup: keyboard,
+          disable_web_page_preview: true
+        })
+      });
 
-      if (response.ok) {
-        alert("Schedule successfully posted to Telegram!");
+      const result = await response.json();
+      if (result.ok) {
+        alert("Broadcast successfully posted!");
       } else {
-        console.error("Telegram API Detail:", result);
         alert(`Telegram Error: ${result.description}`);
       }
     } catch (error) {
-      console.error("Fetch Error:", error);
-      alert("CORS or Connection Error. Check if your bot is an Admin in the channel.");
+      alert("Network error. Check your connection or browser security settings.");
     } finally {
       setIsSendingTelegram(false);
     }
@@ -141,7 +146,7 @@ function Admin() {
 
   const handleBan = async (idToBan) => {
     if(!idToBan) return;
-    await setDoc(doc(db, "blacklist", idToBan), { reason: "Suspicious Activity", timestamp: new Date().toISOString() });
+    await setDoc(doc(db, "blacklist", idToBan), { reason: "Security Policy", timestamp: new Date().toISOString() });
     setTargetId("");
   };
 
@@ -149,82 +154,80 @@ function Admin() {
     await deleteDoc(doc(db, "blacklist", idToUnban));
   };
 
-  // --- RESTORED LOGIN PROTECTION ---
-  if (!isAuthenticated) {
-    return <AdminLogin onLogin={setIsAuthenticated} />;
-  }
+  if (!isAuthenticated) return <AdminLogin onLogin={setIsAuthenticated} />;
 
   return (
     <div className="min-h-screen p-4 md:p-10 font-sans text-white bg-[#050505]">
-      <section className="mb-12">
-        <div className="flex flex-col justify-between gap-4 mb-8 md:flex-row md:items-center">
-          <div className="flex items-center gap-3">
-            <Tv className="text-red-600" size={28} />
+      <div className="max-w-6xl mx-auto">
+        
+        {/* HEADER BAR */}
+        <div className="flex flex-col md:flex-row justify-between items-center gap-6 mb-12 bg-zinc-900/40 p-8 rounded-[2.5rem] border border-white/5">
+          <div className="flex items-center gap-4">
+            <Tv className="text-red-600" size={32} />
             <div>
-              <h2 className="text-2xl italic font-black tracking-tighter uppercase">Vortex Admin</h2>
-              <p className="text-[9px] text-zinc-500 font-bold uppercase tracking-widest">{matches.length} matches found</p>
+              <h2 className="text-3xl italic font-black leading-none tracking-tighter uppercase">Vortex Control</h2>
+              <p className="text-[10px] text-zinc-500 font-bold uppercase tracking-[0.2em] mt-1">{matches.length} Matches Found</p>
             </div>
           </div>
 
-          <div className="flex flex-wrap items-center gap-3">
-            <button 
-              onClick={postToTelegram} 
-              disabled={isSendingTelegram}
-              className={`flex items-center gap-2 px-5 py-3 rounded-xl font-black text-[9px] uppercase transition-all shadow-lg ${isSendingTelegram ? 'bg-zinc-800 text-zinc-500' : 'bg-[#0088cc] hover:bg-[#0077b5] shadow-[#0088cc]/30'}`}
-            >
-              <Send size={14} className={isSendingTelegram ? "animate-pulse" : ""} /> 
-              {isSendingTelegram ? "Sending..." : "Post To Telegram"}
+          <div className="flex flex-wrap items-center justify-center gap-3">
+            <button onClick={postToTelegram} disabled={isSendingTelegram} className="flex items-center gap-2 px-6 py-4 rounded-2xl font-black text-[10px] uppercase bg-[#0088cc] hover:bg-[#0077b5] transition-all shadow-lg shadow-[#0088cc]/20">
+              <Send size={16} className={isSendingTelegram ? "animate-pulse" : ""} /> 
+              {isSendingTelegram ? "Posting..." : "Push Telegram"}
             </button>
-            <button onClick={handleSyncAll} className="flex items-center gap-2 px-5 py-3 rounded-xl font-black text-[9px] uppercase bg-emerald-600 hover:bg-emerald-500 transition-all">
-              <RefreshCw size={14} className={isUpdating ? "animate-spin" : ""} /> Auto-Fill All
+            <button onClick={handleSyncAll} className="flex items-center gap-2 px-6 py-4 rounded-2xl font-black text-[10px] uppercase bg-emerald-600 hover:bg-emerald-500 transition-all">
+              <RefreshCw size={16} className={isUpdating ? "animate-spin" : ""} /> Sync All
             </button>
-            <button onClick={handleClearAllLinks} className="flex items-center gap-2 px-5 py-3 rounded-xl font-black text-[9px] uppercase bg-zinc-900 border border-red-900/30 text-red-500 hover:bg-red-900/10 transition-all">
-              <Trash2 size={14} /> Wipe
+            <button onClick={handleClearAllLinks} className="p-4 text-red-500 transition-all border bg-zinc-900 border-red-900/30 rounded-2xl hover:bg-red-900/10">
+              <Trash2 size={20} />
             </button>
-            <button onClick={handleLogout} className="p-3 transition-all border bg-zinc-900 border-white/5 rounded-xl text-zinc-500 hover:text-white">
-              <LogOut size={18} />
+            <button onClick={handleLogout} className="p-4 transition-all border bg-zinc-900 border-white/5 rounded-2xl text-zinc-500 hover:text-white">
+              <LogOut size={20} />
             </button>
           </div>
         </div>
 
-        <div className="grid gap-6">
+        {/* MATCH LISTING */}
+        <div className="grid grid-cols-1 gap-6 mb-20 md:grid-cols-2 lg:grid-cols-2">
           {matches.map((match) => (
-            <div key={match.id} className="p-6 border bg-zinc-900/30 border-white/5 rounded-[2rem] hover:border-white/10 transition-all">
-              <div className="flex items-center justify-between mb-6">
+            <div key={match.id} className="p-6 border bg-zinc-900/20 border-white/5 rounded-[2.5rem] hover:border-white/10 transition-all group">
+              <div className="flex items-center justify-between mb-8">
                 <div className="flex items-center gap-4">
-                  <img src={match.homeTeam?.logo} className="object-contain w-8 h-8" alt="" />
+                  <div className="flex items-center justify-center w-12 h-12 p-2 border bg-black/40 rounded-2xl border-white/5">
+                    <img src={match.homeTeam?.logo} className="object-contain w-full h-full" alt="" />
+                  </div>
                   <div className="flex flex-col">
-                    <span className="text-xs font-black tracking-tight uppercase">{match.homeTeam?.name} vs {match.awayTeam?.name}</span>
-                    <span className="text-[8px] text-zinc-500 font-bold uppercase tracking-widest">{match.status} | {match.time || match.kickOffTime}</span>
+                    <span className="text-sm font-black tracking-tight uppercase">{match.homeTeam?.name} vs {match.awayTeam?.name}</span>
+                    <span className="text-[9px] text-zinc-600 font-bold uppercase tracking-widest">{match.time || match.kickOffTime}</span>
                   </div>
                 </div>
                 <button onClick={() => {
-                  const url = prompt("Force Override Server 1 (IPTV Link):");
+                  const url = prompt("Direct IPTV / M3U8 Link:");
                   if(url) handleUpdateStream(match.id, 1, url);
-                }} className="px-3 py-1 bg-blue-600/10 border border-blue-600/20 rounded-full text-[8px] font-black text-blue-500 uppercase flex items-center gap-1">
-                  <Zap size={10}/> Override S1
+                }} className="px-4 py-2 bg-blue-600/10 text-blue-500 rounded-xl text-[9px] font-black uppercase border border-blue-600/20 hover:bg-blue-600 hover:text-white transition-all">
+                  <Zap size={10} className="inline mr-1 mb-0.5"/> S1 Override
                 </button>
               </div>
 
-              <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
+              <div className="grid grid-cols-3 gap-3">
                 {[1, 2, 3].map((num) => (
                   <div key={num} className="space-y-2">
-                    <label className="text-[9px] font-black text-zinc-500 uppercase flex items-center gap-2 px-1 tracking-widest">
-                      <Globe size={12} /> Server {num}
+                    <label className="text-[8px] font-black text-zinc-700 uppercase px-1 flex items-center gap-1">
+                      <Globe size={10}/> Server {num}
                     </label>
                     <input 
                       type="text"
-                      placeholder="Paste Manual Link..."
-                      className="w-full bg-black/40 border border-white/5 rounded-xl p-3 text-[10px] outline-none focus:border-red-600 transition-all text-zinc-300"
+                      placeholder="Paste Link"
+                      className="w-full bg-black/60 border border-white/5 rounded-xl p-3 text-[10px] outline-none focus:border-red-600/50 transition-all text-zinc-400 placeholder:text-zinc-800"
                       onBlur={(e) => handleUpdateStream(match.id, num, e.target.value)}
                     />
-                    <div className="text-[8px] px-1">
+                    <div className="text-[8px] text-center font-bold">
                       {match[`streamUrl${num}`] ? (
-                        <span className="flex items-center gap-1 font-bold uppercase text-emerald-500">
-                           <ShieldCheck size={10}/> {match[`streamUrl${num}`].length > 100 ? "Auto-Ready" : "Manual Live"}
+                        <span className="flex items-center justify-center gap-1 text-emerald-500">
+                          <ShieldCheck size={10}/> READY
                         </span>
                       ) : (
-                        <span className="uppercase text-zinc-700">∅ Not Synced</span>
+                        <span className="text-zinc-800">NO LINK</span>
                       )}
                     </div>
                   </div>
@@ -233,21 +236,37 @@ function Admin() {
             </div>
           ))}
         </div>
-      </section>
 
-      <div className="p-8 border bg-zinc-900/50 rounded-[2.5rem] border-white/5 max-w-xl">
-        <h3 className="flex items-center gap-2 text-[10px] font-black uppercase text-red-600 tracking-widest mb-6"><UserX size={16}/> Security Blacklist</h3>
-        <div className="flex gap-2 mb-6">
-          <input type="text" placeholder="Enter User ID..." className="flex-1 p-4 text-xs text-white border outline-none bg-black/40 border-white/5 rounded-xl" value={targetId} onChange={(e) => setTargetId(e.target.value)}/>
-          <button onClick={() => handleBan(targetId)} className="px-6 bg-red-600 rounded-xl text-[10px] font-black uppercase">Block</button>
-        </div>
-        <div className="space-y-2 overflow-y-auto max-h-48 custom-scrollbar">
-          {bannedList.map((user) => (
-            <div key={user.id} className="flex items-center justify-between p-4 border bg-black/40 border-white/5 rounded-2xl">
-              <span className="text-[10px] font-mono text-zinc-400">{user.id}</span>
-              <button onClick={() => handleUnban(user.id)} className="text-[10px] font-black text-emerald-500 uppercase hover:text-white transition-colors">Revoke</button>
-            </div>
-          ))}
+        {/* SECURITY BLACKLIST */}
+        <div className="p-8 border bg-zinc-900/40 rounded-[3rem] border-white/5 max-w-xl mx-auto mb-10">
+          <h3 className="flex items-center gap-3 text-[11px] font-black uppercase text-red-600 tracking-widest mb-8">
+            <UserX size={18}/> Security Blacklist
+          </h3>
+          <div className="flex gap-3 mb-8">
+            <input 
+              type="text" 
+              placeholder="Enter User Token ID..." 
+              className="flex-1 p-4 text-xs text-white transition-all border outline-none bg-black/60 border-white/5 rounded-2xl focus:border-red-600/50" 
+              value={targetId} 
+              onChange={(e) => setTargetId(e.target.value)}
+            />
+            <button onClick={() => handleBan(targetId)} className="px-8 bg-red-600 rounded-2xl text-[11px] font-black uppercase hover:bg-red-500 transition-all shadow-lg shadow-red-600/20">
+              Block
+            </button>
+          </div>
+          <div className="pr-2 space-y-2 overflow-y-auto max-h-48 custom-scrollbar">
+            {bannedList.map((user) => (
+              <div key={user.id} className="flex items-center justify-between p-4 border bg-black/40 border-white/5 rounded-2xl group">
+                <span className="text-[10px] font-mono text-zinc-500 group-hover:text-zinc-300 transition-colors">{user.id}</span>
+                <button onClick={() => handleUnban(user.id)} className="text-[10px] font-black text-emerald-500 uppercase hover:text-white transition-all">
+                  Revoke
+                </button>
+              </div>
+            ))}
+            {bannedList.length === 0 && (
+              <p className="text-[10px] text-center text-zinc-700 font-bold uppercase py-4">No active bans</p>
+            )}
+          </div>
         </div>
       </div>
     </div>
