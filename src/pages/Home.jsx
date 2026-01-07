@@ -1,26 +1,11 @@
 import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import { db } from '../lib/firebase';
 import { collection, onSnapshot, query, orderBy } from 'firebase/firestore'; 
-import { Zap, Users, RefreshCw, Volume2, Download, Shield } from 'lucide-react';
+import { Zap, Users, RefreshCw, Volume2, Download, Shield, ExternalLink, Gift } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import SearchBar from '../components/SearchBar';
 import MatchCard from '../components/MatchCard';
 import EmptyState from '../components/EmptyState';
-
-const parseTime = (timeStr) => {
-  if (!timeStr || ['TBD', '--', 'NS', 'LIVE', 'HT', 'FT', 'ET', 'P'].includes(timeStr.toUpperCase())) return { totalMinutes: 9999 };
-  try {
-    let time = timeStr.toString().toUpperCase().trim();
-    let isPM = time.includes('PM');
-    time = time.replace(/AM|PM/, '').trim();
-    const parts = time.split(':');
-    let hours = parseInt(parts[0]) || 0;
-    const minutes = parseInt(parts[1]) || 0;
-    if (isPM && hours < 12) hours += 12;
-    if (!isPM && hours === 12) hours = 0;
-    return { totalMinutes: hours * 60 + minutes };
-  } catch (e) { return { totalMinutes: 9999 }; }
-};
 
 const Home = () => {
   const [matches, setMatches] = useState([]);
@@ -34,7 +19,6 @@ const Home = () => {
   const prevScores = useRef({});
   const goalSound = new Audio('https://assets.mixkit.co/active_storage/sfx/2042/2042-preview.mp3'); 
 
-  // Live Status Codes (Includes Extra Time and Penalties)
   const liveStatuses = ['1H', '2H', 'HT', 'LIVE', 'ET', 'BT', 'P'];
 
   useEffect(() => {
@@ -64,7 +48,6 @@ const Home = () => {
 
   useEffect(() => {
     const q = query(collection(db, 'matches'), orderBy('timestamp', 'desc'));
-    
     const unsubscribe = onSnapshot(q, (snapshot) => {
       const matchesData = snapshot.docs
         .map(doc => ({ id: doc.id, ...doc.data() }))
@@ -79,7 +62,6 @@ const Home = () => {
         prevScores.current[match.id] = currentTotal;
       });
 
-      // Sort: Live/ET/P first, then Upcoming, then Finished
       matchesData.sort((a, b) => {
         const getPriority = (s) => {
           const status = s?.toUpperCase();
@@ -88,16 +70,12 @@ const Home = () => {
           return 2;
         };
         if (getPriority(a.status) !== getPriority(b.status)) return getPriority(a.status) - getPriority(b.status);
-        return parseTime(a.time || a.kickOffTime).totalMinutes - parseTime(b.time || b.kickOffTime).totalMinutes;
+        return 0;
       });
 
       setMatches(matchesData);
       setIsLoading(false);
-    }, (error) => {
-      console.error("Firestore Error:", error);
-      setIsLoading(false);
     });
-
     return () => unsubscribe();
   }, [playGoalAlert]);
 
@@ -108,14 +86,12 @@ const Home = () => {
     );
     return {
       live: filtered.filter(m => liveStatuses.includes(m.status?.toUpperCase())),
-      upcoming: filtered.filter(m => !liveStatuses.includes(m.status?.toUpperCase()) && !['FT', 'AET', 'PEN'].includes(m.status?.toUpperCase())),
-      finished: filtered.filter(m => ['FT', 'AET', 'PEN'].includes(m.status?.toUpperCase()))
+      upcoming: filtered.filter(m => !liveStatuses.includes(m.status?.toUpperCase()) && !['FT', 'AET', 'PEN'].includes(m.status?.toUpperCase()))
     };
   }, [matches, searchTerm]);
 
   return (
     <div className="flex flex-col w-full min-h-screen">
-      {/* Rest of UI remains same... */}
       {deferredPrompt && (
         <div className="flex items-center justify-between p-4 mx-2 mb-6 shadow-xl bg-gradient-to-r from-red-600 to-indigo-700 rounded-3xl animate-bounce">
           <div className="flex items-center gap-3">
@@ -125,6 +101,20 @@ const Home = () => {
           <button onClick={handleInstall} className="bg-white text-black px-4 py-2 rounded-xl text-[10px] font-black uppercase">Install</button>
         </div>
       )}
+
+      {/* 1WIN PARTNER BANNER */}
+      <a href="https://1win.ng/?p=a6lf" target="_blank" rel="noreferrer" className="block p-4 mx-2 mb-8 border bg-emerald-600/10 border-emerald-500/20 rounded-3xl group">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-4">
+            <div className="p-3 bg-emerald-500 rounded-2xl"><Gift className="text-white" size={24}/></div>
+            <div>
+              <h3 className="text-xs italic font-black text-white uppercase">500% Deposit Bonus</h3>
+              <p className="text-[10px] text-emerald-500 font-bold uppercase tracking-widest">Code: <span className="px-2 text-white rounded bg-emerald-600">VORTEXLIVE</span></p>
+            </div>
+          </div>
+          <ExternalLink className="transition-transform text-emerald-500 group-hover:translate-x-1" size={20} />
+        </div>
+      </a>
 
       <div className="flex flex-col items-start justify-between gap-4 mb-6 md:flex-row md:items-center">
         <div>
@@ -170,10 +160,6 @@ const Home = () => {
               {groupMatches.upcoming.map(m => <MatchCard key={m.id} match={m} />)}
             </div>
           </section>
-
-          {groupMatches.live.length === 0 && groupMatches.upcoming.length === 0 && (
-            <EmptyState searchTerm={searchTerm} onClearSearch={() => setSearchTerm('')} />
-          )}
         </div>
       )}
 

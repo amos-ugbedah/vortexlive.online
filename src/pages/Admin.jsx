@@ -59,7 +59,7 @@ function Admin() {
     }
   };
 
-  // --- FIXED TELEGRAM LOGIC (HTML MODE TO BYPASS CORS/MARKDOWN ERRORS) ---
+  // --- FIXED TELEGRAM LOGIC WITH BETTING LINKS & PROMO CODES ---
   const postToTelegram = async () => {
     if (matches.length === 0) return alert("No matches to post!");
     setIsSendingTelegram(true);
@@ -70,7 +70,17 @@ function Admin() {
       .map(m => `⏰ <b>${m.time || m.kickOffTime || 'TBD'}</b>\n⚽ <b>${m.homeTeam?.name} vs ${m.awayTeam?.name}</b>\n`)
       .join("\n");
 
-    const message = `🏆 <b>LIVE FIXTURES (${dateStr})</b>\n\n${matchList}\n📺 <b>WATCH LIVE IN HD:</b>\n👉 <a href="https://vortexlive.online">vortexlive.online</a>`;
+    const message = `🏆 <b>LIVE FIXTURES (${dateStr})</b>\n\n` +
+      `${matchList}\n` +
+      `📺 <b>WATCH LIVE IN HD:</b>\n` +
+      `👉 <a href="https://vortexlive.online">vortexlive.online</a>\n\n` +
+      `🔥 <b>TOP BETTING OFFERS Today:</b>\n\n` +
+      `💰 <b>1WIN:</b> <a href="https://1win.ng/?p=a6lf">JOIN HERE</a>\n` +
+      `✨ Code: <b>VORTEXLIVE</b> (500% Bonus!)\n\n` +
+      `⚽ <b>1XBET:</b> <a href="https://1xbet.ng/en?tag=d_5098529m_97c_">JOIN HERE</a>\n` +
+      `✨ Code: <b>VORTEXLIVE</b>\n\n` +
+      `🏟 <b>STAKE:</b> <a href="https://stake.com/?c=vortexlive">JOIN HERE</a>\n` +
+      `✨ Code: <b>VORTEXLIVE</b>`;
 
     try {
       const response = await fetch(`https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage`, {
@@ -80,7 +90,7 @@ function Admin() {
           chat_id: TELEGRAM_CHAT_ID, 
           text: message, 
           parse_mode: 'HTML',
-          disable_web_page_preview: false 
+          disable_web_page_preview: true 
         }),
       });
       

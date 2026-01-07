@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { X, RefreshCw, ChevronDown } from 'lucide-react';
+import { X, RefreshCw, ChevronDown, Trophy } from 'lucide-react';
 
-const SMART_DIRECT_LINK = "https://www.highperformanceformat.com/your-code-here"; 
+const AFFILIATE_LINK = "https://1win.ng/?p=a6lf"; 
 
 const AdManager = ({ activeStream, onClose }) => {
   const [showRealStream, setShowRealStream] = useState(false);
@@ -25,7 +25,7 @@ const AdManager = ({ activeStream, onClose }) => {
   }, [activeStream, showRealStream, countdown]);
 
   const handleWatchNow = () => {
-    window.open(SMART_DIRECT_LINK, '_blank'); // Open Ads for Revenue
+    window.open(AFFILIATE_LINK, '_blank'); // Opens your 1win affiliate link
     setShowRealStream(true);
   };
 
@@ -43,16 +43,19 @@ const AdManager = ({ activeStream, onClose }) => {
 
       <div className="relative w-full h-[50vh] md:h-[75vh] bg-black">
         {!showRealStream ? (
-          <div className="absolute inset-0 z-50 flex flex-col items-center justify-center bg-[#080808]">
-            <RefreshCw className="mb-4 text-red-600 animate-spin" size={32}/>
-            <h2 className="text-[10px] font-black text-white uppercase tracking-widest">Secure Connection Established</h2>
+          <div className="absolute inset-0 z-50 flex flex-col items-center justify-center bg-[#080808] p-6 text-center">
+            <Trophy className="mb-4 text-yellow-500 animate-bounce" size={48}/>
+            <h2 className="text-xl italic font-black text-white uppercase">Ready to Stream</h2>
+            <p className="text-[10px] text-zinc-500 font-bold uppercase mt-2">Get 500% Bonus on 1win with code: <span className="text-white">VORTEXLIVE</span></p>
+            
             {countdown > 0 ? (
-              <div className="px-8 py-3 mt-4 font-mono text-xl text-red-600 border bg-red-600/5 rounded-xl border-red-600/20">
+              <div className="px-8 py-3 mt-6 font-mono text-xl text-red-600 border bg-red-600/5 rounded-xl border-red-600/20">
                 {countdown}s
               </div>
             ) : (
-              <button onClick={handleWatchNow} className="px-10 py-4 mt-4 font-black text-white uppercase transition-transform bg-red-600 rounded-xl hover:scale-105">
-                Click to Stream Now
+              <button onClick={handleWatchNow} className="flex flex-col items-center gap-1 px-10 py-5 mt-6 font-black text-white uppercase transition-transform shadow-xl bg-emerald-600 rounded-2xl hover:scale-105 shadow-emerald-600/20">
+                <span>Unlock HD Stream</span>
+                <span className="text-[8px] opacity-70">(& Claim 1win Bonus)</span>
               </button>
             )}
           </div>
