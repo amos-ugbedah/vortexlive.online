@@ -14,7 +14,8 @@ function Admin() {
 
   // --- CONFIGURATION ---
   const TELEGRAM_BOT_TOKEN = "8126112394:AAH7-da80z0C7tLco-ZBoZryH_6hhZBKfhE";
-  const TELEGRAM_CHAT_ID = "@Vortexlive_online"; // Note: Telegram handles usually replace dots with underscores. Try this if the dot fails.
+  // UPDATED: Using numeric ID to fix "Chat Not Found" error
+  const TELEGRAM_CHAT_ID = "-1002418579730"; 
 
   useEffect(() => {
     const auth = sessionStorage.getItem('vx_admin_auth');
@@ -59,7 +60,6 @@ function Admin() {
     }
   };
 
-  // --- IMPROVED TELEGRAM LOGIC ---
   const postToTelegram = async () => {
     if (matches.length === 0) return alert("No matches to post!");
     setIsSendingTelegram(true);
@@ -70,7 +70,6 @@ function Admin() {
 
     const text = `🏆 *TODAY'S LIVE FIXTURES* 🏆\n-----------------------------------------\n${matchList}\n-----------------------------------------\n📺 *WATCH LIVE IN HD:*\n👉 https://vortexlive.online`;
 
-    // Using URLSearchParams ensures that characters like '@' and '.' are handled correctly
     const queryParams = new URLSearchParams({
       chat_id: TELEGRAM_CHAT_ID,
       text: text,
@@ -87,13 +86,12 @@ function Admin() {
       if (response.ok) {
         alert("Schedule successfully posted to Telegram!");
       } else {
-        // This will tell us EXACTLY why it failed (e.g. "chat not found")
         console.error("Telegram API Detail:", result);
         alert(`Telegram Error: ${result.description}`);
       }
     } catch (error) {
       console.error("Fetch Error:", error);
-      alert("Failed to connect to Telegram. Check your internet or CORS.");
+      alert("CORS or Connection Error. Check if your bot is an Admin in the channel.");
     } finally {
       setIsSendingTelegram(false);
     }
@@ -151,7 +149,10 @@ function Admin() {
     await deleteDoc(doc(db, "blacklist", idToUnban));
   };
 
-  if (!isAuthenticated) return <AdminLogin onLogin={setIsAuthenticated} />;
+  // --- RESTORED LOGIN PROTECTION ---
+  if (!isAuthenticated) {
+    return <AdminLogin onLogin={setIsAuthenticated} />;
+  }
 
   return (
     <div className="min-h-screen p-4 md:p-10 font-sans text-white bg-[#050505]">
@@ -234,7 +235,6 @@ function Admin() {
         </div>
       </section>
 
-      {/* SECURITY PANEL */}
       <div className="p-8 border bg-zinc-900/50 rounded-[2.5rem] border-white/5 max-w-xl">
         <h3 className="flex items-center gap-2 text-[10px] font-black uppercase text-red-600 tracking-widest mb-6"><UserX size={16}/> Security Blacklist</h3>
         <div className="flex gap-2 mb-6">
