@@ -13,9 +13,8 @@ function Admin() {
   const [isSendingTelegram, setIsSendingTelegram] = useState(false);
 
   // --- CONFIGURATION ---
-  // Ensure your Token and ID are correct here!
-  const TELEGRAM_BOT_TOKEN = "YOUR_BOT_TOKEN_HERE";
-  const TELEGRAM_CHAT_ID = "@YOUR_CHANNEL_USERNAME"; 
+  const TELEGRAM_BOT_TOKEN = "8126112394:AAH7-da80z0C7tLco-ZBoZryH_6hhZBKfhE";
+  const TELEGRAM_CHAT_ID = "@Vortexlive_online"; // Note: Telegram handles usually replace dots with underscores. Try this if the dot fails.
 
   useEffect(() => {
     const auth = sessionStorage.getItem('vx_admin_auth');
@@ -60,7 +59,7 @@ function Admin() {
     }
   };
 
-  // --- FIXED TELEGRAM LOGIC (CORS BYPASS) ---
+  // --- IMPROVED TELEGRAM LOGIC ---
   const postToTelegram = async () => {
     if (matches.length === 0) return alert("No matches to post!");
     setIsSendingTelegram(true);
@@ -71,20 +70,30 @@ function Admin() {
 
     const text = `🏆 *TODAY'S LIVE FIXTURES* 🏆\n-----------------------------------------\n${matchList}\n-----------------------------------------\n📺 *WATCH LIVE IN HD:*\n👉 https://vortexlive.online`;
 
-    // We use a GET request with encoded parameters to bypass CORS preflight issues
-    const url = `https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage?chat_id=${encodeURIComponent(TELEGRAM_CHAT_ID)}&text=${encodeURIComponent(text)}&parse_mode=Markdown`;
+    // Using URLSearchParams ensures that characters like '@' and '.' are handled correctly
+    const queryParams = new URLSearchParams({
+      chat_id: TELEGRAM_CHAT_ID,
+      text: text,
+      parse_mode: 'Markdown',
+      disable_web_page_preview: 'false'
+    }).toString();
+
+    const url = `https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage?${queryParams}`;
 
     try {
       const response = await fetch(url);
+      const result = await response.json();
+
       if (response.ok) {
-        alert("Schedule posted to Telegram!");
+        alert("Schedule successfully posted to Telegram!");
       } else {
-        const errorData = await response.json();
-        alert(`Telegram Error: ${errorData.description || 'Check Bot Token/Chat ID'}`);
+        // This will tell us EXACTLY why it failed (e.g. "chat not found")
+        console.error("Telegram API Detail:", result);
+        alert(`Telegram Error: ${result.description}`);
       }
     } catch (error) {
-      console.error("CORS/Network Error:", error);
-      alert("Failed to reach Telegram. Ensure your Bot Token is correct.");
+      console.error("Fetch Error:", error);
+      alert("Failed to connect to Telegram. Check your internet or CORS.");
     } finally {
       setIsSendingTelegram(false);
     }
@@ -102,22 +111,17 @@ function Admin() {
     if (matches.length === 0) return;
     setIsUpdating(true);
     const batch = writeBatch(db);
-    let count = 0;
-
     matches.forEach((match) => {
       const matchRef = doc(db, "matches", match.id);
       const updates = {};
-      if (!match.streamUrl1) { updates.streamUrl1 = generateAutoUrl(match, 1); count++; }
-      if (!match.streamUrl2) { updates.streamUrl2 = generateAutoUrl(match, 2); count++; }
-      if (!match.streamUrl3) { updates.streamUrl3 = generateAutoUrl(match, 3); count++; }
-      if (Object.keys(updates).length > 0) {
-        batch.update(matchRef, updates);
-      }
+      if (!match.streamUrl1) updates.streamUrl1 = generateAutoUrl(match, 1);
+      if (!match.streamUrl2) updates.streamUrl2 = generateAutoUrl(match, 2);
+      if (!match.streamUrl3) updates.streamUrl3 = generateAutoUrl(match, 3);
+      if (Object.keys(updates).length > 0) batch.update(matchRef, updates);
     });
-
     try {
       await batch.commit();
-      alert(`Sync Complete! Servers Automated.`);
+      alert("Sync Complete!");
     } catch (e) {
       alert("Sync Failed");
     } finally {
@@ -165,10 +169,10 @@ function Admin() {
             <button 
               onClick={postToTelegram} 
               disabled={isSendingTelegram}
-              className={`flex items-center gap-2 px-5 py-3 rounded-xl font-black text-[9px] uppercase transition-all ${isSendingTelegram ? 'bg-zinc-800 text-zinc-500' : 'bg-[#0088cc] hover:bg-[#0077b5]'}`}
+              className={`flex items-center gap-2 px-5 py-3 rounded-xl font-black text-[9px] uppercase transition-all shadow-lg ${isSendingTelegram ? 'bg-zinc-800 text-zinc-500' : 'bg-[#0088cc] hover:bg-[#0077b5] shadow-[#0088cc]/30'}`}
             >
               <Send size={14} className={isSendingTelegram ? "animate-pulse" : ""} /> 
-              {isSendingTelegram ? "Sending..." : "Telegram"}
+              {isSendingTelegram ? "Sending..." : "Post To Telegram"}
             </button>
             <button onClick={handleSyncAll} className="flex items-center gap-2 px-5 py-3 rounded-xl font-black text-[9px] uppercase bg-emerald-600 hover:bg-emerald-500 transition-all">
               <RefreshCw size={14} className={isUpdating ? "animate-spin" : ""} /> Auto-Fill All
@@ -189,7 +193,7 @@ function Admin() {
                 <div className="flex items-center gap-4">
                   <img src={match.homeTeam?.logo} className="object-contain w-8 h-8" alt="" />
                   <div className="flex flex-col">
-                    <span className="text-xs font-black uppercase">{match.homeTeam?.name} vs {match.awayTeam?.name}</span>
+                    <span className="text-xs font-black tracking-tight uppercase">{match.homeTeam?.name} vs {match.awayTeam?.name}</span>
                     <span className="text-[8px] text-zinc-500 font-bold uppercase tracking-widest">{match.status} | {match.time || match.kickOffTime}</span>
                   </div>
                 </div>
