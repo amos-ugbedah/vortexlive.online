@@ -44,11 +44,23 @@ const Home = () => {
     if (pass === "vortex_admin_2026") navigate('/admin');
   };
 
+  // Helper to format timestamp to 24h time (HH:mm)
+  const formatTime = (timestamp) => {
+    if (!timestamp) return "";
+    const date = timestamp.toDate ? timestamp.toDate() : new Date(timestamp);
+    return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: false });
+  };
+
   useEffect(() => {
-    const q = query(collection(db, 'matches'), orderBy('timestamp', 'desc'));
+    // We order by timestamp ascending so earliest games come first
+    const q = query(collection(db, 'matches'), orderBy('timestamp', 'asc'));
     const unsubscribe = onSnapshot(q, (snapshot) => {
       const matchesData = snapshot.docs
-        .map(doc => ({ id: doc.id, ...doc.data() }))
+        .map(doc => ({ 
+          id: doc.id, 
+          ...doc.data(),
+          displayTime: formatTime(doc.data().timestamp) // Pre-formatting time for the UI
+        }))
         .filter(m => m.id !== 'template_id');
       
       matchesData.forEach(match => {
@@ -60,14 +72,16 @@ const Home = () => {
         prevScores.current[match.id] = currentTotal;
       });
 
+      // Secondary Sort: Keep Live games at the absolute top, then sort by timestamp
       matchesData.sort((a, b) => {
-        const getPriority = (s) => {
-          const status = s?.toUpperCase();
-          if (liveStatuses.includes(status)) return 1;
-          if (status === 'FT' || status === 'AET' || status === 'PEN') return 3;
-          return 2;
-        };
-        return getPriority(a.status) - getPriority(b.status);
+        const isALive = liveStatuses.includes(a.status?.toUpperCase());
+        const isBLive = liveStatuses.includes(b.status?.toUpperCase());
+
+        if (isALive && !isBLive) return -1;
+        if (!isALive && isBLive) return 1;
+        
+        // If both are live or both are upcoming, sort by time (earliest first)
+        return (a.timestamp?.seconds || 0) - (b.timestamp?.seconds || 0);
       });
 
       setMatches(matchesData);
@@ -90,7 +104,7 @@ const Home = () => {
   return (
     <div className="flex flex-col w-full min-h-screen bg-[#050505]">
       
-      {/* HEADER SECTION - FULL WIDTH */}
+      {/* HEADER SECTION */}
       <header className="w-full px-6 py-6 border-b border-white/5">
         <div className="flex flex-col items-start justify-between gap-6 md:flex-row md:items-center">
           <div>
@@ -141,7 +155,7 @@ const Home = () => {
           </div>
         </aside>
 
-        {/* CENTER CONTENT: STABLE GRID OF 4 */}
+        {/* CENTER CONTENT */}
         <div className="flex-1 order-1 w-full lg:order-2">
           {isLoading ? (
             <div className="flex flex-col items-center justify-center py-40">
@@ -154,16 +168,15 @@ const Home = () => {
               {groupMatches.live.length > 0 && (
                 <section>
                   <h2 className="flex items-center gap-3 px-2 mb-6 text-xl italic font-black tracking-tighter text-white uppercase">
-                    <span className="w-1.5 h-6 bg-red-600 rounded-full animate-pulse"></span> LIVE BROADCAST
+                    <span className="w-1.5 h-6 bg-red-600 rounded-full animate-pulse"></span> LIVE NOW
                   </h2>
-                  {/* GRID CONFIG: 1 col mobile, 2 col tablet, 4 col desktop */}
                   <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
                     {groupMatches.live.map(m => <MatchCard key={m.id} match={m} />)}
                   </div>
                 </section>
               )}
 
-              {/* SCHEDULE SECTION */}
+              {/* SCHEDULE SECTION (Sorted Earliest to Latest) */}
               <section className="pb-20">
                 <h2 className="flex items-center gap-3 px-2 mb-6 text-xl italic font-black tracking-tighter text-white uppercase">
                   <span className="w-1.5 h-6 rounded-full bg-zinc-700"></span> UPCOMING BROADCASTS
@@ -200,7 +213,7 @@ const Home = () => {
               </div>
             </div>
 
-            <a href="https://1xbet.ng/en?tag=d_5098529m_97c_" target="_blank" className="flex items-center justify-between p-6 transition-all border bg-blue-600/5 border-blue-500/10 rounded-3xl group hover:border-blue-500/40">
+            <a href="https://1xbet.ng/en?tag=d_5098529m_97c_" target="_blank" rel="noreferrer" className="flex items-center justify-between p-6 transition-all border bg-blue-600/5 border-blue-500/10 rounded-3xl group hover:border-blue-500/40">
               <div className="flex items-center gap-4">
                 <div className="p-3 bg-blue-600 rounded-2xl"><Zap size={20} className="text-white"/></div>
                 <div>
@@ -228,11 +241,11 @@ const Home = () => {
           <div className="relative overflow-hidden bg-gradient-to-r from-red-600 to-red-800 p-5 rounded-[2.5rem] shadow-2xl border border-white/10 flex items-center justify-between">
             <button onClick={() => setShowStickyAd(false)} className="absolute top-2 right-4 text-white/30"><X size={16}/></button>
             <div className="flex items-center gap-3">
-               <div className="p-3 bg-white/10 rounded-2xl"><Trophy size={20} className="text-white"/></div>
-               <div>
+                <div className="p-3 bg-white/10 rounded-2xl"><Trophy size={20} className="text-white"/></div>
+                <div>
                   <h4 className="text-[10px] font-black text-white uppercase italic">1WIN BONUS</h4>
                   <p className="text-[9px] text-red-100 font-bold uppercase">CODE: <span className="px-1 text-red-700 bg-white rounded">VORTEXLIVE</span></p>
-               </div>
+                </div>
             </div>
             <a href="https://1win.ng/?p=a6lf" className="bg-white text-red-700 px-5 py-3 rounded-2xl text-[10px] font-black uppercase whitespace-nowrap">Claim</a>
           </div>

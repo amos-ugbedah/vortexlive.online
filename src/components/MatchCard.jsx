@@ -1,5 +1,5 @@
 import React from 'react';
-import { useNavigate } from 'react-router-dom'; // New Import
+import { useNavigate } from 'react-router-dom';
 import { Clock, PlayCircle, Zap } from 'lucide-react';
 import MatchTimer from './MatchTimer';
 
@@ -25,11 +25,13 @@ const MatchCard = ({ match }) => {
 
       <div className="mb-6 space-y-3 text-center">
         <div className="flex items-center justify-between px-2">
+          {/* Home Team */}
           <div className="flex flex-col items-center flex-1 gap-2">
              <img src={m.homeTeam?.logo} className="object-contain w-10 h-10" alt="" />
              <h2 className="text-[10px] font-black text-white uppercase truncate w-full text-center">{m.homeTeam?.name}</h2>
           </div>
 
+          {/* Score or Match Time */}
           <div className="flex flex-col items-center justify-center flex-1">
              {isLive || m.status === 'FT' ? (
                <div className="flex items-center gap-1 text-3xl italic font-black tracking-tighter text-white">
@@ -38,10 +40,16 @@ const MatchCard = ({ match }) => {
                  <span>{m.awayScore ?? 0}</span>
                </div>
              ) : (
-               <div className="text-xl italic font-black text-white/20">VS</div>
+               <div className="flex flex-col items-center">
+                 <div className="text-[10px] font-black text-red-600 mb-1 tracking-widest uppercase">Kickoff</div>
+                 <div className="text-2xl italic font-black text-white">
+                   {m.displayTime || '--:--'}
+                 </div>
+               </div>
              )}
           </div>
 
+          {/* Away Team */}
           <div className="flex flex-col items-center flex-1 gap-2">
              <img src={m.awayTeam?.logo} className="object-contain w-10 h-10" alt="" />
              <h2 className="text-[10px] font-black text-white uppercase truncate w-full text-center">{m.awayTeam?.name}</h2>
@@ -55,9 +63,14 @@ const MatchCard = ({ match }) => {
           </div>
         )}
 
+        {/* Bottom Timer/Status */}
         <div className="flex items-center justify-center gap-2 text-[9px] font-bold uppercase italic text-white/30 tracking-widest">
           <Clock size={10} className={isLive ? 'text-red-600' : ''} />
-          <MatchTimer match={m} />
+          {isLive ? (
+            <MatchTimer match={m} />
+          ) : (
+            <span>Starts at {m.displayTime || 'TBA'}</span>
+          )}
         </div>
       </div>
 
