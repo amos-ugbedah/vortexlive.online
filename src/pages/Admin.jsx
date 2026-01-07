@@ -13,6 +13,7 @@ function Admin() {
   const [isSendingTelegram, setIsSendingTelegram] = useState(false);
 
   // --- CONFIGURATION ---
+  // Ensure your Token and ID are correct here!
   const TELEGRAM_BOT_TOKEN = "YOUR_BOT_TOKEN_HERE";
   const TELEGRAM_CHAT_ID = "@YOUR_CHANNEL_USERNAME"; 
 
@@ -59,42 +60,41 @@ function Admin() {
     }
   };
 
+  // --- FIXED TELEGRAM LOGIC (CORS BYPASS) ---
   const postToTelegram = async () => {
     if (matches.length === 0) return alert("No matches to post!");
     setIsSendingTelegram(true);
+
     const matchList = matches
       .map(m => `⚽️ *${m.homeTeam?.name} vs ${m.awayTeam?.name}*\n⏰ Time: ${m.time || m.kickOffTime || 'TBD'}\n`)
       .join("\n");
 
-    const message = `🏆 *TODAY'S LIVE FIXTURES* 🏆\n-----------------------------------------\n${matchList}\n-----------------------------------------\n📺 *WATCH LIVE IN HD:*\n👉 https://vortexlive.online`;
+    const text = `🏆 *TODAY'S LIVE FIXTURES* 🏆\n-----------------------------------------\n${matchList}\n-----------------------------------------\n📺 *WATCH LIVE IN HD:*\n👉 https://vortexlive.online`;
+
+    // We use a GET request with encoded parameters to bypass CORS preflight issues
+    const url = `https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage?chat_id=${encodeURIComponent(TELEGRAM_CHAT_ID)}&text=${encodeURIComponent(text)}&parse_mode=Markdown`;
 
     try {
-      await fetch(`https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ chat_id: TELEGRAM_CHAT_ID, text: message, parse_mode: 'Markdown' }),
-      });
-      alert("Schedule posted!");
+      const response = await fetch(url);
+      if (response.ok) {
+        alert("Schedule posted to Telegram!");
+      } else {
+        const errorData = await response.json();
+        alert(`Telegram Error: ${errorData.description || 'Check Bot Token/Chat ID'}`);
+      }
     } catch (error) {
-      alert("Telegram Error");
+      console.error("CORS/Network Error:", error);
+      alert("Failed to reach Telegram. Ensure your Bot Token is correct.");
     } finally {
       setIsSendingTelegram(false);
     }
   };
 
-  // --- THE TRIPLE AUTO-GENERATOR ---
   const generateAutoUrl = (match, serverNum) => {
     const slug = `${match.homeTeam?.name} vs ${match.awayTeam?.name}`.replace(/\s+/g, '-').toLowerCase();
-    
-    // Server 1: 2embed (Backup Priority)
     if (serverNum === 1) return btoa(`https://www.2embed.cc/embed/football/${slug}`);
-    
-    // Server 2: Vidsrc (Primary automation)
     if (serverNum === 2) return btoa(`https://vidsrc.me/embed/football/${slug}`);
-    
-    // Server 3: Embed.su (Alternative)
     if (serverNum === 3) return btoa(`https://embed.su/embed/football/${slug}`);
-    
     return "";
   };
 
@@ -107,12 +107,9 @@ function Admin() {
     matches.forEach((match) => {
       const matchRef = doc(db, "matches", match.id);
       const updates = {};
-
-      // AUTOMATICALLY FILL ALL 3 IF THEY ARE EMPTY
       if (!match.streamUrl1) { updates.streamUrl1 = generateAutoUrl(match, 1); count++; }
       if (!match.streamUrl2) { updates.streamUrl2 = generateAutoUrl(match, 2); count++; }
       if (!match.streamUrl3) { updates.streamUrl3 = generateAutoUrl(match, 3); count++; }
-
       if (Object.keys(updates).length > 0) {
         batch.update(matchRef, updates);
       }
@@ -120,7 +117,7 @@ function Admin() {
 
     try {
       await batch.commit();
-      alert(`Sync Complete! All 3 Servers Automated.`);
+      alert(`Sync Complete! Servers Automated.`);
     } catch (e) {
       alert("Sync Failed");
     } finally {
@@ -165,11 +162,16 @@ function Admin() {
           </div>
 
           <div className="flex flex-wrap items-center gap-3">
-            <button onClick={postToTelegram} className="flex items-center gap-2 px-5 py-3 rounded-xl font-black text-[9px] uppercase bg-[#0088cc] hover:bg-[#0077b5] transition-all">
-              <Send size={14} /> Telegram
+            <button 
+              onClick={postToTelegram} 
+              disabled={isSendingTelegram}
+              className={`flex items-center gap-2 px-5 py-3 rounded-xl font-black text-[9px] uppercase transition-all ${isSendingTelegram ? 'bg-zinc-800 text-zinc-500' : 'bg-[#0088cc] hover:bg-[#0077b5]'}`}
+            >
+              <Send size={14} className={isSendingTelegram ? "animate-pulse" : ""} /> 
+              {isSendingTelegram ? "Sending..." : "Telegram"}
             </button>
             <button onClick={handleSyncAll} className="flex items-center gap-2 px-5 py-3 rounded-xl font-black text-[9px] uppercase bg-emerald-600 hover:bg-emerald-500 transition-all">
-              <RefreshCw size={14} className={isUpdating ? "animate-spin" : ""} /> Auto-Fill All Servers
+              <RefreshCw size={14} className={isUpdating ? "animate-spin" : ""} /> Auto-Fill All
             </button>
             <button onClick={handleClearAllLinks} className="flex items-center gap-2 px-5 py-3 rounded-xl font-black text-[9px] uppercase bg-zinc-900 border border-red-900/30 text-red-500 hover:bg-red-900/10 transition-all">
               <Trash2 size={14} /> Wipe
@@ -192,7 +194,7 @@ function Admin() {
                   </div>
                 </div>
                 <button onClick={() => {
-                  const url = prompt("Force Override Server 1 (e.g. GitHub IPTV Link):");
+                  const url = prompt("Force Override Server 1 (IPTV Link):");
                   if(url) handleUpdateStream(match.id, 1, url);
                 }} className="px-3 py-1 bg-blue-600/10 border border-blue-600/20 rounded-full text-[8px] font-black text-blue-500 uppercase flex items-center gap-1">
                   <Zap size={10}/> Override S1
@@ -214,7 +216,7 @@ function Admin() {
                     <div className="text-[8px] px-1">
                       {match[`streamUrl${num}`] ? (
                         <span className="flex items-center gap-1 font-bold uppercase text-emerald-500">
-                           <ShieldCheck size={10}/> {match[`streamUrl${num}`].length > 100 ? "Auto-Link Ready" : "Manual/IPTV Live"}
+                           <ShieldCheck size={10}/> {match[`streamUrl${num}`].length > 100 ? "Auto-Ready" : "Manual Live"}
                         </span>
                       ) : (
                         <span className="uppercase text-zinc-700">∅ Not Synced</span>
