@@ -46,130 +46,91 @@ const MatchDetails = () => {
 
   return (
     <div className="min-h-screen bg-[#070708] text-white p-3 md:p-8 overflow-y-auto pb-24">
-      {/* Header */}
+      {/* HEADER SECTION */}
       <div className="flex items-center justify-between mb-4 md:mb-6">
         <Link to="/" className="flex items-center gap-1 text-white/40 uppercase text-[9px] font-black tracking-widest hover:text-white transition-colors">
           <ChevronLeft size={14} /> Back to Schedule
         </Link>
         <div className="flex items-center gap-2 px-3 py-1 border rounded-full bg-emerald-500/5 border-emerald-500/20">
           <ShieldCheck size={12} className="text-emerald-500" />
-          <span className="text-[8px] md:text-[10px] font-black text-emerald-500 uppercase">Encrypted Tunnel Active</span>
+          <span className="text-[8px] md:text-[10px] font-black text-emerald-500 uppercase">Secure Tunnel Active</span>
         </div>
       </div>
 
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
         <div className="space-y-4 lg:col-span-2">
           
-          {/* PLAYER CONTAINER */}
-          <div className="relative z-10 aspect-video bg-black rounded-2xl md:rounded-[2.5rem] overflow-hidden border border-white/5 shadow-2xl shadow-red-600/5 group">
+          {/* PLAYER CONTAINER (Z-INDEX FIX) */}
+          <div className="relative z-20 aspect-video bg-black rounded-2xl md:rounded-[2.5rem] overflow-hidden border border-white/5 shadow-2xl shadow-red-600/5 group">
             {currentStream ? (
               <iframe 
                 src={isM3U8 ? `https://p.m3u8play.com/player.php?url=${currentStream}` : currentStream} 
                 className="w-full h-full" 
-                // CRITICAL FOR BUTTONS & FULLSCREEN
-                allow="autoplay; encrypted-media; fullscreen; picture-in-picture; display-capture"
+                // PERMISSIONS ENABLED: Play, Unmute, and Maximize will now work
+                allow="autoplay; encrypted-media; fullscreen; picture-in-picture"
                 allowFullScreen={true}
                 webkitallowfullscreen="true"
                 mozallowfullscreen="true"
-                // -----------------------------
+                // Referrer hack to bypass "Pirate Logo" blocking
+                referrerPolicy="no-referrer"
                 scrolling="no" 
                 frameBorder="0" 
-                referrerPolicy="no-referrer"
-                title="Vortex Stream Player"
+                title="Vortex Player"
               />
             ) : (
               <div className="absolute inset-0 flex flex-col items-center justify-center p-6 text-center">
                 <Lock size={32} className="mb-4 text-white/10" />
-                <h2 className="text-sm italic font-black tracking-tighter uppercase">Connection Lost</h2>
-                <p className="text-white/30 text-[8px] mt-2 font-bold uppercase tracking-widest">Select another server below</p>
+                <h2 className="text-sm italic font-black uppercase">Handshake Failed</h2>
+                <p className="text-white/30 text-[8px] mt-2 font-bold uppercase">Try another server below</p>
               </div>
             )}
-            
-            {/* Overlay Help (Shows briefly) */}
-            <div className="absolute transition-opacity opacity-0 pointer-events-none top-4 right-4 group-hover:opacity-100">
-              <div className="flex gap-2">
-                <div className="p-2 border rounded-lg bg-black/60 backdrop-blur-md border-white/10"><Volume2 size={14}/></div>
-                <div className="p-2 border rounded-lg bg-black/60 backdrop-blur-md border-white/10"><Maximize size={14}/></div>
-              </div>
-            </div>
           </div>
 
           {/* SERVER SELECTION */}
           <div className="grid grid-cols-3 gap-2 md:gap-3">
             {[1, 2, 3].map((num) => (
               <button key={num} onClick={() => setActiveServer(num)}
-                className={`py-4 rounded-2xl text-[9px] font-black uppercase transition-all border flex flex-col items-center gap-1 ${
+                className={`py-4 rounded-2xl text-[9px] font-black uppercase transition-all border ${
                   activeServer === num 
-                  ? 'bg-red-600 border-red-500 text-white shadow-lg shadow-red-600/20' 
+                  ? 'bg-red-600 border-red-500 text-white shadow-lg' 
                   : 'bg-zinc-900 border-white/5 text-white/30 hover:border-white/20'
                 }`}
               >
-                Server {num === 1 ? 'Main' : num === 2 ? 'Backup' : 'Ultra'}
+                Server {num}
               </button>
             ))}
           </div>
 
           {/* SCOREBOARD */}
-          <div className="bg-zinc-900/40 border border-white/5 rounded-[2rem] p-6 md:p-10 relative overflow-hidden">
-            <div className="relative z-10 flex items-center justify-between">
+          <div className="bg-zinc-900/40 border border-white/5 rounded-[2rem] p-6 md:p-10">
+            <div className="flex items-center justify-between">
               <div className="flex flex-col items-center flex-1 gap-3">
-                <div className="p-4 border rounded-full bg-white/5 border-white/5">
-                   <img src={match?.homeTeam?.logo} className="object-contain w-10 h-10 md:w-16 md:h-16" alt="" />
-                </div>
-                <span className="text-[10px] font-black uppercase tracking-tight">{match?.homeTeam?.name}</span>
+                <img src={match?.homeTeam?.logo} className="object-contain w-10 h-10 md:w-16 md:h-16" alt="" />
+                <span className="text-[10px] font-black uppercase">{match?.homeTeam?.name}</span>
               </div>
-
               <div className="flex-1 text-center">
-                <div className="text-4xl italic font-black tracking-tighter text-white md:text-6xl">
-                  {match?.homeScore} <span className="text-red-600">:</span> {match?.awayScore}
-                </div>
-                <div className="inline-block px-4 py-1 bg-red-600/10 border border-red-600/20 text-[10px] font-black text-red-600 uppercase mt-4 rounded-full">
-                  {match?.status || 'Live'}
-                </div>
+                <div className="text-4xl italic font-black md:text-6xl">{match?.homeScore} : {match?.awayScore}</div>
+                <div className="text-[10px] font-black text-red-600 uppercase mt-2">{match?.status || 'Live'}</div>
               </div>
-
               <div className="flex flex-col items-center flex-1 gap-3">
-                <div className="p-4 border rounded-full bg-white/5 border-white/5">
-                  <img src={match?.awayTeam?.logo} className="object-contain w-10 h-10 md:w-16 md:h-16" alt="" />
-                </div>
-                <span className="text-[10px] font-black uppercase tracking-tight">{match?.awayTeam?.name}</span>
+                <img src={match?.awayTeam?.logo} className="object-contain w-10 h-10 md:w-16 md:h-16" alt="" />
+                <span className="text-[10px] font-black uppercase">{match?.awayTeam?.name}</span>
               </div>
             </div>
           </div>
-
-          {/* AD PROTECTION INFO */}
-          <div className="flex items-start gap-3 p-4 border bg-blue-600/5 border-blue-500/10 rounded-2xl">
-            <Info size={18} className="text-blue-500 shrink-0" />
-            <p className="text-[9px] text-zinc-400 font-bold uppercase leading-relaxed">
-              Tip: If you can't click the player, close any visible ad overlays first. For Server 3, if a logo appears, try Server 1. Always use Chrome for the best experience.
-            </p>
-          </div>
         </div>
 
-        {/* STANDINGS */}
-        <aside className="space-y-4">
-           <div className="bg-zinc-900/40 border border-white/5 rounded-[2rem] p-6">
-              <h3 className="flex items-center gap-2 text-[10px] font-black uppercase text-red-600 mb-6 tracking-widest">
-                <Trophy size={14} /> League Standings
-              </h3>
-              <div className="space-y-2">
-                {standings.length > 0 ? standings.slice(0, 10).map((t, idx) => (
-                  <div key={t.team.id} className="flex items-center justify-between p-3 transition-colors rounded-xl bg-white/5 hover:bg-white/10">
-                    <div className="flex items-center gap-3">
-                      <span className="text-[9px] font-black text-white/20 w-3">{idx + 1}</span>
-                      <img src={t.team.logo} className="w-4 h-4" />
-                      <span className="text-[10px] font-bold uppercase">{t.team.name}</span>
-                    </div>
-                    <span className="text-[10px] font-black text-emerald-500">{t.points} PTS</span>
-                  </div>
-                )) : (
-                  <div className="py-10 text-center">
-                    <div className="w-5 h-5 mx-auto mb-2 border-2 border-red-600 rounded-full border-t-transparent animate-spin" />
-                    <span className="text-[9px] opacity-20 uppercase font-black">Syncing Stats...</span>
-                  </div>
-                )}
+        {/* STANDINGS PANEL */}
+        <aside className="bg-zinc-900/40 border border-white/5 rounded-[2rem] p-6">
+          <h3 className="flex items-center gap-2 text-[10px] font-black uppercase text-red-600 mb-6"><Trophy size={14} /> Standings</h3>
+          <div className="space-y-2">
+            {standings.length > 0 ? standings.slice(0, 10).map((t, i) => (
+              <div key={i} className="flex items-center justify-between p-3 rounded-xl bg-white/5 text-[10px] font-bold uppercase">
+                <div className="flex items-center gap-3"><img src={t.team.logo} className="w-4 h-4" /><span>{t.team.name}</span></div>
+                <span className="text-emerald-500">{t.points} PTS</span>
               </div>
-           </div>
+            )) : <div className="text-center py-4 text-[9px] opacity-20 uppercase font-black">Syncing...</div>}
+          </div>
         </aside>
       </div>
     </div>
