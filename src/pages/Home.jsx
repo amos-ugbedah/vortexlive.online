@@ -44,25 +44,41 @@ const Home = () => {
     if (pass === "vortex_admin_2026") navigate('/admin');
   };
 
-  // Helper to format timestamp to 24h time (HH:mm)
-  const formatTime = (timestamp) => {
-    if (!timestamp) return "";
-    const date = timestamp.toDate ? timestamp.toDate() : new Date(timestamp);
-    return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: false });
+  /**
+   * Helper to format time specifically from the 'kickOffTime' field
+   * Handles both Firebase Timestamps and String formats
+   */
+  const formatKickOffTime = (kickOffTime) => {
+    if (!kickOffTime) return "TBA";
+    
+    // If it's a Firebase Timestamp object
+    if (kickOffTime && typeof kickOffTime.toDate === 'function') {
+      const date = kickOffTime.toDate();
+      return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: false });
+    }
+    
+    // If it's already a string (e.g., "17:30"), return as is
+    return kickOffTime;
   };
 
   useEffect(() => {
-    // We order by timestamp ascending so earliest games come first
-    const q = query(collection(db, 'matches'), orderBy('timestamp', 'asc'));
+    // Basic query to get all matches
+    const q = query(collection(db, 'matches'));
+    
     const unsubscribe = onSnapshot(q, (snapshot) => {
       const matchesData = snapshot.docs
-        .map(doc => ({ 
-          id: doc.id, 
-          ...doc.data(),
-          displayTime: formatTime(doc.data().timestamp) // Pre-formatting time for the UI
-        }))
+        .map(doc => {
+          const data = doc.data();
+          return { 
+            id: doc.id, 
+            ...data,
+            // Prioritize kickOffTime for the UI display
+            displayTime: formatKickOffTime(data.kickOffTime) 
+          };
+        })
         .filter(m => m.id !== 'template_id');
       
+      // Handle Score Goal Alerts
       matchesData.forEach(match => {
         const currentTotal = (match.homeScore || 0) + (match.awayScore || 0);
         const status = match.status?.toUpperCase();
@@ -72,16 +88,29 @@ const Home = () => {
         prevScores.current[match.id] = currentTotal;
       });
 
-      // Secondary Sort: Keep Live games at the absolute top, then sort by timestamp
+      // SORTING LOGIC: 
+      // 1. Live games first
+      // 2. Then sort by kickOffTime (Earliest to Latest)
+      // 3. Finished games last
       matchesData.sort((a, b) => {
-        const isALive = liveStatuses.includes(a.status?.toUpperCase());
-        const isBLive = liveStatuses.includes(b.status?.toUpperCase());
+        const getPriority = (m) => {
+          const s = m.status?.toUpperCase();
+          if (liveStatuses.includes(s)) return 1;
+          if (['FT', 'AET', 'PEN'].includes(s)) return 3;
+          return 2; // Upcoming
+        };
 
-        if (isALive && !isBLive) return -1;
-        if (!isALive && isBLive) return 1;
-        
-        // If both are live or both are upcoming, sort by time (earliest first)
-        return (a.timestamp?.seconds || 0) - (b.timestamp?.seconds || 0);
+        const priorityA = getPriority(a);
+        const priorityB = getPriority(b);
+
+        if (priorityA !== priorityB) {
+          return priorityA - priorityB;
+        }
+
+        // If same priority, sort by kickOffTime string (e.g. "13:00" < "17:00")
+        const timeA = String(a.kickOffTime || "99:99");
+        const timeB = String(b.kickOffTime || "99:99");
+        return timeA.localeCompare(timeB);
       });
 
       setMatches(matchesData);
@@ -97,7 +126,10 @@ const Home = () => {
     );
     return {
       live: filtered.filter(m => liveStatuses.includes(m.status?.toUpperCase())),
-      upcoming: filtered.filter(m => !liveStatuses.includes(m.status?.toUpperCase()) && !['FT', 'AET', 'PEN'].includes(m.status?.toUpperCase()))
+      upcoming: filtered.filter(m => 
+        !liveStatuses.includes(m.status?.toUpperCase()) && 
+        !['FT', 'AET', 'PEN'].includes(m.status?.toUpperCase())
+      )
     };
   }, [matches, searchTerm]);
 
@@ -176,7 +208,7 @@ const Home = () => {
                 </section>
               )}
 
-              {/* SCHEDULE SECTION (Sorted Earliest to Latest) */}
+              {/* SCHEDULE SECTION (Sorted by kickOffTime: Earliest at top) */}
               <section className="pb-20">
                 <h2 className="flex items-center gap-3 px-2 mb-6 text-xl italic font-black tracking-tighter text-white uppercase">
                   <span className="w-1.5 h-6 rounded-full bg-zinc-700"></span> UPCOMING BROADCASTS
