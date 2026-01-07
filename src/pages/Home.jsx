@@ -8,7 +8,7 @@ import MatchCard from '../components/MatchCard';
 import EmptyState from '../components/EmptyState';
 
 const parseTime = (timeStr) => {
-  if (!timeStr || ['TBD', '--', 'NS', 'LIVE', 'HT', 'FT'].includes(timeStr.toUpperCase())) return { totalMinutes: 9999 };
+  if (!timeStr || ['TBD', '--', 'NS', 'LIVE', 'HT', 'FT', 'ET', 'P'].includes(timeStr.toUpperCase())) return { totalMinutes: 9999 };
   try {
     let time = timeStr.toString().toUpperCase().trim();
     let isPM = time.includes('PM');
@@ -33,6 +33,9 @@ const Home = () => {
   const navigate = useNavigate();
   const prevScores = useRef({});
   const goalSound = new Audio('https://assets.mixkit.co/active_storage/sfx/2042/2042-preview.mp3'); 
+
+  // Live Status Codes (Includes Extra Time and Penalties)
+  const liveStatuses = ['1H', '2H', 'HT', 'LIVE', 'ET', 'BT', 'P'];
 
   useEffect(() => {
     window.addEventListener('beforeinstallprompt', (e) => {
@@ -60,7 +63,6 @@ const Home = () => {
   };
 
   useEffect(() => {
-    // REMOVED LIMIT - This fetches everything in the collection
     const q = query(collection(db, 'matches'), orderBy('timestamp', 'desc'));
     
     const unsubscribe = onSnapshot(q, (snapshot) => {
@@ -70,18 +72,19 @@ const Home = () => {
       
       matchesData.forEach(match => {
         const currentTotal = (match.homeScore || 0) + (match.awayScore || 0);
+        const status = match.status?.toUpperCase();
         if (prevScores.current[match.id] !== undefined && currentTotal > prevScores.current[match.id]) {
-          if (['1H', '2H', 'HT', 'LIVE'].includes(match.status?.toUpperCase())) playGoalAlert();
+          if (liveStatuses.includes(status)) playGoalAlert();
         }
         prevScores.current[match.id] = currentTotal;
       });
 
-      // Sort: Live matches first, then by kickoff time
+      // Sort: Live/ET/P first, then Upcoming, then Finished
       matchesData.sort((a, b) => {
         const getPriority = (s) => {
           const status = s?.toUpperCase();
-          if (['1H', '2H', 'HT', 'LIVE'].includes(status)) return 1;
-          if (status === 'FT') return 3;
+          if (liveStatuses.includes(status)) return 1;
+          if (status === 'FT' || status === 'AET' || status === 'PEN') return 3;
           return 2;
         };
         if (getPriority(a.status) !== getPriority(b.status)) return getPriority(a.status) - getPriority(b.status);
@@ -104,14 +107,15 @@ const Home = () => {
       `${m.homeTeam?.name} ${m.awayTeam?.name} ${m.league}`.toLowerCase().includes(term)
     );
     return {
-      live: filtered.filter(m => ['1H', '2H', 'HT', 'LIVE'].includes(m.status?.toUpperCase())),
-      upcoming: filtered.filter(m => !['1H', '2H', 'HT', 'LIVE', 'FT'].includes(m.status?.toUpperCase())),
-      finished: filtered.filter(m => m.status?.toUpperCase() === 'FT')
+      live: filtered.filter(m => liveStatuses.includes(m.status?.toUpperCase())),
+      upcoming: filtered.filter(m => !liveStatuses.includes(m.status?.toUpperCase()) && !['FT', 'AET', 'PEN'].includes(m.status?.toUpperCase())),
+      finished: filtered.filter(m => ['FT', 'AET', 'PEN'].includes(m.status?.toUpperCase()))
     };
   }, [matches, searchTerm]);
 
   return (
     <div className="flex flex-col w-full min-h-screen">
+      {/* Rest of UI remains same... */}
       {deferredPrompt && (
         <div className="flex items-center justify-between p-4 mx-2 mb-6 shadow-xl bg-gradient-to-r from-red-600 to-indigo-700 rounded-3xl animate-bounce">
           <div className="flex items-center gap-3">
@@ -141,7 +145,7 @@ const Home = () => {
       </div>
 
       {isLoading ? (
-        <div className="flex flex-col items-center flex-1 py-20 text-center">
+        <div className="flex flex-col items-center justify-center py-20 text-center">
           <RefreshCw className="w-8 h-8 mb-4 text-red-600 animate-spin" />
           <p className="text-[10px] font-black uppercase tracking-[0.3em] text-white/20">Syncing...</p>
         </div>
@@ -150,7 +154,7 @@ const Home = () => {
           {groupMatches.live.length > 0 && (
             <section>
               <h2 className="flex items-center gap-3 mb-5 text-lg italic font-black tracking-tighter text-white uppercase">
-                <span className="w-1 h-5 bg-red-600 rounded-full"></span> LIVE
+                <span className="w-1 h-5 bg-red-600 rounded-full"></span> LIVE NOW
               </h2>
               <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
                 {groupMatches.live.map(m => <MatchCard key={m.id} match={m} />)}
@@ -160,7 +164,7 @@ const Home = () => {
 
           <section className="pb-20">
             <h2 className="flex items-center gap-3 mb-5 text-lg italic font-black tracking-tighter text-white uppercase">
-              <span className="w-1 h-5 rounded-full bg-zinc-700"></span> UPCOMING
+              <span className="w-1 h-5 rounded-full bg-zinc-700"></span> SCHEDULE
             </h2>
             <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
               {groupMatches.upcoming.map(m => <MatchCard key={m.id} match={m} />)}
@@ -173,11 +177,8 @@ const Home = () => {
         </div>
       )}
 
-      <footer className="flex flex-col items-center justify-center py-10 mt-auto transition-opacity border-t border-white/5 opacity-20 hover:opacity-100">
-        <button 
-          onClick={handleAdminGate}
-          className="flex items-center gap-2 text-[8px] font-black text-zinc-500 uppercase tracking-[0.4em] hover:text-red-600 transition-colors"
-        >
+      <footer className="flex flex-col items-center justify-center py-10 mt-auto border-t border-white/5 opacity-20 hover:opacity-100">
+        <button onClick={handleAdminGate} className="flex items-center gap-2 text-[8px] font-black text-zinc-500 uppercase tracking-[0.4em] hover:text-red-600">
           <Shield size={10} /> Secure Portal Access
         </button>
         <p className="text-[7px] text-zinc-700 mt-2 uppercase font-bold">Vortex Broadcast Group © 2026</p>
