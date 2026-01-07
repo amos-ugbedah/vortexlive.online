@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { db } from "../lib/firebase"; 
 import { collection, doc, updateDoc, onSnapshot, setDoc, deleteDoc, query, orderBy, writeBatch } from "firebase/firestore";
-import { ShieldAlert, UserX, ShieldCheck, Tv, Globe, RefreshCw, Zap, LogOut, Send } from "lucide-react";
+import { ShieldAlert, UserX, ShieldCheck, Tv, Globe, RefreshCw, Zap, LogOut, Send, Trash2 } from "lucide-react";
 import AdminLogin from "./AdminLogin";
 
 function Admin() {
@@ -14,7 +14,7 @@ function Admin() {
 
   // --- CONFIGURATION ---
   const TELEGRAM_BOT_TOKEN = "YOUR_BOT_TOKEN_HERE";
-  const TELEGRAM_CHAT_ID = "@YOUR_CHANNEL_USERNAME"; // or ID
+  const TELEGRAM_CHAT_ID = "@YOUR_CHANNEL_USERNAME"; 
 
   useEffect(() => {
     const auth = sessionStorage.getItem('vx_admin_auth');
@@ -59,78 +59,85 @@ function Admin() {
     }
   };
 
-  // --- TELEGRAM POSTING LOGIC ---
   const postToTelegram = async () => {
     if (matches.length === 0) return alert("No matches to post!");
     setIsSendingTelegram(true);
-
-    // Format the match list
     const matchList = matches
       .map(m => `⚽️ *${m.homeTeam?.name} vs ${m.awayTeam?.name}*\n⏰ Time: ${m.time || m.kickOffTime || 'TBD'}\n`)
       .join("\n");
 
-    const message = `
-🏆 *TODAY'S LIVE FIXTURES* 🏆
------------------------------------------
-${matchList}
------------------------------------------
-📺 *WATCH LIVE IN HD:*
-👉 https://vortexlive.online
-
-🔔 *Join our channel for more updates!*
-⚠️ *Please stake responsibly.*
-    `;
+    const message = `🏆 *TODAY'S LIVE FIXTURES* 🏆\n-----------------------------------------\n${matchList}\n-----------------------------------------\n📺 *WATCH LIVE IN HD:*\n👉 https://vortexlive.online`;
 
     try {
-      const response = await fetch(`https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage`, {
+      await fetch(`https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          chat_id: TELEGRAM_CHAT_ID,
-          text: message,
-          parse_mode: 'Markdown',
-        }),
+        body: JSON.stringify({ chat_id: TELEGRAM_CHAT_ID, text: message, parse_mode: 'Markdown' }),
       });
-
-      if (response.ok) {
-        alert("Schedule posted to Telegram successfully!");
-      } else {
-        throw new Error("Telegram API Error");
-      }
+      alert("Schedule posted!");
     } catch (error) {
-      alert("Failed to send to Telegram. Check your Token and Chat ID.");
+      alert("Telegram Error");
     } finally {
       setIsSendingTelegram(false);
     }
   };
 
-  const generateUrl = (match) => {
-    const slug = `${match.homeTeam.name} vs ${match.awayTeam.name}`.replace(/\s+/g, '-').toLowerCase();
-    return `https://vidsrc.me/embed/football/${slug}`;
+  // --- THE TRIPLE AUTO-GENERATOR ---
+  const generateAutoUrl = (match, serverNum) => {
+    const slug = `${match.homeTeam?.name} vs ${match.awayTeam?.name}`.replace(/\s+/g, '-').toLowerCase();
+    
+    // Server 1: 2embed (Backup Priority)
+    if (serverNum === 1) return btoa(`https://www.2embed.cc/embed/football/${slug}`);
+    
+    // Server 2: Vidsrc (Primary automation)
+    if (serverNum === 2) return btoa(`https://vidsrc.me/embed/football/${slug}`);
+    
+    // Server 3: Embed.su (Alternative)
+    if (serverNum === 3) return btoa(`https://embed.su/embed/football/${slug}`);
+    
+    return "";
   };
 
   const handleSyncAll = async () => {
     if (matches.length === 0) return;
     setIsUpdating(true);
     const batch = writeBatch(db);
+    let count = 0;
 
     matches.forEach((match) => {
-      const autoUrl = btoa(generateUrl(match));
       const matchRef = doc(db, "matches", match.id);
-      batch.update(matchRef, { 
-        streamUrl1: autoUrl,
-        streamUrl2: autoUrl 
-      });
+      const updates = {};
+
+      // AUTOMATICALLY FILL ALL 3 IF THEY ARE EMPTY
+      if (!match.streamUrl1) { updates.streamUrl1 = generateAutoUrl(match, 1); count++; }
+      if (!match.streamUrl2) { updates.streamUrl2 = generateAutoUrl(match, 2); count++; }
+      if (!match.streamUrl3) { updates.streamUrl3 = generateAutoUrl(match, 3); count++; }
+
+      if (Object.keys(updates).length > 0) {
+        batch.update(matchRef, updates);
+      }
     });
 
     try {
       await batch.commit();
-      alert("All matches synced successfully!");
+      alert(`Sync Complete! All 3 Servers Automated.`);
     } catch (e) {
-      alert("Batch Sync Failed");
+      alert("Sync Failed");
     } finally {
       setIsUpdating(false);
     }
+  };
+
+  const handleClearAllLinks = async () => {
+    if (!window.confirm("Wipe all links?")) return;
+    setIsUpdating(true);
+    const batch = writeBatch(db);
+    matches.forEach((match) => {
+      batch.update(doc(db, "matches", match.id), { streamUrl1: "", streamUrl2: "", streamUrl3: "" });
+    });
+    await batch.commit();
+    setIsUpdating(false);
+    alert("All links wiped.");
   };
 
   const handleBan = async (idToBan) => {
@@ -143,9 +150,7 @@ ${matchList}
     await deleteDoc(doc(db, "blacklist", idToUnban));
   };
 
-  if (!isAuthenticated) {
-    return <AdminLogin onLogin={setIsAuthenticated} />;
-  }
+  if (!isAuthenticated) return <AdminLogin onLogin={setIsAuthenticated} />;
 
   return (
     <div className="min-h-screen p-4 md:p-10 font-sans text-white bg-[#050505]">
@@ -154,35 +159,22 @@ ${matchList}
           <div className="flex items-center gap-3">
             <Tv className="text-red-600" size={28} />
             <div>
-              <h2 className="text-2xl italic font-black tracking-tighter uppercase">Broadcast Hub</h2>
-              <p className="text-[9px] text-zinc-500 font-bold uppercase tracking-[0.2em]">Live Data: {matches.length} Matches</p>
+              <h2 className="text-2xl italic font-black tracking-tighter uppercase">Vortex Admin</h2>
+              <p className="text-[9px] text-zinc-500 font-bold uppercase tracking-widest">{matches.length} matches found</p>
             </div>
           </div>
 
           <div className="flex flex-wrap items-center gap-3">
-            {/* NEW TELEGRAM BUTTON */}
-            <button 
-              onClick={postToTelegram}
-              disabled={isSendingTelegram}
-              className={`flex items-center gap-2 px-6 py-3 rounded-xl font-black text-[10px] uppercase tracking-widest transition-all ${isSendingTelegram ? 'bg-zinc-800 text-zinc-500' : 'bg-[#0088cc] hover:bg-[#0077b5] text-white shadow-[0_0_20px_rgba(0,136,204,0.3)]'}`}
-            >
-              <Send size={14} className={isSendingTelegram ? "animate-pulse" : ""} />
-              {isSendingTelegram ? "Posting..." : "Post Schedule"}
+            <button onClick={postToTelegram} className="flex items-center gap-2 px-5 py-3 rounded-xl font-black text-[9px] uppercase bg-[#0088cc] hover:bg-[#0077b5] transition-all">
+              <Send size={14} /> Telegram
             </button>
-
-            <button 
-              onClick={handleSyncAll}
-              disabled={isUpdating}
-              className={`flex items-center gap-2 px-6 py-3 rounded-xl font-black text-[10px] uppercase tracking-widest transition-all ${isUpdating ? 'bg-zinc-800 text-zinc-500' : 'bg-emerald-600 hover:bg-emerald-500 text-white shadow-[0_0_20px_rgba(16,185,129,0.2)]'}`}
-            >
-              <RefreshCw size={14} className={isUpdating ? "animate-spin" : ""} />
-              {isUpdating ? "Syncing..." : "Sync All"}
+            <button onClick={handleSyncAll} className="flex items-center gap-2 px-5 py-3 rounded-xl font-black text-[9px] uppercase bg-emerald-600 hover:bg-emerald-500 transition-all">
+              <RefreshCw size={14} className={isUpdating ? "animate-spin" : ""} /> Auto-Fill All Servers
             </button>
-            
-            <button 
-              onClick={handleLogout}
-              className="p-3 transition-all border bg-zinc-900 border-white/5 rounded-xl text-zinc-500 hover:text-red-500 hover:border-red-500/30"
-            >
+            <button onClick={handleClearAllLinks} className="flex items-center gap-2 px-5 py-3 rounded-xl font-black text-[9px] uppercase bg-zinc-900 border border-red-900/30 text-red-500 hover:bg-red-900/10 transition-all">
+              <Trash2 size={14} /> Wipe
+            </button>
+            <button onClick={handleLogout} className="p-3 transition-all border bg-zinc-900 border-white/5 rounded-xl text-zinc-500 hover:text-white">
               <LogOut size={18} />
             </button>
           </div>
@@ -190,27 +182,27 @@ ${matchList}
 
         <div className="grid gap-6">
           {matches.map((match) => (
-            <div key={match.id} className="p-6 border bg-zinc-900/30 border-white/5 rounded-[2rem] glass-card transition-all hover:border-white/10">
+            <div key={match.id} className="p-6 border bg-zinc-900/30 border-white/5 rounded-[2rem] hover:border-white/10 transition-all">
               <div className="flex items-center justify-between mb-6">
                 <div className="flex items-center gap-4">
                   <img src={match.homeTeam?.logo} className="object-contain w-8 h-8" alt="" />
                   <div className="flex flex-col">
                     <span className="text-xs font-black uppercase">{match.homeTeam?.name} vs {match.awayTeam?.name}</span>
-                    <span className="text-[8px] text-zinc-500 font-bold uppercase">{match.time || match.kickOffTime}</span>
+                    <span className="text-[8px] text-zinc-500 font-bold uppercase tracking-widest">{match.status} | {match.time || match.kickOffTime}</span>
                   </div>
                 </div>
                 <button onClick={() => {
-                  const url = prompt("Paste GitHub M3U8 Link:");
+                  const url = prompt("Force Override Server 1 (e.g. GitHub IPTV Link):");
                   if(url) handleUpdateStream(match.id, 1, url);
                 }} className="px-3 py-1 bg-blue-600/10 border border-blue-600/20 rounded-full text-[8px] font-black text-blue-500 uppercase flex items-center gap-1">
-                  <Zap size={10}/> IPTV
+                  <Zap size={10}/> Override S1
                 </button>
               </div>
 
               <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
                 {[1, 2, 3].map((num) => (
                   <div key={num} className="space-y-2">
-                    <label className="text-[9px] font-black text-zinc-500 uppercase flex items-center gap-2 px-1">
+                    <label className="text-[9px] font-black text-zinc-500 uppercase flex items-center gap-2 px-1 tracking-widest">
                       <Globe size={12} /> Server {num}
                     </label>
                     <input 
@@ -222,10 +214,10 @@ ${matchList}
                     <div className="text-[8px] px-1">
                       {match[`streamUrl${num}`] ? (
                         <span className="flex items-center gap-1 font-bold uppercase text-emerald-500">
-                           <ShieldCheck size={10}/> Link Active
+                           <ShieldCheck size={10}/> {match[`streamUrl${num}`].length > 100 ? "Auto-Link Ready" : "Manual/IPTV Live"}
                         </span>
                       ) : (
-                        <span className="uppercase text-zinc-700">∅ Offline</span>
+                        <span className="uppercase text-zinc-700">∅ Not Synced</span>
                       )}
                     </div>
                   </div>
@@ -238,19 +230,16 @@ ${matchList}
 
       {/* SECURITY PANEL */}
       <div className="p-8 border bg-zinc-900/50 rounded-[2.5rem] border-white/5 max-w-xl">
-        <div className="flex items-center justify-between mb-6">
-          <h3 className="flex items-center gap-2 text-[10px] font-black uppercase text-red-600 tracking-widest"><UserX size={16}/> Security Blacklist</h3>
-          <span className="text-[10px] bg-red-600/10 text-red-500 px-3 py-1 rounded-full font-bold">{bannedList.length} BANNED</span>
-        </div>
+        <h3 className="flex items-center gap-2 text-[10px] font-black uppercase text-red-600 tracking-widest mb-6"><UserX size={16}/> Security Blacklist</h3>
         <div className="flex gap-2 mb-6">
           <input type="text" placeholder="Enter User ID..." className="flex-1 p-4 text-xs text-white border outline-none bg-black/40 border-white/5 rounded-xl" value={targetId} onChange={(e) => setTargetId(e.target.value)}/>
           <button onClick={() => handleBan(targetId)} className="px-6 bg-red-600 rounded-xl text-[10px] font-black uppercase">Block</button>
         </div>
-        <div className="pr-2 space-y-2 overflow-y-auto max-h-48 custom-scrollbar">
+        <div className="space-y-2 overflow-y-auto max-h-48 custom-scrollbar">
           {bannedList.map((user) => (
             <div key={user.id} className="flex items-center justify-between p-4 border bg-black/40 border-white/5 rounded-2xl">
               <span className="text-[10px] font-mono text-zinc-400">{user.id}</span>
-              <button onClick={() => handleUnban(user.id)} className="text-[10px] font-black text-emerald-500 hover:text-white uppercase">Revoke</button>
+              <button onClick={() => handleUnban(user.id)} className="text-[10px] font-black text-emerald-500 uppercase hover:text-white transition-colors">Revoke</button>
             </div>
           ))}
         </div>
