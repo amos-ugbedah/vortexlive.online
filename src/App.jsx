@@ -1,100 +1,132 @@
-import React, { useEffect } from 'react';
-import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
+import React, { useEffect, useState } from 'react';
+import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import OneSignal from 'react-onesignal';
+import { db } from './lib/firebase';
+import { doc, onSnapshot } from 'firebase/firestore';
+
+// Pages & Components
 import Home from './pages/Home';
 import Admin from './pages/Admin';
-import PrivacyPolicy from './pages/PrivacyPolicy';
-import ContactUs from './pages/ContactUs';
+import MatchDetails from './pages/MatchDetails';
 import Navbar from './components/Navbar';
 import Footer from './components/Footer';
-import AdManager from './components/AdManager';
-import { Trophy, Gift, Zap, MessageCircle, ExternalLink } from 'lucide-react';
+import { Trophy, Zap, ShieldAlert, X } from 'lucide-react';
 
 function App() {
+  const [isBanned, setIsBanned] = useState(false);
+  const [showMobileAd, setShowMobileAd] = useState(true);
+  const [isLandscape, setIsLandscape] = useState(window.innerWidth > window.innerHeight && window.innerWidth < 1024);
+  
+  const defaultPartners = [
+    { name: "1XBET", offer: "200% DEPOSIT BONUS", link: "https://reffpa.com/L?tag=d_5098529m_97c_&site=5098529&ad=97", highlight: true },
+    { name: "STAKE", offer: "$50 FREE BET", link: "#", highlight: false },
+    { name: "BET9JA", offer: "100K WELCOME BONUS", link: "#", highlight: false }
+  ];
+
   const SMART_LINK = "https://www.effectivegatecpm.com/m0hhxyhsj?key=2dc5d50b0220cf3243f77241e3c3114d";
 
   useEffect(() => {
-    // OneSignal Init
-    OneSignal.init({
-      appId: "83500a13-673b-486c-8d52-41e1b16d01a5",
-      allowLocalhostAsSecureOrigin: true,
-    });
-
-    // Native Adsterra Banner Injector
-    const s = document.createElement('script');
-    s.src = "//www.profitablecpmrate.com/f0/21/e4/f021e4835824982348924343.js";
-    s.async = true;
-    document.body.appendChild(s);
+    const handleResize = () => {
+      // We only consider it "Landscape Theater Mode" if it's a small device held sideways
+      setIsLandscape(window.innerWidth > window.innerHeight && window.innerWidth < 1024);
+    };
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
   }, []);
 
-  const partners = [
-    { name: "1XBET", offer: "CODE: 9236312", link: "https://reffpa.com/L?tag=d_5098529m_97c_&site=5098529&ad=97", highlight: true },
-    { name: "STAKE", offer: "BONUS ACTIVE", link: "https://stake.com/?c=eEPcMjrA", highlight: false }
-  ];
+  useEffect(() => {
+    let userToken = localStorage.getItem('vortex_utk') || 'vx_' + Math.random().toString(36).substr(2, 9);
+    localStorage.setItem('vortex_utk', userToken);
+    const unsub = onSnapshot(doc(db, "blacklist", userToken), (doc) => {
+      if (doc.exists()) setIsBanned(true);
+    });
+    return () => unsub();
+  }, []);
+
+  useEffect(() => {
+    const initNotifications = async () => {
+      try {
+        await OneSignal.init({ 
+          appId: "83500a13-673b-486c-8d52-41e1b16d01a5", 
+          allowLocalhostAsSecureOrigin: true,
+          serviceWorkerPath: "OneSignalSDKWorker.js",
+        });
+      } catch (e) {
+        console.log("OneSignal status: active");
+      }
+    };
+    initNotifications();
+  }, []);
+
+  if (isBanned) return (
+    <div className="flex items-center justify-center min-h-screen p-6 font-sans text-center bg-black">
+      <div className="bg-red-600/10 p-10 rounded-[2.5rem] border border-red-600/20 w-full max-w-sm">
+        <ShieldAlert size={48} className="mx-auto mb-4 text-red-600 animate-pulse" />
+        <h1 className="text-2xl italic font-black text-white uppercase">Access Denied</h1>
+        <p className="text-zinc-500 text-[10px] font-bold uppercase mt-4 tracking-widest">Security Protocol 403 Active</p>
+      </div>
+    </div>
+  );
 
   return (
     <Router>
-      <div className="min-h-screen bg-[#0a0a0c] text-white flex flex-col font-sans relative">
-        <AdManager />
-        <Navbar partners={partners} />
+      <div className="min-h-screen bg-[#070708] text-white flex flex-col font-sans selection:bg-red-600">
+        
+        {/* Navbar is now fixed to always show on Desktop (isLandscape is false for desktop now) */}
+        {!isLandscape && <Navbar partners={defaultPartners} />}
 
-        <div className="flex justify-center items-start gap-6 px-4 py-8 max-w-[1600px] mx-auto w-full flex-1">
-          
-          {/* LEFT SIDEBAR: 1XBET Tracking */}
-          <aside className="hidden xl:block w-[200px] sticky top-32 shrink-0">
-            <a href="https://reffpa.com/L?tag=d_5098529m_97c_&site=5098529&ad=97" target="_blank" rel="noreferrer" 
-               className="group block bg-[#003566] border-2 border-yellow-400 rounded-3xl overflow-hidden hover:scale-105 transition-transform shadow-2xl">
-              <div className="bg-yellow-400 py-2 text-center text-blue-900 font-black text-[10px] uppercase">Official Sponsor</div>
-              <div className="p-6 text-center">
-                <Trophy className="mx-auto mb-4 text-yellow-400" size={40} />
-                <h2 className="text-2xl italic font-black">1XBET</h2>
-                <div className="p-3 my-4 text-blue-900 bg-white rounded-xl">
-                  <p className="text-[8px] font-bold uppercase">Code</p>
-                  <p className="text-lg font-black tracking-tighter">9236312</p>
+        {showMobileAd && !isLandscape && (
+          <div className="lg:hidden fixed bottom-4 left-4 right-4 z-[100] animate-in fade-in slide-in-from-bottom-10 duration-700">
+            <div className="flex items-center justify-between p-3 border shadow-2xl bg-gradient-to-r from-blue-900 to-indigo-900 border-white/20 rounded-2xl">
+              <a href="https://reffpa.com/L?tag=d_5098529m_97c_&site=5098529&ad=97" target="_blank" rel="noreferrer" className="flex items-center gap-3">
+                <div className="p-2 text-blue-900 bg-yellow-400 rounded-xl"><Trophy size={18} /></div>
+                <div>
+                  <p className="text-[10px] font-black uppercase leading-none text-yellow-400">1XBET Bonus</p>
+                  <p className="text-[8px] font-bold uppercase text-white/60">Use Code: 9236312</p>
                 </div>
-                <span className="text-[10px] font-black bg-yellow-400 text-blue-900 px-4 py-2 rounded-lg">BET NOW</span>
-              </div>
-            </a>
-          </aside>
+              </a>
+              <button onClick={() => setShowMobileAd(false)} className="p-1 rounded-lg hover:bg-white/10 text-white/40"><X size={16}/></button>
+            </div>
+          </div>
+        )}
 
-          {/* MAIN CONTENT */}
-          <main className="flex-1 w-full max-w-4xl">
+        <div className={`flex justify-center gap-8 mx-auto w-full flex-1 ${isLandscape ? 'p-0 max-w-full' : 'px-4 py-4 md:py-8 max-w-[1400px]'}`}>
+          
+          {/* Sidebars only show on Large Desktop Screens */}
+          {!isLandscape && (
+            <aside className="hidden xl:block w-[240px] shrink-0 sticky top-32 h-fit">
+              <div className="p-6 text-center border glass-card bg-zinc-900/40 rounded-3xl border-white/5">
+                <Trophy className="mx-auto mb-4 text-yellow-500" size={32} />
+                <h2 className="mb-2 text-xl italic font-black tracking-tighter uppercase">1XBET</h2>
+                <a href="https://reffpa.com/L?tag=d_5098529m_97c_&site=5098529&ad=97" target="_blank" rel="noreferrer" 
+                   className="block w-full py-3 bg-white text-black text-[10px] font-black uppercase rounded-xl hover:bg-yellow-400 transition-colors">
+                  Claim Bonus
+                </a>
+              </div>
+            </aside>
+          )}
+
+          <main className={`${isLandscape ? 'w-screen h-screen' : 'w-full max-w-3xl'}`}>
             <Routes>
               <Route path="/" element={<Home />} />
+              <Route path="/match/:id" element={<MatchDetails />} />
               <Route path="/admin" element={<Admin />} />
-              <Route path="/privacy" element={<PrivacyPolicy />} />
-              <Route path="/contact" element={<ContactUs />} />
+              <Route path="*" element={<Navigate to="/" />} />
             </Routes>
           </main>
 
-          {/* RIGHT SIDEBAR: Stake + Adsterra SmartLink */}
-          <aside className="hidden xl:block w-[200px] sticky top-32 shrink-0 space-y-4">
-            {/* Stake Promo */}
-            <a href="https://stake.com/?c=eEPcMjrA" target="_blank" rel="noreferrer" 
-               className="block p-6 text-center transition-all border-2 border-red-600 group bg-neutral-900 rounded-3xl hover:scale-105">
-              <Gift className="mx-auto mb-3 text-red-600" size={32} />
-              <h3 className="italic font-black">STAKE</h3>
-              <p className="text-[10px] mt-2 text-gray-400 uppercase">Best Crypto Odds</p>
-            </a>
-
-            {/* 🔥 Adsterra SmartLink (New ID: 5510920) */}
-            <a href={SMART_LINK} target="_blank" rel="noreferrer"
-               className="block p-6 text-center transition-all shadow-lg bg-gradient-to-r from-purple-600 to-blue-600 rounded-3xl hover:brightness-110">
-              <Zap className="mx-auto mb-2 text-yellow-400 animate-bounce" size={24} />
-              <p className="text-[10px] font-black uppercase tracking-widest">Premium<br/>HD Server</p>
-              <p className="text-[8px] mt-3 opacity-80 flex items-center justify-center gap-1 uppercase">Unlock Player <ExternalLink size={10}/></p>
-            </a>
-            
-            {/* Adsterra Banner Referral */}
-            <div className="flex justify-center pt-4">
-               <a href="https://publishers.adsterra.com/referral/vN5p4P4q1w" rel="nofollow">
-                  <img alt="Adsterra Banner" src="https://landings-cdn.adsterratech.com/referralBanners/png/80%20x%2030%20px.png" className="transition-opacity rounded opacity-50 hover:opacity-100" />
-               </a>
-            </div>
-          </aside>
-
+          {!isLandscape && (
+            <aside className="hidden xl:block w-[240px] shrink-0 sticky top-32 h-fit space-y-4">
+               <div className="bg-gradient-to-br from-red-600 to-red-900 rounded-[2rem] p-6 text-center shadow-xl shadow-red-900/20">
+                  <Zap className="mx-auto mb-2 text-white animate-pulse" size={24} />
+                  <p className="text-[10px] font-black uppercase mb-4 tracking-widest">Ultra HD Server</p>
+                  <a href={SMART_LINK} target="_blank" rel="noreferrer" className="block w-full py-3 bg-black text-white text-[10px] font-black uppercase rounded-xl">Unlock 4K</a>
+               </div>
+            </aside>
+          )}
         </div>
-        <Footer />
+
+        {!isLandscape && <Footer />}
       </div>
     </Router>
   );

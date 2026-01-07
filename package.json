@@ -12,6 +12,8 @@
   "dependencies": {
     "@supabase/supabase-js": "^2.89.0",
     "axios": "^1.13.2",
+    "crypto-js": "^4.2.0",
+    "express": "^5.2.1",
     "firebase": "^12.7.0",
     "firebase-admin": "^13.6.0",
     "hls.js": "^1.6.15",

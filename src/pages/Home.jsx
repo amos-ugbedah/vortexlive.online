@@ -1,16 +1,14 @@
-import React, { useState, useEffect, useMemo, useCallback } from 'react';
+import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import { db } from '../lib/firebase';
-import { collection, onSnapshot, query, orderBy, limit } from 'firebase/firestore'; 
-import { ExternalLink, Zap, Bell, X, Users, RefreshCw } from 'lucide-react';
+import { collection, onSnapshot, query, orderBy } from 'firebase/firestore'; 
+import { Zap, Users, RefreshCw, Volume2, Download, Shield } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
 import SearchBar from '../components/SearchBar';
 import MatchCard from '../components/MatchCard';
 import EmptyState from '../components/EmptyState';
-import AdManager from '../components/AdManager';
 
 const parseTime = (timeStr) => {
-  if (!timeStr || ['TBD', '--', 'NS', 'LIVE', 'HT', 'FT'].includes(timeStr.toUpperCase())) {
-    return { totalMinutes: 9999 };
-  }
+  if (!timeStr || ['TBD', '--', 'NS', 'LIVE', 'HT', 'FT'].includes(timeStr.toUpperCase())) return { totalMinutes: 9999 };
   try {
     let time = timeStr.toString().toUpperCase().trim();
     let isPM = time.includes('PM');
@@ -21,66 +19,64 @@ const parseTime = (timeStr) => {
     if (isPM && hours < 12) hours += 12;
     if (!isPM && hours === 12) hours = 0;
     return { totalMinutes: hours * 60 + minutes };
-  } catch (e) { 
-    return { totalMinutes: 9999 }; 
-  }
+  } catch (e) { return { totalMinutes: 9999 }; }
 };
-
-const SubscriptionModal = ({ onClose }) => (
-  <div className="fixed inset-0 z-[150] flex items-center justify-center p-4 bg-black/90 backdrop-blur-md animate-in fade-in duration-300">
-    <div className="relative w-full max-w-md p-8 overflow-hidden text-center border shadow-2xl bg-zinc-950 border-white/10 rounded-3xl">
-      <button onClick={onClose} className="absolute transition-colors top-4 right-4 text-white/20 hover:text-white">
-        <X size={24} />
-      </button>
-      <div className="flex items-center justify-center w-20 h-20 mx-auto mb-6 text-red-500 rounded-full bg-red-600/20 animate-pulse">
-        <Bell size={40} />
-      </div>
-      <h2 className="mb-2 text-3xl italic font-black tracking-tighter text-white uppercase">VORTEX <span className="text-red-600">VIP</span></h2>
-      <p className="mb-8 text-sm font-medium leading-relaxed text-gray-400">
-        Don't miss a single goal! Get instant **Private Telegram Alerts** for goals, red cards, and match kick-offs.
-      </p>
-      <a 
-        href="https://t.me/LivefootballVortex" 
-        target="_blank" 
-        rel="noopener noreferrer"
-        onClick={onClose}
-        className="block w-full py-5 font-black text-white transition-all transform bg-red-600 shadow-lg rounded-2xl hover:bg-red-700 active:scale-95 shadow-red-600/20"
-      >
-        ACTIVATE FREE ALERTS
-      </a>
-    </div>
-  </div>
-);
 
 const Home = () => {
   const [matches, setMatches] = useState([]);
   const [searchTerm, setSearchTerm] = useState("");
   const [isLoading, setIsLoading] = useState(true);
-  const [showSubModal, setShowSubModal] = useState(false);
   const [viewers] = useState(Math.floor(Math.random() * (4800 - 3200 + 1) + 3200));
-  const [activeStream, setActiveStream] = useState(null);
-
-  const SMART_LINK = "https://www.effectivegatecpm.com/m0hhxyhsj?key=2dc5d50b0220cf3243f77241e3c3114d";
+  const [soundEnabled, setSoundEnabled] = useState(false);
+  const [deferredPrompt, setDeferredPrompt] = useState(null);
+  
+  const navigate = useNavigate();
+  const prevScores = useRef({});
+  const goalSound = new Audio('https://assets.mixkit.co/active_storage/sfx/2042/2042-preview.mp3'); 
 
   useEffect(() => {
-    const timer = setTimeout(() => setShowSubModal(true), 15000);
-    return () => clearTimeout(timer);
+    window.addEventListener('beforeinstallprompt', (e) => {
+      e.preventDefault();
+      setDeferredPrompt(e);
+    });
   }, []);
 
-  // REAL-TIME FETCHING (Optimized with a limit of 50 matches to save quota)
-  useEffect(() => {
-    const q = query(
-        collection(db, 'matches'), 
-        orderBy('timestamp', 'desc'),
-        limit(50) 
-    );
+  const handleInstall = async () => {
+    if (!deferredPrompt) return;
+    deferredPrompt.prompt();
+    const { outcome } = await deferredPrompt.userChoice;
+    if (outcome === 'accepted') setDeferredPrompt(null);
+  };
 
+  const playGoalAlert = useCallback(() => {
+    if (soundEnabled) goalSound.play().catch(() => {});
+  }, [soundEnabled]);
+
+  const handleAdminGate = () => {
+    const pass = prompt("Enter Access Key:");
+    if (pass === "vortex_admin_2026") {
+      navigate('/admin');
+    }
+  };
+
+  useEffect(() => {
+    // REMOVED LIMIT - This fetches everything in the collection
+    const q = query(collection(db, 'matches'), orderBy('timestamp', 'desc'));
+    
     const unsubscribe = onSnapshot(q, (snapshot) => {
       const matchesData = snapshot.docs
         .map(doc => ({ id: doc.id, ...doc.data() }))
         .filter(m => m.id !== 'template_id');
+      
+      matchesData.forEach(match => {
+        const currentTotal = (match.homeScore || 0) + (match.awayScore || 0);
+        if (prevScores.current[match.id] !== undefined && currentTotal > prevScores.current[match.id]) {
+          if (['1H', '2H', 'HT', 'LIVE'].includes(match.status?.toUpperCase())) playGoalAlert();
+        }
+        prevScores.current[match.id] = currentTotal;
+      });
 
-      // Sorting Logic
+      // Sort: Live matches first, then by kickoff time
       matchesData.sort((a, b) => {
         const getPriority = (s) => {
           const status = s?.toUpperCase();
@@ -88,112 +84,104 @@ const Home = () => {
           if (status === 'FT') return 3;
           return 2;
         };
-        const priorityA = getPriority(a.status);
-        const priorityB = getPriority(b.status);
-        if (priorityA !== priorityB) return priorityA - priorityB;
+        if (getPriority(a.status) !== getPriority(b.status)) return getPriority(a.status) - getPriority(b.status);
         return parseTime(a.time || a.kickOffTime).totalMinutes - parseTime(b.time || b.kickOffTime).totalMinutes;
       });
 
       setMatches(matchesData);
       setIsLoading(false);
     }, (error) => {
-      console.error("Firebase Sync Error:", error);
+      console.error("Firestore Error:", error);
       setIsLoading(false);
     });
 
     return () => unsubscribe();
-  }, []);
-
-  const handleWatchMatch = useCallback((url) => {
-    if (url && url !== '#') {
-      setActiveStream(url);
-    }
-  }, []);
+  }, [playGoalAlert]);
 
   const groupMatches = useMemo(() => {
     const term = searchTerm.toLowerCase().trim();
     const filtered = matches.filter(m => 
       `${m.homeTeam?.name} ${m.awayTeam?.name} ${m.league}`.toLowerCase().includes(term)
     );
-
     return {
       live: filtered.filter(m => ['1H', '2H', 'HT', 'LIVE'].includes(m.status?.toUpperCase())),
       upcoming: filtered.filter(m => !['1H', '2H', 'HT', 'LIVE', 'FT'].includes(m.status?.toUpperCase())),
+      finished: filtered.filter(m => m.status?.toUpperCase() === 'FT')
     };
   }, [matches, searchTerm]);
 
   return (
-    <div className="min-h-screen p-4 mx-auto font-sans text-white bg-[#070708] md:p-8 max-w-7xl">
-      {showSubModal && <SubscriptionModal onClose={() => setShowSubModal(false)} />}
-      
-      {/* Passing activeStream and a function to clear it */}
-      <AdManager activeStream={activeStream} onClose={() => setActiveStream(null)} />
-
-      <div className="flex flex-col justify-between gap-4 mb-8 md:flex-row md:items-center">
-        <div>
-           <h1 className="text-3xl italic font-black tracking-tighter text-white uppercase">VORTEX <span className="text-red-600">LIVE</span></h1>
-           <div className="flex items-center gap-2 mt-1">
-              <Users size={12} className="text-green-500" />
-              <span className="text-[10px] font-bold text-gray-500 uppercase tracking-widest">{viewers.toLocaleString()} Fans Online Now</span>
-           </div>
+    <div className="flex flex-col w-full min-h-screen">
+      {deferredPrompt && (
+        <div className="flex items-center justify-between p-4 mx-2 mb-6 shadow-xl bg-gradient-to-r from-red-600 to-indigo-700 rounded-3xl animate-bounce">
+          <div className="flex items-center gap-3">
+            <Download size={20} className="text-white" />
+            <p className="text-[10px] font-black uppercase tracking-tight text-white">Install App for HD</p>
+          </div>
+          <button onClick={handleInstall} className="bg-white text-black px-4 py-2 rounded-xl text-[10px] font-black uppercase">Install</button>
         </div>
+      )}
 
-        <button onClick={() => setShowSubModal(true)} className="flex items-center gap-2 px-4 py-2 bg-red-600/10 border border-red-600/30 rounded-xl text-red-500 text-[10px] font-black uppercase">
-            <Bell size={14} /> Get Goal Alerts
+      <div className="flex flex-col items-start justify-between gap-4 mb-6 md:flex-row md:items-center">
+        <div>
+          <h1 className="text-2xl italic font-black tracking-tighter text-white uppercase md:text-3xl">VORTEX <span className="text-red-600">LIVE</span></h1>
+          <div className="flex items-center gap-2 mt-1">
+            <div className="w-1.5 h-1.5 bg-green-500 rounded-full animate-pulse" />
+            <span className="text-[9px] font-black text-gray-500 uppercase tracking-widest">{viewers.toLocaleString()} Fans Connected</span>
+          </div>
+        </div>
+        <button onClick={() => setSoundEnabled(!soundEnabled)}
+          className={`w-full md:w-auto flex items-center justify-center gap-2 px-6 py-3 border rounded-2xl text-[10px] font-black uppercase transition-all ${soundEnabled ? 'bg-green-600/10 border-green-600/30 text-green-500' : 'bg-white/5 border-white/10 text-white/30'}`}>
+          <Volume2 size={14} /> {soundEnabled ? 'Alerts: ON' : 'Muted'}
         </button>
       </div>
 
-      <SearchBar value={searchTerm} onChange={setSearchTerm} />
-
-      <a href={SMART_LINK} target="_blank" rel="noreferrer" className="relative block w-full p-1 mb-8 overflow-hidden transition-all border group rounded-3xl border-white/5 bg-white/5 hover:bg-white/[0.08]">
-        <div className="flex items-center justify-between px-6 py-4">
-          <div className="flex items-center gap-4">
-            <div className="p-2 bg-red-600 rounded-xl"><Zap size={20} className="text-white" /></div>
-            <div>
-              <h3 className="text-sm italic font-black text-white uppercase">Premium Ultra-HD Engine</h3>
-              <p className="text-[10px] text-gray-500 font-bold uppercase tracking-widest">Global CDN • 0ms Latency</p>
-            </div>
-          </div>
-          <ExternalLink size={18} className="text-white/20 group-hover:text-red-600" />
-        </div>
-      </a>
+      <div className="mb-8">
+        <SearchBar value={searchTerm} onChange={setSearchTerm} />
+      </div>
 
       {isLoading ? (
-        <div className="py-32 text-center animate-pulse">
-          <RefreshCw className="w-10 h-10 mx-auto mb-6 text-red-600 animate-spin" />
-          <p className="text-[10px] font-black tracking-[0.3em] uppercase text-white/20">Syncing Vortex Servers...</p>
+        <div className="flex flex-col items-center flex-1 py-20 text-center">
+          <RefreshCw className="w-8 h-8 mb-4 text-red-600 animate-spin" />
+          <p className="text-[10px] font-black uppercase tracking-[0.3em] text-white/20">Syncing...</p>
         </div>
       ) : (
-        <>
+        <div className="flex-1 space-y-10">
           {groupMatches.live.length > 0 && (
-            <section className="mb-12">
-              <h2 className="flex items-center gap-3 mb-6 text-2xl italic font-black text-white uppercase">
-                <span className="w-1.5 h-8 bg-red-600 rounded-full shadow-[0_0_15px_rgba(220,38,38,0.5)]"></span> LIVE NOW
+            <section>
+              <h2 className="flex items-center gap-3 mb-5 text-lg italic font-black tracking-tighter text-white uppercase">
+                <span className="w-1 h-5 bg-red-600 rounded-full"></span> LIVE
               </h2>
-              <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3">
-                {groupMatches.live.map(m => (
-                  <MatchCard key={m.id} match={m} handleStreamClick={handleWatchMatch} />
-                ))}
+              <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+                {groupMatches.live.map(m => <MatchCard key={m.id} match={m} />)}
               </div>
             </section>
           )}
 
-          <section className="mb-12">
-            <h2 className="flex items-center gap-3 mb-6 text-2xl italic font-black text-white uppercase">
-              <span className="w-1.5 h-8 bg-zinc-800 rounded-full"></span> UPCOMING
+          <section className="pb-20">
+            <h2 className="flex items-center gap-3 mb-5 text-lg italic font-black tracking-tighter text-white uppercase">
+              <span className="w-1 h-5 rounded-full bg-zinc-700"></span> UPCOMING
             </h2>
-            <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3">
-              {groupMatches.upcoming.map(m => (
-                <MatchCard key={m.id} match={m} handleStreamClick={handleWatchMatch} />
-              ))}
+            <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+              {groupMatches.upcoming.map(m => <MatchCard key={m.id} match={m} />)}
             </div>
           </section>
 
           {groupMatches.live.length === 0 && groupMatches.upcoming.length === 0 && (
             <EmptyState searchTerm={searchTerm} onClearSearch={() => setSearchTerm('')} />
           )}
-        </>
+        </div>
       )}
+
+      <footer className="flex flex-col items-center justify-center py-10 mt-auto transition-opacity border-t border-white/5 opacity-20 hover:opacity-100">
+        <button 
+          onClick={handleAdminGate}
+          className="flex items-center gap-2 text-[8px] font-black text-zinc-500 uppercase tracking-[0.4em] hover:text-red-600 transition-colors"
+        >
+          <Shield size={10} /> Secure Portal Access
+        </button>
+        <p className="text-[7px] text-zinc-700 mt-2 uppercase font-bold">Vortex Broadcast Group © 2026</p>
+      </footer>
     </div>
   );
 };
