@@ -1,30 +1,87 @@
-import React, { useEffect, useRef } from 'react';
+/* eslint-disable */
+import React, { useEffect, useRef, useState } from 'react';
 import Hls from 'hls.js';
+import { AlertTriangle, Loader2 } from 'lucide-react';
 
 const IPTVPlayer = ({ url }) => {
   const videoRef = useRef(null);
+  const [playerType, setPlayerType] = useState('loading'); // 'hls', 'iframe', 'error'
 
   useEffect(() => {
+    if (!url) return;
+
+    // Pro Detection: If it's a web link (2embed, youtube, etc) use Iframe
+    // If it's a stream link (.m3u8, .mp4, .ts) use Hls
+    const isStream = url.includes('.m3u8') || url.includes('.mp4') || url.includes('/playlist');
+
+    if (!isStream) {
+      setPlayerType('iframe');
+      return;
+    }
+
+    setPlayerType('hls');
     const video = videoRef.current;
     if (!video) return;
 
+    let hls;
     if (Hls.isSupported()) {
-      const hls = new Hls();
+      hls = new Hls({
+        enableWorker: true,
+        lowLatencyMode: true,
+        backBufferLength: 90
+      });
       hls.loadSource(url);
       hls.attachMedia(video);
+      hls.on(Hls.Events.ERROR, (event, data) => {
+        if (data.fatal) setPlayerType('error');
+      });
     } else if (video.canPlayType('application/vnd.apple.mpegurl')) {
-      // For Safari users
       video.src = url;
     }
+
+    return () => {
+      if (hls) hls.destroy();
+    };
   }, [url]);
 
+  if (playerType === 'error') {
+    return (
+      <div className="flex flex-col items-center justify-center w-full h-full gap-4 text-red-500 bg-zinc-950">
+        <AlertTriangle size={48} />
+        <p className="text-xs font-black tracking-widest uppercase">Stream Decoding Failed</p>
+      </div>
+    );
+  }
+
   return (
-    <video 
-      ref={videoRef} 
-      controls 
-      className="w-full h-full rounded-2xl"
-      poster="/vortex-loading.jpg" // Optional loading image
-    />
+    <div className="relative w-full h-full overflow-hidden bg-black rounded-2xl">
+      {playerType === 'hls' && (
+        <video
+          ref={videoRef}
+          controls
+          autoPlay
+          playsInline
+          className="w-full h-full"
+          poster="/vortex-loading.jpg"
+        />
+      )}
+
+      {playerType === 'iframe' && (
+        <iframe
+          src={url}
+          className="w-full h-full border-0"
+          allowFullScreen
+          allow="autoplay; encrypted-media; picture-in-picture"
+          sandbox="allow-scripts allow-same-origin allow-forms allow-presentation"
+        />
+      )}
+
+      {playerType === 'loading' && (
+        <div className="absolute inset-0 flex items-center justify-center bg-zinc-950">
+          <Loader2 className="text-red-600 animate-spin" size={32} />
+        </div>
+      )}
+    </div>
   );
 };
 

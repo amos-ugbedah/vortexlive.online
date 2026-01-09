@@ -1,88 +1,80 @@
+/* eslint-disable */
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Clock, PlayCircle, Zap } from 'lucide-react';
-import MatchTimer from './MatchTimer';
+import { ShieldCheck, BrainCircuit } from 'lucide-react';
 
-const MatchCard = ({ match }) => {
-  const m = match || {};
+const MatchCard = ({ match: m }) => {
   const navigate = useNavigate();
+  const status = m.status?.toUpperCase();
+  const isLive = ['1H', '2H', 'HT', 'LIVE', 'IN_PLAY'].includes(status);
+  const isFinished = ['FT', 'AET', 'PEN'].includes(status);
   
-  const isLive = m.status === 'LIVE' || m.status === '1H' || m.status === '2H' || m.status === 'HT';
-  // Check if at least one link exists
-  const hasStream = (m.streamUrl1?.length > 5 || m.streamUrl2?.length > 5 || m.streamUrl3?.length > 5);
+  // DYNAMIC AI PREDICTION LOGIC
+  // If database doesn't have a prediction, we simulate one based on match ID
+  const getAiPrediction = () => {
+    if (m.aiPick) return m.aiPick;
+    const picks = ["Home Win", "Over 2.5 Goals", "Both Teams to Score", "Away Win (DNB)"];
+    const index = m.id.charCodeAt(0) % picks.length;
+    return picks[index];
+  };
 
   return (
-    <div className="bg-zinc-900/40 border border-white/5 rounded-[2.5rem] p-6 flex flex-col justify-between hover:border-red-600/40 transition-all hover:-translate-y-1 group relative overflow-hidden">
+    <div className={`group relative flex flex-col justify-between overflow-hidden rounded-[2.5rem] border border-white/5 bg-[#0c0c0c] p-5 transition-all duration-500 hover:border-red-600/40 ${isFinished ? 'grayscale-[0.5]' : 'hover:-translate-y-1'}`}>
       
+      {/* Header */}
       <div className="flex items-center justify-between mb-6">
-        <span className="text-[10px] font-black text-white/30 uppercase tracking-widest truncate max-w-[60%]">
-          {m.league || 'Vortex Premium'}
-        </span>
-        <div className={`px-3 py-1 rounded-full text-[8px] font-black uppercase ${isLive ? 'bg-red-600 animate-pulse text-white' : 'bg-white/10 text-white/60'}`}>
-          {isLive ? 'LIVE' : m.status || 'UPCOMING'}
+        <div className="flex items-center gap-2">
+          <ShieldCheck size={14} className="text-red-600" />
+          <span className="text-[10px] font-black uppercase tracking-widest text-white/30 truncate max-w-[80px]">
+            {m.league || 'Vortex Pro'}
+          </span>
+        </div>
+        <div className={`px-3 py-1 rounded-full text-[10px] font-black ${isLive ? 'bg-red-600 text-white animate-pulse' : 'bg-white/5 text-white/20'}`}>
+          {isLive ? `• ${m.minute || 'LIVE'}` : status}
         </div>
       </div>
 
-      <div className="mb-6 space-y-3 text-center">
-        <div className="flex items-center justify-between px-2">
-          {/* Home Team */}
-          <div className="flex flex-col items-center flex-1 gap-2">
-             <img src={m.homeTeam?.logo} className="object-contain w-10 h-10" alt="" />
-             <h2 className="text-[10px] font-black text-white uppercase truncate w-full text-center">{m.homeTeam?.name}</h2>
-          </div>
-
-          {/* Score or Match Time */}
-          <div className="flex flex-col items-center justify-center flex-1">
-             {isLive || m.status === 'FT' ? (
-               <div className="flex items-center gap-1 text-3xl italic font-black tracking-tighter text-white">
-                 <span>{m.homeScore ?? 0}</span>
-                 <span className="text-xl text-red-600">-</span>
-                 <span>{m.awayScore ?? 0}</span>
-               </div>
-             ) : (
-               <div className="flex flex-col items-center">
-                 <div className="text-[10px] font-black text-red-600 mb-1 tracking-widest uppercase">Kickoff</div>
-                 <div className="text-2xl italic font-black text-white">
-                   {m.displayTime || '--:--'}
-                 </div>
-               </div>
-             )}
-          </div>
-
-          {/* Away Team */}
-          <div className="flex flex-col items-center flex-1 gap-2">
-             <img src={m.awayTeam?.logo} className="object-contain w-10 h-10" alt="" />
-             <h2 className="text-[10px] font-black text-white uppercase truncate w-full text-center">{m.awayTeam?.name}</h2>
-          </div>
-        </div>
-
-        {isLive && m.lastEvent && (
-          <div className="flex items-center justify-center gap-2 px-3 py-1.5 mx-auto border bg-red-600/5 border-red-600/10 rounded-lg">
-            <Zap size={8} className="text-red-600 fill-red-600" />
-            <span className="text-[8px] font-black text-red-500 uppercase tracking-widest">{m.lastEvent}</span>
-          </div>
-        )}
-
-        {/* Bottom Timer/Status */}
-        <div className="flex items-center justify-center gap-2 text-[9px] font-bold uppercase italic text-white/30 tracking-widest">
-          <Clock size={10} className={isLive ? 'text-red-600' : ''} />
-          {isLive ? (
-            <MatchTimer match={m} />
+      {/* Score / Time Area */}
+      <div className="grid items-center grid-cols-3 gap-2 mb-6">
+        <TeamDisplay logo={m.home?.logo} name={m.home?.name} />
+        <div className="flex flex-col items-center justify-center">
+          {(isLive || isFinished) ? (
+            <div className="flex items-center gap-1 text-2xl italic font-black">
+              <span>{m.home?.score ?? 0}</span><span className="text-red-600">:</span><span>{m.away?.score ?? 0}</span>
+            </div>
           ) : (
-            <span>Starts at {m.displayTime || 'TBA'}</span>
+            <span className="text-xl italic font-black text-white/80">{m.time || 'TBA'}</span>
           )}
         </div>
+        <TeamDisplay logo={m.away?.logo} name={m.away?.name} />
       </div>
 
+      {/* AI Prediction Area - Changes Daily/Per Match */}
+      <div className="flex items-center justify-center gap-2 py-2 mb-6 border bg-white/5 rounded-xl border-white/5">
+        <BrainCircuit size={12} className="text-red-600" />
+        <span className="text-[9px] font-black uppercase text-white/40 tracking-tighter">
+          AI BOT: <span className="text-white">{getAiPrediction()}</span>
+        </span>
+      </div>
+
+      {/* Action Button */}
       <button 
         onClick={() => navigate(`/match/${m.id}`)}
-        className={`w-full py-4 rounded-2xl font-black uppercase text-[11px] tracking-[0.2em] transition-all flex items-center justify-center gap-3
-          ${!hasStream && !isLive ? 'bg-zinc-800 text-white/10' : 'bg-red-600 text-white hover:bg-white hover:text-black shadow-[0_0_20px_rgba(220,38,38,0.2)]'}`}
+        className={`w-full py-4 rounded-xl text-[11px] font-black uppercase tracking-widest transition-all ${isLive ? 'bg-red-600 shadow-lg shadow-red-600/20' : 'bg-white/5 text-white/40 hover:bg-white/10'}`}
       >
-        <PlayCircle size={16} /> {isLive ? 'WATCH LIVE' : 'MATCH DETAILS'}
+        {isLive ? 'ENTER STREAM' : 'VIEW DETAILS'}
       </button>
     </div>
   );
 };
+
+const TeamDisplay = ({ logo, name }) => (
+  <div className="flex flex-col items-center">
+    <div className="flex items-center justify-center p-3 mb-2 border w-14 h-14 bg-white/5 rounded-2xl border-white/5">
+      {logo ? <img src={logo} className="object-contain w-full h-full" alt="" /> : <div className="w-full h-full rounded-full bg-white/5" />}
+    </div>
+    <p className="text-[10px] font-black text-center uppercase leading-tight line-clamp-2 h-7 text-white/70">{name || 'TBA'}</p>
+  </div>
+);
 
 export default MatchCard;

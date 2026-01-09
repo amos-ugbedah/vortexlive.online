@@ -1,70 +1,61 @@
+/* eslint-disable */
 import React, { useState, useEffect } from 'react';
 
 const MatchTimer = ({ match }) => {
   const [displayTime, setDisplayTime] = useState('--');
+  const [isAddedTime, setIsAddedTime] = useState(false);
 
   useEffect(() => {
-    const updateClock = () => {
+    const calculateTime = () => {
       if (!match) return;
-
       const status = String(match.status || '').toUpperCase();
+      
+      const staticStates = { 
+        'HT': 'HALF TIME', 'FT': 'FULL TIME', 'AET': 'END AET', 
+        'PEN': 'PENALTIES', 'NS': 'UPCOMING', 'PST': 'POSTPONED' 
+      };
 
-      // 1. Static Statuses
-      if (status === 'HT') {
-        setDisplayTime('HT');
-        return;
-      }
-      if (status === 'FT') {
-        setDisplayTime('FT');
-        return;
-      }
-      if (status === 'NS' || status === 'UPCOMING') {
-        setDisplayTime(match.time || 'Upcoming');
+      if (staticStates[status]) {
+        setDisplayTime(staticStates[status]);
+        setIsAddedTime(false);
         return;
       }
 
-      // 2. Live Match Logic (1H or 2H)
-      if (status === '1H' || status === '2H') {
-        try {
-          // Convert Firebase timestamp or String to Milliseconds
-          const lastUpdate = match.lastUpdate?.seconds 
-            ? match.lastUpdate.seconds * 1000 
-            : new Date(match.lastUpdate).getTime();
+      if (['1H', '2H', 'ET', 'LIVE', 'IN_PLAY'].includes(status)) {
+        const baseMin = Number(match.minute) || 0;
+        // API updates are every 1 min, so we show the base min recorded
+        const currentMin = baseMin;
 
-          if (isNaN(lastUpdate)) {
-            setDisplayTime(status); // Fallback to '1H' or '2H' if date is invalid
-            return;
-          }
-
-          const diffInMins = Math.floor((Date.now() - lastUpdate) / 60000);
-          const currentMin = (Number(match.baseMinute) || 0) + diffInMins;
-
-          // 3. Stoppage Time formatting (e.g., 45+2')
-          if (status === '1H') {
-            if (currentMin > 45) setDisplayTime(`45+${currentMin - 45}'`);
-            else setDisplayTime(`${Math.max(1, currentMin)}'`);
-          } else if (status === '2H') {
-            if (currentMin > 90) setDisplayTime(`90+${currentMin - 90}'`);
-            else setDisplayTime(`${Math.max(46, currentMin)}'`);
-          }
-        } catch (e) {
-          setDisplayTime(status);
+        if (status === '1H' && currentMin > 45) {
+          setDisplayTime(`45+${currentMin - 45}'`);
+          setIsAddedTime(true);
+        } else if (status === '2H' && currentMin > 90) {
+          setDisplayTime(`90+${currentMin - 90}'`);
+          setIsAddedTime(true);
+        } else {
+          setDisplayTime(`${Math.max(1, currentMin)}'`);
+          setIsAddedTime(false);
         }
       } else {
-        setDisplayTime(status || 'NS');
+        setDisplayTime(status || 'LIVE');
       }
     };
 
-    updateClock();
-    // Update every 30 seconds to keep it accurate without killing performance
-    const interval = setInterval(updateClock, 30000); 
+    calculateTime();
+    const interval = setInterval(calculateTime, 10000);
     return () => clearInterval(interval);
   }, [match]);
 
   return (
-    <span className="italic font-black tracking-tighter tabular-nums text-inherit">
-      {displayTime}
-    </span>
+    <div className="flex items-center gap-2 px-4 py-2 border rounded-full bg-red-600/10 border-red-600/20">
+      <span className="relative flex w-2 h-2">
+        <span className="absolute inline-flex w-full h-full bg-red-400 rounded-full opacity-75 animate-ping"></span>
+        <span className="relative inline-flex w-2 h-2 bg-red-600 rounded-full"></span>
+      </span>
+      <span className={`text-[10px] font-black uppercase tracking-widest ${isAddedTime ? 'text-amber-400' : 'text-red-600'}`}>
+        {displayTime}
+      </span>
+    </div>
   );
 };
 

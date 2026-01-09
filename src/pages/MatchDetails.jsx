@@ -1,20 +1,21 @@
-import React, { useEffect, useState } from 'react';
+/* eslint-disable */
+import React, { useEffect, useState, useMemo } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { db } from '../lib/firebase';
 import { doc, onSnapshot } from 'firebase/firestore';
-import { ChevronLeft, Trophy, Lock, ShieldCheck, Info } from 'lucide-react';
-import IPTVPlayer from '../components/IPTVPlayer'; // Make sure this path is correct
+import { 
+  ChevronLeft, RefreshCcw, Monitor, BarChart3, 
+  Activity, AlertCircle, Radio, Share2, CheckCircle2
+} from 'lucide-react';
+import IPTVPlayer from '../components/IPTVPlayer';
+import UltraPlayer from '../components/UltraPlayer';
 
 const MatchDetails = () => {
   const { id } = useParams();
   const [match, setMatch] = useState(null);
-  const [standings, setStandings] = useState([]);
   const [activeServer, setActiveServer] = useState(1);
-
-  const decodeLink = (str) => {
-    if (!str || str.length < 10) return "";
-    try { return atob(str); } catch (e) { return str; }
-  };
+  const [key, setKey] = useState(0);
+  const [copied, setCopied] = useState(false);
 
   useEffect(() => {
     const unsub = onSnapshot(doc(db, 'matches', id), (doc) => {
@@ -23,144 +24,278 @@ const MatchDetails = () => {
     return () => unsub();
   }, [id]);
 
-  useEffect(() => {
-    if (match?.leagueId) fetchStandings(match.leagueId);
-  }, [match?.leagueId]);
-
-  const fetchStandings = async (leagueId) => {
+  const stream = useMemo(() => {
+    const raw = activeServer === 1 ? match?.streamUrl1 : 
+                activeServer === 2 ? match?.streamUrl2 : match?.streamUrl3;
+    
+    if (!raw || raw.length < 10) return null;
+    
     try {
-      const res = await fetch(`https://v3.football.api-sports.io/standings?league=${leagueId}&season=2025`, {
-        headers: { 'x-apisports-key': '0131b99f8e87a724c92f8b455cc6781d' }
+      if (raw.startsWith('http')) return raw;
+      const decoded = atob(raw);
+      if (decoded.includes('<script') || decoded.includes('<html')) return null;
+      return decoded;
+    } catch (e) {
+      console.error("Signal Decode Error");
+      return null;
+    }
+  }, [match, activeServer]);
+
+  // --- VIRAL SHARE LOGIC ---
+  const handleShare = () => {
+    const shareUrl = window.location.href;
+    const shareText = `🔥 Watching ${match?.home?.name} vs ${match?.away?.name} LIVE in Ultra HD on Vortex Live! \n\nJoin the action here: \n${shareUrl}`;
+    
+    if (navigator.share) {
+      navigator.share({
+        title: 'Vortex Live HD',
+        text: shareText,
+        url: shareUrl,
       });
-      const data = await res.json();
-      setStandings(data.response[0]?.league?.standings[0] || []);
-    } catch (e) {}
+    } else {
+      navigator.clipboard.writeText(shareText);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 3000);
+    }
   };
 
-  const currentStream = decodeLink(
-    activeServer === 1 ? match?.streamUrl1 : 
-    activeServer === 2 ? match?.streamUrl2 : 
-    match?.streamUrl3
-  );
-
-  const isM3U8 = currentStream.toLowerCase().includes('.m3u8');
+  const isM3U8 = stream?.toLowerCase().includes('.m3u8');
+  const isGoogleFallback = stream?.includes('google.com/search');
 
   return (
-    <div className="min-h-screen bg-[#070708] text-white p-3 md:p-8 overflow-y-auto pb-24">
-      <div className="flex items-center justify-between mb-4 md:mb-6">
-        <Link to="/" className="flex items-center gap-1 text-white/40 uppercase text-[9px] font-black tracking-widest hover:text-white transition-colors">
-          <ChevronLeft size={14} /> Back
-        </Link>
-        <div className="flex items-center gap-2 px-3 py-1 border rounded-full bg-emerald-500/5 border-emerald-500/20">
-          <ShieldCheck size={12} className="text-emerald-500" />
-          <span className="text-[8px] md:text-[10px] font-black text-emerald-500 uppercase tracking-widest">Secure Broadcast</span>
-        </div>
-      </div>
+    <div className="min-h-screen bg-[#020202] text-white p-4 md:p-8 font-sans selection:bg-red-600/30 pb-20">
+      <style>{`
+        @keyframes ticker-scroll {
+          0% { transform: translateX(100%); }
+          100% { transform: translateX(-100%); }
+        }
+        .animate-ticker {
+          display: inline-block;
+          white-space: nowrap;
+          animation: ticker-scroll 25s linear infinite;
+        }
+      `}</style>
 
-      <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
-        <div className="space-y-4 lg:col-span-2">
+      <div className="max-w-[1400px] mx-auto">
+        {/* TOP NAV BAR */}
+        <div className="flex items-center justify-between mb-8">
+          <Link to="/" className="flex items-center gap-4 group">
+             <div className="p-4 transition-all border bg-white/5 rounded-2xl border-white/10 group-hover:bg-red-600 group-hover:border-red-500 group-hover:shadow-[0_0_20px_rgba(220,38,38,0.4)]">
+                <ChevronLeft size={20} />
+             </div>
+             <div>
+                <span className="block text-2xl italic font-black leading-none tracking-tighter text-red-600 uppercase">Vortex Live</span>
+                <span className="text-[10px] font-bold uppercase tracking-[0.2em] opacity-40">Ultra HD Stream Link Provider</span>
+             </div>
+          </Link>
           
-          <div className="relative z-20 aspect-video bg-black rounded-2xl md:rounded-[2.5rem] overflow-hidden border border-white/5 shadow-2xl group">
-            {currentStream ? (
-              isM3U8 ? (
-                /* NATIVE IPTV PLAYER */
-                <IPTVPlayer url={currentStream} />
+          <div className="flex items-center gap-3">
+             {/* SHARE BUTTON */}
+             <button 
+               onClick={handleShare}
+               className="flex items-center gap-3 px-6 py-4 transition-all border bg-zinc-900 border-white/10 rounded-2xl hover:bg-blue-600 hover:border-blue-500 group"
+             >
+               {copied ? <CheckCircle2 size={18} className="text-green-400" /> : <Share2 size={18} className="text-blue-400" />}
+               <span className="hidden md:block text-[10px] font-black uppercase tracking-widest">{copied ? 'Copied!' : 'Share Match'}</span>
+             </button>
+
+             <button 
+               onClick={() => setKey(k => k+1)} 
+               className="flex items-center gap-3 px-6 py-4 transition-all border bg-zinc-900 border-white/10 rounded-2xl hover:bg-zinc-800 hover:border-red-500/50 group"
+             >
+               <RefreshCcw size={18} className="text-red-600 transition-transform duration-700 group-hover:rotate-180" />
+               <span className="hidden md:block text-[10px] font-black uppercase tracking-widest">Repair Signal</span>
+             </button>
+          </div>
+        </div>
+
+        <div className="grid grid-cols-1 gap-8 xl:grid-cols-12">
+          {/* MAIN BROADCAST SECTION */}
+          <div className="space-y-6 xl:col-span-8">
+            <div className="relative aspect-video bg-black rounded-[2.5rem] overflow-hidden border border-white/10 shadow-2xl shadow-red-900/5 group">
+              
+              {/* INTERNAL OVERLAY CONTROLS (Floating Server Switcher) */}
+              <div className="absolute z-30 flex items-center gap-2 transition-opacity duration-500 opacity-0 top-6 right-6 group-hover:opacity-100">
+                {[1, 2, 3].map((num) => (
+                  <button
+                    key={num}
+                    onClick={() => setActiveServer(num)}
+                    className={`px-4 py-2 rounded-xl text-[10px] font-bold border backdrop-blur-md transition-all ${
+                      activeServer === num ? 'bg-red-600 border-red-500 text-white' : 'bg-black/40 border-white/10 text-white/60 hover:bg-black/60'
+                    }`}
+                  >
+                    SRV 0{num}
+                  </button>
+                ))}
+              </div>
+
+              {stream ? (
+                isGoogleFallback ? (
+                  <div className="flex flex-col items-center justify-center h-full gap-6 p-8 text-center bg-zinc-900">
+                    <Radio size={60} className="text-red-600 animate-pulse" />
+                    <div>
+                      <h3 className="mb-2 text-lg font-black tracking-widest uppercase">Anti-Block Signal Found</h3>
+                      <p className="max-w-md mx-auto mb-6 text-xs font-bold leading-relaxed uppercase opacity-60">
+                        The direct satellite link is encrypted. Use the Vortex bypass button below to access the live stream.
+                      </p>
+                      <a 
+                        href={stream} 
+                        target="_blank" 
+                        rel="noreferrer"
+                        className="inline-block bg-red-600 px-8 py-4 rounded-2xl font-black text-xs uppercase tracking-[0.2em] hover:scale-105 transition-transform"
+                      >
+                        Launch Direct Signal Bypass
+                      </a>
+                    </div>
+                  </div>
+                ) : (
+                  isM3U8 ? 
+                    <IPTVPlayer key={`${stream}-${key}`} url={stream} /> : 
+                    <UltraPlayer key={`${stream}-${key}`} url={stream} />
+                )
               ) : (
-                /* STANDARD IFRAME PLAYER */
-                <iframe 
-                  src={currentStream} 
-                  className="w-full h-full" 
-                  allow="autoplay; encrypted-media; fullscreen; picture-in-picture"
-                  allowFullScreen={true}
-                  webkitallowfullscreen="true"
-                  mozallowfullscreen="true"
-                  referrerPolicy="no-referrer"
-                  scrolling="no" 
-                  frameBorder="0" 
-                  title="Vortex Player"
-                />
-              )
-            ) : (
-              <div className="absolute inset-0 flex flex-col items-center justify-center p-6 text-center">
-                <Lock size={32} className="mb-4 text-white/10" />
-                <h2 className="text-sm italic font-black tracking-tighter uppercase">Server Handshake Failed</h2>
-                <p className="text-white/30 text-[8px] mt-2 font-bold uppercase tracking-widest">Please select Server 2 or 3 below</p>
-              </div>
-            )}
-          </div>
-
-          <div className="grid grid-cols-3 gap-2 md:gap-3">
-            {[1, 2, 3].map((num) => (
-              <button key={num} onClick={() => setActiveServer(num)}
-                className={`py-4 rounded-2xl text-[9px] font-black uppercase transition-all border ${
-                  activeServer === num 
-                  ? 'bg-red-600 border-red-500 text-white shadow-lg shadow-red-600/20' 
-                  : 'bg-zinc-900 border-white/5 text-white/30 hover:border-white/20'
-                }`}
-              >
-                Server {num}
-              </button>
-            ))}
-          </div>
-
-          <div className="bg-zinc-900/40 border border-white/5 rounded-[2rem] p-6 md:p-10 relative overflow-hidden">
-            <div className="relative z-10 flex items-center justify-between">
-              <div className="flex flex-col items-center flex-1 gap-3">
-                <img src={match?.homeTeam?.logo} className="object-contain w-12 h-12 md:w-20 md:h-20" alt="" />
-                <span className="text-[10px] font-black uppercase text-center">{match?.homeTeam?.name}</span>
-              </div>
-
-              <div className="flex-1 text-center">
-                <div className="text-4xl italic font-black tracking-tighter text-white md:text-6xl">
-                  {match?.homeScore} <span className="text-red-600">:</span> {match?.awayScore}
+                <div 
+                  className="relative flex flex-col items-center justify-center h-full gap-6 overflow-hidden cursor-pointer bg-zinc-900/40"
+                  onClick={() => setKey(k => k+1)}
+                >
+                  <div className="absolute inset-0 opacity-50 bg-gradient-to-t from-red-600/10 to-transparent" />
+                  <div className="relative">
+                    <Radio size={80} className="text-red-600 transition-transform animate-pulse" />
+                    <div className="absolute inset-0 bg-red-600 blur-[60px] opacity-20" />
+                  </div>
+                  <div className="z-10 text-center">
+                    <span className="block text-sm font-black uppercase tracking-[0.4em] mb-2 text-white/90">Searching for Live Signal</span>
+                    <span className="text-[10px] font-bold uppercase tracking-widest opacity-40 italic">
+                      Checking Satellite Servers...
+                    </span>
+                  </div>
                 </div>
-                {/* Penalty Score Logic */}
-                {match?.penaltyScore && (
-                   <div className="text-[10px] font-bold text-zinc-500 mt-1 uppercase">PENS: {match.penaltyScore}</div>
-                )}
-                <div className="inline-block px-4 py-1 bg-red-600/10 border border-red-600/20 text-[10px] font-black text-red-600 uppercase mt-4 rounded-full animate-pulse">
-                  {match?.status === 'ET' ? 'Extra Time' : match?.status === 'P' ? 'Penalties' : match?.status || 'Live'}
-                </div>
-              </div>
+              )}
+            </div>
 
-              <div className="flex flex-col items-center flex-1 gap-3">
-                <img src={match?.awayTeam?.logo} className="object-contain w-12 h-12 md:w-20 md:h-20" alt="" />
-                <span className="text-[10px] font-black uppercase text-center">{match?.awayTeam?.name}</span>
-              </div>
+            {/* SERVER GRID (Bottom Section) */}
+            <div className="grid grid-cols-3 gap-4">
+              {[match?.streamUrl1, match?.streamUrl2, match?.streamUrl3].map((raw, idx) => {
+                const n = idx + 1;
+                if (!raw || raw.length < 10) return null;
+
+                return (
+                  <button
+                    key={n}
+                    onClick={() => setActiveServer(n)}
+                    className={`relative p-6 rounded-[2rem] border transition-all duration-300 group overflow-hidden ${
+                      activeServer === n 
+                        ? 'bg-red-600 border-red-400 shadow-lg shadow-red-600/20' 
+                        : 'bg-zinc-900/40 border-white/5 hover:border-white/20'
+                    }`}
+                  >
+                    <div className="relative z-10 flex flex-col items-center">
+                      <Monitor size={18} className={`mb-2 ${activeServer === n ? 'text-white' : 'text-red-600'}`} />
+                      <span className="text-[11px] font-black uppercase tracking-widest">Server 0{n}</span>
+                    </div>
+                  </button>
+                );
+              })}
+            </div>
+
+            {/* STATS SECTION */}
+            <div className="bg-zinc-900/30 p-8 rounded-[3rem] border border-white/5 backdrop-blur-2xl">
+               <div className="flex items-center gap-3 mb-10">
+                  <BarChart3 size={20} className="text-red-600" />
+                  <span className="text-xs font-black tracking-widest uppercase">Match Analysis</span>
+               </div>
+               <div className="grid gap-10">
+                  <StatBar label="Ball Control" home={match?.home?.score > match?.away?.score ? 55 : 45} away={match?.away?.score > match?.home?.score ? 55 : 45} suffix="%" />
+                  <StatBar label="Pressure" home={match?.home?.score || 0} away={match?.away?.score || 0} />
+               </div>
             </div>
           </div>
 
-          <div className="flex items-start gap-3 p-4 border bg-blue-600/5 border-blue-500/10 rounded-2xl">
-            <Info size={18} className="text-blue-500 shrink-0" />
-            <p className="text-[9px] text-zinc-400 font-bold uppercase leading-relaxed">
-              Vortex Engine: Currently using {isM3U8 ? 'Native HLS Decoder' : 'Encrypted Iframe Proxy'}. If the stream freezes, toggle between servers to re-establish connection.
-            </p>
+          {/* SCOREBOARD SECTION */}
+          <div className="space-y-6 xl:col-span-4">
+            <div className="bg-zinc-900/40 p-10 rounded-[3.5rem] border border-white/5 text-center relative overflow-hidden shadow-2xl">
+               <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-transparent via-red-600 to-transparent" />
+               <p className="text-[10px] font-black opacity-30 uppercase tracking-[0.5em] mb-12">{match?.league || 'Vortex Stadium'}</p>
+               
+               <div className="flex items-center justify-between gap-4 px-4 mb-12">
+                  <TeamUI logo={match?.home?.logo} name={match?.home?.name} />
+                  <div className="flex flex-col items-center">
+                    <div className="mb-2 text-6xl italic font-black tracking-tighter text-white drop-shadow-[0_0_15px_rgba(255,255,255,0.1)]">
+                      {match?.home?.score || 0}:{match?.away?.score || 0}
+                    </div>
+                    <div className="px-4 py-1 border rounded-full bg-red-600/10 border-red-600/20">
+                       <span className="text-[10px] font-black text-red-500 uppercase">
+                          {match?.status === 'NS' ? 'Upcoming' : `${match?.minute || 0}' LIVE`}
+                       </span>
+                    </div>
+                  </div>
+                  <TeamUI logo={match?.away?.logo} name={match?.away?.name} />
+               </div>
+            </div>
+
+            <div className="bg-gradient-to-br from-red-600 to-red-800 p-8 rounded-[2.5rem] shadow-2xl shadow-red-900/30">
+               <div className="flex items-center gap-3 mb-4 text-white">
+                  <AlertCircle size={20} />
+                  <span className="text-[10px] font-black tracking-widest uppercase">Network Tip</span>
+               </div>
+               <p className="text-[11px] font-bold leading-relaxed text-white/90 uppercase">
+                  Experiencing lag? Switch to Server 02 or use the Quick Server tabs above the player for a seamless experience.
+               </p>
+            </div>
           </div>
         </div>
+      </div>
 
-        <aside className="space-y-4">
-           <div className="bg-zinc-900/40 border border-white/5 rounded-[2rem] p-6">
-              <h3 className="flex items-center gap-2 text-[10px] font-black uppercase text-red-600 mb-6 tracking-widest">
-                <Trophy size={14} /> League Standings
-              </h3>
-              <div className="space-y-2">
-                {standings.length > 0 ? standings.slice(0, 10).map((t, idx) => (
-                  <div key={idx} className="flex items-center justify-between p-3 transition-colors rounded-xl bg-white/5 hover:bg-white/10">
-                    <div className="flex items-center gap-3">
-                      <span className="text-[9px] font-black text-white/20 w-3">{idx + 1}</span>
-                      <img src={t.team.logo} className="w-4 h-4" />
-                      <span className="text-[10px] font-bold uppercase">{t.team.name}</span>
-                    </div>
-                    <span className="text-[10px] font-black text-emerald-500">{t.points} PTS</span>
-                  </div>
-                )) : (
-                  <div className="py-10 text-center">
-                    <div className="w-4 h-4 mx-auto border-2 border-red-600 rounded-full border-t-transparent animate-spin" />
-                  </div>
-                )}
-              </div>
-           </div>
-        </aside>
+      {/* --- PRO BROADCAST TICKER --- */}
+      <div className="fixed bottom-0 left-0 w-full bg-red-600 h-12 flex items-center overflow-hidden border-t border-white/20 z-[9999]">
+        <div className="bg-black px-6 h-full flex items-center z-20 border-r border-red-500 shadow-[10px_0_20px_rgba(0,0,0,0.5)]">
+          <span className="text-[11px] font-black uppercase tracking-[0.2em] text-white flex items-center gap-2">
+            <div className="w-2 h-2 bg-red-600 rounded-full animate-pulse" />
+            Vortex<span className="text-red-600">Live</span>
+          </span>
+        </div>
+        <div className="relative flex items-center flex-1 h-full overflow-hidden bg-red-700/30">
+          <div className="absolute animate-ticker whitespace-nowrap">
+            <span className="mx-12 text-[12px] font-black uppercase italic text-white drop-shadow-md">
+              🛰️ SIGNAL STATUS: SERVER {activeServer} ACTIVE & STABLE ... 
+            </span>
+            <span className="mx-12 text-[12px] font-black uppercase italic text-white drop-shadow-md">
+              ⚽ {match?.home?.name} {match?.home?.score} - {match?.away?.score} {match?.away?.name} ({match?.minute}') ... 
+            </span>
+            <span className="mx-12 text-[12px] font-black uppercase italic text-white drop-shadow-md">
+              📺 BROADCASTING IN ULTRA HD 4K ... NO BUFFERING PROTOCOL ENABLED ... 
+            </span>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+// ... TeamUI and StatBar components remain the same as your working version
+const TeamUI = ({ logo, name }) => (
+  <div className="flex flex-col items-center w-24 gap-4">
+    <div className="flex items-center justify-center w-24 h-24 p-5 border rounded-full shadow-inner bg-white/5 border-white/5">
+      {logo ? <img src={logo} alt="" className="object-contain max-w-full max-h-full drop-shadow-2xl" /> : <Activity size={32} className="text-red-600 opacity-10" />}
+    </div>
+    <span className="text-[11px] font-black uppercase text-center tracking-widest leading-tight h-8 flex items-center">{name || '---'}</span>
+  </div>
+);
+
+const StatBar = ({ label, home, away, suffix = "" }) => {
+  const h = parseFloat(home) || 0;
+  const a = parseFloat(away) || 0;
+  const total = h + a || 1;
+  const width = (h / total) * 100;
+  return (
+    <div className="space-y-4">
+      <div className="flex justify-between text-[11px] font-black uppercase tracking-tighter">
+        <span className="text-red-500">{h}{suffix}</span>
+        <span className="opacity-40">{label}</span>
+        <span>{a}{suffix}</span>
+      </div>
+      <div className="h-3 overflow-hidden rounded-full bg-white/5 p-[2px]">
+        <div style={{ width: `${width}%` }} className="h-full bg-red-600 transition-all duration-1000 rounded-full shadow-[0_0_15px_rgba(220,38,38,0.5)]" />
       </div>
     </div>
   );

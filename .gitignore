@@ -1,4 +1,4 @@
-# Logs
+# --- Logs & Debugging ---
 logs
 *.log
 npm-debug.log*
@@ -7,15 +7,16 @@ yarn-error.log*
 pnpm-debug.log*
 lerna-debug.log*
 
-node_modules
-dist
-dist-ssr
+# --- Dependencies & Build ---
+node_modules/
+dist/
+dist-ssr/
 *.local
 
-# Editor directories and files
+# --- Editor & System Files ---
 .vscode/*
 !.vscode/extensions.json
-.idea
+.idea/
 .DS_Store
 *.suo
 *.ntvs*
@@ -23,7 +24,17 @@ dist-ssr
 *.sln
 *.sw?
 
-# Firebase Security
+# --- Firebase Security & Keys ---
 serviceAccountKey.json
-*.local 
-serviceAccountKey.json
+# Ignore any local firebase files containing credentials
+firebase-debug.log
+firebase-debug.*.log
+.runtimeconfig.json
+
+# --- Environment Variables (CRITICAL) ---
+.env
+.env.local
+.env.*.local
+# Specifically for your cloud functions
+functions/.env
+functions/.env.local

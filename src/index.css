@@ -7,44 +7,21 @@
     @apply bg-[#050505] text-white antialiased overflow-x-hidden;
   }
 }
-
-/* Glass Effect for Cards */
-.glass-card {
-  @apply bg-white/5 border border-white/10 backdrop-blur-md rounded-[2rem] transition-all duration-300;
+.admin-input {
+  @apply bg-black/40 border border-white/10 rounded-xl px-4 py-3 text-sm text-white outline-none focus:border-red-600 transition-all;
 }
 
-/* Professional Seamless Marquee */
-@keyframes marquee-fast {
-  0% { transform: translateX(0); }
-  100% { transform: translateX(-50%); }
-}
-
-.animate-marquee-fast {
-  display: flex;
-  width: fit-content;
-  animation: marquee-fast 30s linear infinite;
-}
-
-.animate-marquee-fast:hover {
-  animation-play-state: paused;
-}
-
-/* Video Player Glow */
-.player-glow {
-  box-shadow: 0 0 50px -12px rgba(220, 38, 38, 0.5);
+/* FIX: This locks the Home Team, Center, and Away Team into 3 equal columns */
+.match-grid-layout {
+  display: grid;
+  grid-template-columns: 1fr 100px 1fr; /* Center is locked at 100px */
+  align-items: center;
+  gap: 12px;
+  width: 100%;
 }
 
 /* Custom Scrollbar */
-::-webkit-scrollbar {
-  width: 6px;
-}
-::-webkit-scrollbar-track {
-  background: #0a0a0c;
-}
-::-webkit-scrollbar-thumb {
-  background: #27272a;
-  border-radius: 10px;
-}
-::-webkit-scrollbar-thumb:hover {
-  background: #ef4444;
-}
+::-webkit-scrollbar { width: 6px; }
+::-webkit-scrollbar-track { background: #0a0a0c; }
+::-webkit-scrollbar-thumb { background: #27272a; border-radius: 10px; }
+::-webkit-scrollbar-thumb:hover { background: #ef4444; }
