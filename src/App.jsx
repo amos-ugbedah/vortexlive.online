@@ -49,9 +49,9 @@ function App() {
       <div className="min-h-screen bg-[#050505] text-white flex flex-col selection:bg-red-600">
         {!isLandscapeMode && <Navbar partners={defaultPartners} />}
         
-        {/* Full-width container to allow grid expansion */}
-        <div className={`w-full flex-1 ${isLandscapeMode ? 'p-0' : 'p-4 md:p-8'}`}>
-          <main className="w-full h-full max-w-[1600px] mx-auto">
+        {/* ULTRA PRO: Edge-to-edge container */}
+        <div className="flex-1 w-full">
+          <main className="w-full h-full">
             <Routes>
               <Route path="/" element={<Home />} />
               <Route path="/match/:id" element={<MatchDetails />} />

@@ -11,8 +11,8 @@ const API_KEYS = ["0131b99f8e87a724c92f8b455cc6781d", "0e3ac987340e582eb85a41758
 const TELEGRAM_TOKEN = "8126112394:AAH7-da80z0C7tLco-ZBoZryH_6hhZBKfhE";
 const CHAT_ID = "@LivefootballVortex";
 
-// IMPORTANT LEAGUES ONLY (EPL, La Liga, UCL, etc.) to prevent clustering
-const TARGET_LEAGUES = [39, 140, 135, 78, 61, 2, 3, 848]; 
+// LEAGUES: 1=AFCON, 39=EPL, 140=LaLiga, 135=SerieA, 78=Bundesliga, 61=Ligue1, 2=UCL, 3=UEL, 848=Conf, 307=Saudi, 88=Eredivisie, 94=Portugal, 12=CAF, 667=Friendlies, 10=Int Friendlies
+const TARGET_LEAGUES = [1, 39, 140, 135, 78, 61, 2, 3, 848, 307, 88, 94, 12, 667, 10]; 
 
 // --- HELPERS ---
 const sendTelegram = async (msg) => {
@@ -30,7 +30,7 @@ const fetchWithRotation = async (url) => {
         try {
             const response = await axios.get(url, {
                 headers: { 'x-apisports-key': API_KEYS[i], 'x-apisports-host': 'v3.football.api-sports.io' },
-                timeout: 8000
+                timeout: 10000
             });
             if (response.data.errors && Object.keys(response.data.errors).length > 0) continue;
             return response.data;
@@ -57,44 +57,56 @@ exports.morningCleanup = onSchedule({
     await batch.commit();
 });
 
-// --- TASK 2: DAILY SYNC (7:30 AM) & AI PREDICTIONS (8:00 AM) ---
+// --- TASK 2: DAILY SYNC (7:30 AM) ---
 exports.dailySync = onSchedule({
     schedule: "30 7 * * *",
     timeZone: "Africa/Lagos"
 }, async () => {
     const today = new Date().toISOString().split('T')[0];
     try {
+        console.log(`Vortex Sync Started for date: ${today}`);
         const data = await fetchWithRotation(`https://v3.football.api-sports.io/fixtures?date=${today}`);
         const matches = data.response || [];
+        
+        const batch = db.batch();
         let scheduleMsg = `📅 *TODAY'S ELITE FIXTURES*\n\n`;
+        let count = 0;
 
         for (const m of matches) {
-            // Filter: Only add matches from important leagues
             if (!TARGET_LEAGUES.includes(m.league.id)) continue;
 
             const time = new Date(m.fixture.date).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit', timeZone: 'Africa/Lagos' });
             scheduleMsg += `⏰ ${time} | ${m.teams.home.name} vs ${m.teams.away.name}\n`;
-
-            // Simple AI Prediction Logic based on league rank/form (Simulation)
+            
             const aiPicks = ["HOME WIN", "OVER 1.5", "BTTS", "AWAY DNB", "OVER 2.5"];
             const randomPick = aiPicks[Math.floor(Math.random() * aiPicks.length)];
 
-            await db.collection("matches").doc(`match_${m.fixture.id}`).set({
+            const matchRef = db.collection("matches").doc(`match_${m.fixture.id}`);
+            batch.set(matchRef, {
                 home: { name: m.teams.home.name, logo: m.teams.home.logo, score: 0 },
                 away: { name: m.teams.away.name, logo: m.teams.away.logo, score: 0 },
-                status: "NS",
+                status: m.fixture.status.short || "NS",
                 league: m.league.name,
                 kickoff: m.fixture.date,
                 time: time,
-                aiPick: randomPick, // The AI Bot's choice for the day
+                aiPick: randomPick,
                 lastUpdated: admin.firestore.FieldValue.serverTimestamp()
             }, { merge: true });
+            
+            count++;
         }
-        await sendTelegram(scheduleMsg + "\n🤖 *Vortex AI Predictions being calculated...*");
+        
+        if (count > 0) {
+            await batch.commit();
+            await sendTelegram(scheduleMsg + "\n🤖 *Vortex AI Predictions Ready!*");
+            console.log(`Successfully added ${count} matches to Firestore.`);
+        } else {
+            console.log("No matches found for target leagues today.");
+        }
     } catch (e) { console.error("Daily Sync Failed:", e.message); }
 });
 
-// --- TASK 3: VORTEX LIVE BOT (1 MIN UPDATES & GOAL ALERTS) ---
+// --- TASK 3: VORTEX LIVE BOT (EVERY 1 MIN) ---
 exports.vortexLiveBot = onSchedule({
     schedule: "every 1 minutes",
     timeZone: "Africa/Lagos",
@@ -113,10 +125,9 @@ exports.vortexLiveBot = onSchedule({
             const oldDoc = await matchRef.get();
             const oldData = oldDoc.data();
 
-            // GOAL ALERT LOGIC
+            // Goal Alert
             if (oldData && (m.goals.home > oldData.home.score || m.goals.away > oldData.away.score)) {
-                const scorer = m.events?.filter(e => e.type === "Goal").pop();
-                await sendTelegram(`⚽ *GOALLL!!!*\n\n${m.teams.home.name} ${m.goals.home} - ${m.goals.away} ${m.teams.away.name}\n⏱ ${m.fixture.status.elapsed}'\n${scorer ? `👤 ${scorer.player.name}` : ''}\n\n📺 Stream: https://vortexlive.online/match/${matchId}`);
+                await sendTelegram(`⚽ *GOALLL!!!*\n\n${m.teams.home.name} ${m.goals.home} - ${m.goals.away} ${m.teams.away.name}\n⏱ ${m.fixture.status.elapsed}'\n\n📺 Stream: https://vortexlive.online/match/${matchId}`);
             }
 
             await matchRef.update({
