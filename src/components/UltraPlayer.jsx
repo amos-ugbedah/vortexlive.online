@@ -1,10 +1,6 @@
 /* eslint-disable */
 import React from 'react';
 
-/**
- * UltraPlayer: The "Pro" version that removes the unstable cors.io proxy.
- * Uses no-referrer policy to bypass domain blocks used by stream providers.
- */
 const UltraPlayer = ({ url }) => {
   if (!url) {
     return (
@@ -14,10 +10,11 @@ const UltraPlayer = ({ url }) => {
     );
   }
 
-  // Pro Logic: Format sportsonline links or return clean URL
-  const getCleanUrl = (target) => {
-    if (target.includes('sportsonline.so') && !target.includes('/embed/')) {
-      return target.replace('.so/', '.so/embed/');
+  // Logic to ensure the URL is embed-ready
+  const getProcessedUrl = (target) => {
+    // If it's a footyhunter link, we ensure it's loaded as a clean frame
+    if (target.includes('footyhunterhd.shop')) {
+      return target; 
     }
     return target;
   };
@@ -25,14 +22,19 @@ const UltraPlayer = ({ url }) => {
   return (
     <div className="relative w-full h-full bg-black">
       <iframe
-        src={getCleanUrl(url)}
-        className="w-full h-full border-0 shadow-2xl"
+        src={getProcessedUrl(url)}
+        className="w-full h-full border-0"
         allow="autoplay; fullscreen; encrypted-media; picture-in-picture"
-        // THE SECRET SAUCE: Prevents the server from seeing your domain, 
-        // which stops them from sending the "JSON error" or blocking the frame.
+        
+        /* VORTEX BYPASS: 
+           'no-referrer' hides your website URL from footyhunter.
+           This stops them from blocking the stream because of "Cross-Origin".
+        */
         referrerPolicy="no-referrer"
-        // Sandbox allows the video to play but prevents the stream from 
-        // trying to redirect your whole website to an ad page.
+        
+        /* SANDBOX: 
+           'allow-same-origin' is REQUIRED for footyhunter's PHP player to load its own scripts.
+        */
         sandbox="allow-scripts allow-same-origin allow-forms allow-presentation"
         loading="lazy"
         title="Vortex Ultra Stream"

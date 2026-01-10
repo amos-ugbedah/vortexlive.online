@@ -2,19 +2,21 @@
 import React, { useEffect, useRef, useState } from 'react';
 import Hls from 'hls.js';
 import { AlertTriangle, Loader2 } from 'lucide-react';
+import UltraPlayer from './UltraPlayer'; // Ensure this path is correct
 
 const IPTVPlayer = ({ url }) => {
   const videoRef = useRef(null);
-  const [playerType, setPlayerType] = useState('loading'); // 'hls', 'iframe', 'error'
+  const [playerType, setPlayerType] = useState('loading'); 
 
   useEffect(() => {
     if (!url) return;
 
-    // Pro Detection: If it's a web link (2embed, youtube, etc) use Iframe
-    // If it's a stream link (.m3u8, .mp4, .ts) use Hls
-    const isStream = url.includes('.m3u8') || url.includes('.mp4') || url.includes('/playlist');
+    // Detect if the URL is a direct stream file or a website player
+    const isStreamFile = url.toLowerCase().includes('.m3u8') || 
+                         url.toLowerCase().includes('.mp4') || 
+                         url.toLowerCase().includes('.ts');
 
-    if (!isStream) {
+    if (!isStreamFile) {
       setPlayerType('iframe');
       return;
     }
@@ -25,11 +27,7 @@ const IPTVPlayer = ({ url }) => {
 
     let hls;
     if (Hls.isSupported()) {
-      hls = new Hls({
-        enableWorker: true,
-        lowLatencyMode: true,
-        backBufferLength: 90
-      });
+      hls = new Hls({ enableWorker: true, lowLatencyMode: true });
       hls.loadSource(url);
       hls.attachMedia(video);
       hls.on(Hls.Events.ERROR, (event, data) => {
@@ -39,16 +37,14 @@ const IPTVPlayer = ({ url }) => {
       video.src = url;
     }
 
-    return () => {
-      if (hls) hls.destroy();
-    };
+    return () => { if (hls) hls.destroy(); };
   }, [url]);
 
   if (playerType === 'error') {
     return (
       <div className="flex flex-col items-center justify-center w-full h-full gap-4 text-red-500 bg-zinc-950">
         <AlertTriangle size={48} />
-        <p className="text-xs font-black tracking-widest uppercase">Stream Decoding Failed</p>
+        <p className="text-xs font-black uppercase tracking-widest">Stream Source Offline</p>
       </div>
     );
   }
@@ -62,19 +58,10 @@ const IPTVPlayer = ({ url }) => {
           autoPlay
           playsInline
           className="w-full h-full"
-          poster="/vortex-loading.jpg"
         />
       )}
 
-      {playerType === 'iframe' && (
-        <iframe
-          src={url}
-          className="w-full h-full border-0"
-          allowFullScreen
-          allow="autoplay; encrypted-media; picture-in-picture"
-          sandbox="allow-scripts allow-same-origin allow-forms allow-presentation"
-        />
-      )}
+      {playerType === 'iframe' && <UltraPlayer url={url} />}
 
       {playerType === 'loading' && (
         <div className="absolute inset-0 flex items-center justify-center bg-zinc-950">

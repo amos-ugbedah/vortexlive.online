@@ -1,20 +1,21 @@
 /* eslint-disable */
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ShieldCheck, BrainCircuit } from 'lucide-react';
+import { ShieldCheck, BrainCircuit, Play } from 'lucide-react';
 
 const MatchCard = ({ match: m }) => {
   const navigate = useNavigate();
   const status = m.status?.toUpperCase();
-  const isLive = ['1H', '2H', 'HT', 'LIVE', 'IN_PLAY'].includes(status);
-  const isFinished = ['FT', 'AET', 'PEN'].includes(status);
   
-  // DYNAMIC AI PREDICTION LOGIC
-  // If database doesn't have a prediction, we simulate one based on match ID
+  // Logic for the Red vs Gray Button
+  const isLive = ['1H', '2H', 'HT', 'LIVE', 'IN_PLAY', 'ET', 'BT', 'P'].includes(status);
+  const isFinished = ['FT', 'AET', 'PEN'].includes(status);
+  const isNotStarted = ['NS', 'TBD', 'SCHEDULED'].includes(status);
+
   const getAiPrediction = () => {
-    if (m.aiPick) return m.aiPick;
+    if (m.aiPick && m.aiPick !== "ANALYZING...") return m.aiPick;
     const picks = ["Home Win", "Over 2.5 Goals", "Both Teams to Score", "Away Win (DNB)"];
-    const index = m.id.charCodeAt(0) % picks.length;
+    const index = m.id ? m.id.charCodeAt(0) % picks.length : 0;
     return picks[index];
   };
 
@@ -30,7 +31,7 @@ const MatchCard = ({ match: m }) => {
           </span>
         </div>
         <div className={`px-3 py-1 rounded-full text-[10px] font-black ${isLive ? 'bg-red-600 text-white animate-pulse' : 'bg-white/5 text-white/20'}`}>
-          {isLive ? `• ${m.minute || 'LIVE'}` : status}
+          {isLive ? `• ${m.minute || 'LIVE'}'` : status}
         </div>
       </div>
 
@@ -49,7 +50,7 @@ const MatchCard = ({ match: m }) => {
         <TeamDisplay logo={m.away?.logo} name={m.away?.name} />
       </div>
 
-      {/* AI Prediction Area - Changes Daily/Per Match */}
+      {/* AI Prediction */}
       <div className="flex items-center justify-center gap-2 py-2 mb-6 border bg-white/5 rounded-xl border-white/5">
         <BrainCircuit size={12} className="text-red-600" />
         <span className="text-[9px] font-black uppercase text-white/40 tracking-tighter">
@@ -57,12 +58,17 @@ const MatchCard = ({ match: m }) => {
         </span>
       </div>
 
-      {/* Action Button */}
+      {/* Action Button: Red for Live, Gray for NS */}
       <button 
         onClick={() => navigate(`/match/${m.id}`)}
-        className={`w-full py-4 rounded-xl text-[11px] font-black uppercase tracking-widest transition-all ${isLive ? 'bg-red-600 shadow-lg shadow-red-600/20' : 'bg-white/5 text-white/40 hover:bg-white/10'}`}
+        className={`w-full py-4 rounded-xl text-[11px] font-black uppercase tracking-widest transition-all flex items-center justify-center gap-2 ${
+            isLive 
+            ? 'bg-red-600 shadow-lg shadow-red-600/20 text-white hover:bg-red-500' 
+            : 'bg-white/5 text-white/40 hover:bg-white/10'
+        }`}
       >
-        {isLive ? 'ENTER STREAM' : 'VIEW DETAILS'}
+        {isLive && <Play size={12} fill="currentColor" />}
+        {isLive ? 'Watch Live' : 'View Details'}
       </button>
     </div>
   );
@@ -70,7 +76,7 @@ const MatchCard = ({ match: m }) => {
 
 const TeamDisplay = ({ logo, name }) => (
   <div className="flex flex-col items-center">
-    <div className="flex items-center justify-center p-3 mb-2 border w-14 h-14 bg-white/5 rounded-2xl border-white/5">
+    <div className="flex items-center justify-center p-3 mb-2 border w-14 h-14 bg-white/5 rounded-2xl border-white/5 group-hover:border-red-600/20 transition-all">
       {logo ? <img src={logo} className="object-contain w-full h-full" alt="" /> : <div className="w-full h-full rounded-full bg-white/5" />}
     </div>
     <p className="text-[10px] font-black text-center uppercase leading-tight line-clamp-2 h-7 text-white/70">{name || 'TBA'}</p>
