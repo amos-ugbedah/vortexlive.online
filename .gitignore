@@ -1,40 +1,352 @@
-# --- Logs & Debugging ---
-logs
+# --- Vortex Live Streams Git Ignore ---
+
+# ==============================
+# Dependencies & Build Output
+# ==============================
+node_modules/
+dist/
+dist-ssr/
+build/
+.out/
+.next/
+.nuxt/
+.output/
+.vite/
+.astro/
+.cache/
+
+# Production build cache
+.npm/
+.pnpm/
+.yarn/
+yarn.lock
+package-lock.json
+pnpm-lock.yaml
+shrinkwrap.yaml
+
+# ==============================
+# Environment & Secrets (CRITICAL)
+# ==============================
+.env
+.env.local
+.env.development
+.env.production
+.env.test
+.env.*.local
+.env.*.backup
+
+# Firebase specific
+serviceAccountKey.json
+firebase.json.old
+.firebaserc.backup
+.firebase/
+firebase-debug.log
+firebase-debug.*.log
+.runtimeconfig.json
+
+# API Keys & Secrets
+*.key
+*.pem
+*.cert
+*.crt
+*.pub
+id_rsa
+id_dsa
+
+# Cloud Functions specific
+functions/.env
+functions/.env.local
+functions/.env.*
+functions/node_modules/
+functions/lib/
+functions/package-lock.json
+
+# ==============================
+# Logs & Debugging
+# ==============================
+logs/
 *.log
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
 pnpm-debug.log*
 lerna-debug.log*
+debug.log
+*.log.*
 
-# --- Dependencies & Build ---
-node_modules/
-dist/
-dist-ssr/
-*.local
+# Debug files
+*.pid
+*.seed
+*.pid.lock
+*.tsbuildinfo
 
-# --- Editor & System Files ---
+# ==============================
+# Editor & IDE Files
+# ==============================
+# VS Code
 .vscode/*
 !.vscode/extensions.json
+!.vscode/settings.json
+!.vscode/tasks.json
+!.vscode/launch.json
+.vscode/launch.json
+.vscode/tasks.json
+.vscode/settings.json
+
+# JetBrains IDEs
 .idea/
+*.iml
+*.iws
+*.ipr
+
+# Sublime Text
+*.sublime-*
+sublime-*
+
+# Vim
+*.swp
+*.swo
+*~
+.session
+.netrwhist
+
+# Emacs
+*~
+\#*\#
+/.emacs.desktop
+/.emacs.desktop.lock
+*.elc
+auto-save-list
+tramp
+.\#*
+
+# OS generated files
 .DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+desktop.ini
+
+# Windows
+[Tt]humbs.db
+*.stackdump
+*.user
 *.suo
 *.ntvs*
 *.njsproj
 *.sln
 *.sw?
 
-# --- Firebase Security & Keys ---
-serviceAccountKey.json
-# Ignore any local firebase files containing credentials
+# Linux
+*~
+
+# ==============================
+# Testing & Coverage
+# ==============================
+coverage/
+.nyc_output/
+*.lcov
+.nycrc
+
+# ==============================
+# Firebase Specific
+# ==============================
+.firebase/
 firebase-debug.log
 firebase-debug.*.log
 .runtimeconfig.json
+# Ignore Firebase emulator data
+.firebase/emulators/
+# Ignore any backup configs
+firebase.json.backup
+.firebaserc.backup
 
-# --- Environment Variables (CRITICAL) ---
-.env
-.env.local
-.env.*.local
-# Specifically for your cloud functions
-functions/.env
-functions/.env.local
+# ==============================
+# Temporary & Cache Files
+# ==============================
+.temp/
+tmp/
+temp/
+*.tmp
+*.temp
+.cache/
+.parcel-cache/
+.eslintcache
+.stylelintcache
+.babel-cache/
+.rollup.cache/
+
+# ==============================
+# Project Specific
+# ==============================
+# Session storage
+session/
+
+# Uploads
+uploads/
+public/uploads/
+
+# Database dumps
+*.sql
+*.sqlite
+*.db
+
+# ==============================
+# Package Manager Specific
+# ==============================
+# npm
+node_modules/
+.npm
+npm-debug.log*
+
+# Yarn
+.yarn/
+.yarnrc
+.yarn.lock
+.yarn/cache/
+.yarn/unplugged/
+.yarn/build-state.yml
+.yarn/install-state.gz
+.pnp.*
+.yarn-integrity
+
+# pnpm
+node_modules/
+.pnpm-store/
+pnpm-lock.yaml
+
+# ==============================
+# TypeScript & Build
+# ==============================
+*.tsbuildinfo
+dist/
+build/
+out/
+lib/
+es/
+cjs/
+umd/
+*.d.ts
+*.d.ts.map
+
+# ==============================
+# ESLint, Prettier, Stylelint
+# ==============================
+.eslintcache
+.stylelintcache
+.prettiercache
+
+# ==============================
+# Security Scans
+# ==============================
+# Secret scanning
+secret.txt
+secrets.txt
+credentials.txt
+tokens.txt
+
+# ==============================
+# Deployment & CI/CD
+# ==============================
+# Netlify
+.netlify/
+
+# Vercel
+.vercel/
+
+# GitHub Actions
+.github/workflows/*.yml
+!.github/workflows/deploy.yml
+
+# ==============================
+# Custom Patterns for Vortex Live
+# ==============================
+# Match data backups
+backup/
+*.backup
+
+# Temporary match data
+temp_matches.json
+cached_matches.json
+
+# Stream cache
+stream_cache/
+*.m3u8.tmp
+*.ts.tmp
+
+# Analytics & monitoring data
+analytics/
+*.analytics.json
+
+# User uploads (if any)
+user_uploads/
+*.mp4.tmp
+*.jpg.tmp
+
+# ==============================
+# SSL Certificates (if using local HTTPS)
+# ==============================
+*.cer
+*.crt
+*.csr
+*.der
+*.p7b
+*.p7c
+*.p12
+*.pfx
+
+# ==============================
+# Documentation
+# ==============================
+# Generated documentation
+docs/build/
+docs/.vuepress/dist
+docs/public/build/
+
+# ==============================
+# Backup Files
+# ==============================
+*.bak
+*.backup
+*_backup
+*.old
+*.orig
+*.save
+
+# ==============================
+# System Files
+# ==============================
+# macOS
+.DS_Store
+.AppleDouble
+.LSOverride
+Icon
+.Spotlight-V100
+.Trashes
+
+# Windows
+[Tt]humbs.db
+Desktop.ini
+$RECYCLE.BIN/
+
+# Linux
+*~
+
+# ==============================
+# Database files (if any local DB)
+# ==============================
+*.db
+*.sqlite
+*.sqlite3
+*.db-journal
+*.db-wal
+*.db-shm
+
+# ==============================
+# End of .gitignore
+# ==============================
+
+# Note: Keep this file organized and add new patterns above their respective sections.

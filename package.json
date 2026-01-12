@@ -1,13 +1,30 @@
 {
   "name": "vortex-live",
   "private": true,
-  "version": "0.0.0",
+  "version": "1.1.0",
   "type": "module",
   "scripts": {
     "dev": "vite",
     "build": "vite build",
     "lint": "eslint .",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "predeploy": "npm run build",
+    "deploy": "firebase deploy --only hosting",
+    "deploy:functions": "firebase deploy --only functions",
+    "deploy:all": "firebase deploy",
+    "deploy:force": "firebase deploy --only hosting --force",
+    "deploy:debug": "firebase deploy --only hosting --debug",
+    "clean": "rmdir /s /q node_modules dist build .vite .cache && del package-lock.json",
+    "clean:install": "rmdir /s /q node_modules && del package-lock.json && npm install",
+    "clean:build": "rmdir /s /q dist && npm run build",
+    "clean:deploy": "npm run clean:install && npm run build && npm run deploy",
+    "rebuild": "npm run clean && npm install && npm run build",
+    "serve": "npx serve -s dist -l 3000",
+    "test:build": "npm run build && echo ✅ Build successful || echo ❌ Build failed",
+    "test:serve": "npm run build && npm run serve",
+    "full:deploy": "npm run rebuild && npm run deploy:force",
+    "postinstall": "echo ✅ Dependencies installed successfully",
+    "postbuild": "echo ✅ Build completed && dir dist /b"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.89.0",
@@ -39,6 +56,25 @@
     "postcss": "^8.5.6",
     "tailwindcss": "^3.4.19",
     "terser": "^5.44.1",
-    "vite": "^7.2.4"
+    "vite": "^7.2.4",
+    "@typescript-eslint/eslint-plugin": "^8.29.0",
+    "@typescript-eslint/parser": "^8.29.0",
+    "vite-plugin-checker": "^0.8.0"
+  },
+  "engines": {
+    "node": ">=18.0.0",
+    "npm": ">=9.0.0"
+  },
+  "browserslist": {
+    "production": [
+      ">0.2%",
+      "not dead",
+      "not op_mini all"
+    ],
+    "development": [
+      "last 1 chrome version",
+      "last 1 firefox version",
+      "last 1 safari version"
+    ]
   }
 }

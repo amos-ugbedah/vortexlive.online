@@ -1,69 +1,237 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, Suspense, lazy } from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import { db } from './lib/firebase';
 import { doc, onSnapshot } from 'firebase/firestore';
-import Home from './pages/Home';
-import Admin from './pages/Admin';
-import MatchDetails from './pages/MatchDetails';
 import Navbar from './components/Navbar';
 import Footer from './components/Footer';
-import { ShieldAlert } from 'lucide-react';
+import { ShieldAlert, Loader2 } from 'lucide-react';
+
+// Lazy load pages for better performance
+const Home = lazy(() => import('./pages/Home'));
+const Admin = lazy(() => import('./pages/Admin'));
+const MatchDetails = lazy(() => import('./pages/MatchDetails'));
+
+// Error Boundary Component
+class ErrorBoundary extends React.Component {
+  constructor(props) {
+    super(props);
+    this.state = { hasError: false, error: null };
+  }
+
+  static getDerivedStateFromError(error) {
+    return { hasError: true, error };
+  }
+
+  componentDidCatch(error, errorInfo) {
+    console.error('App Error:', error, errorInfo);
+  }
+
+  render() {
+    if (this.state.hasError) {
+      return (
+        <div className="flex items-center justify-center min-h-screen text-white bg-black">
+          <div className="text-center p-10 border border-red-600/20 bg-red-600/10 rounded-[2.5rem] max-w-md">
+            <ShieldAlert size={48} className="mx-auto mb-4 text-red-600" />
+            <h1 className="text-2xl font-black uppercase mb-2">App Error</h1>
+            <p className="text-white/70 mb-4">Something went wrong. Please refresh the page.</p>
+            <button
+              onClick={() => {
+                this.setState({ hasError: false });
+                window.location.reload();
+              }}
+              className="px-6 py-2 bg-red-600 rounded-lg text-sm font-bold hover:bg-red-700"
+            >
+              Refresh App
+            </button>
+            {process.env.NODE_ENV === 'development' && (
+              <pre className="mt-4 text-xs text-left text-white/40 overflow-auto max-h-40 p-2 bg-black/50 rounded">
+                {this.state.error?.toString()}
+              </pre>
+            )}
+          </div>
+        </div>
+      );
+    }
+
+    return this.props.children;
+  }
+}
+
+// Loading Component
+const LoadingFallback = () => (
+  <div className="flex flex-col items-center justify-center min-h-screen bg-[#050505]">
+    <div className="relative mb-6">
+      <div className="w-16 h-16 border-4 border-red-600/20 rounded-full"></div>
+      <div className="absolute top-0 left-0 w-16 h-16 border-4 border-red-600 rounded-full border-t-transparent animate-spin"></div>
+    </div>
+    <p className="text-sm font-bold uppercase tracking-wider text-white/40">LOADING VORTEX STREAMS</p>
+  </div>
+);
 
 function App() {
   const [isBanned, setIsBanned] = useState(false);
   const [isLandscapeMode, setIsLandscapeMode] = useState(false);
+  const [isOnline, setIsOnline] = useState(navigator.onLine);
+  const [appReady, setAppReady] = useState(false);
   
   const defaultPartners = [
-    { name: "1XBET", offer: "200% BONUS", link: "https://reffpa.com/L?tag=d_5098529m_97c_&site=5098529&ad=97", highlight: true },
-    { name: "VORTEX", offer: "PRO ACCESS", link: "#", highlight: false }
+    { 
+      name: "1XBET", 
+      offer: "200% BONUS", 
+      link: "https://reffpa.com/L?tag=d_5098529m_97c_&site=5098529&ad=97", 
+      highlight: true 
+    },
+    { 
+      name: "VORTEX", 
+      offer: "PRO ACCESS", 
+      link: "#", 
+      highlight: false 
+    }
   ];
 
+  // Debug info on mount
+  useEffect(() => {
+    console.log('🚀 Vortex Live App Mounted');
+    console.log('Environment:', process.env.NODE_ENV);
+    console.log('Host:', window.location.host);
+    console.log('Firebase Project:', 'votexlive-3a8cb');
+    
+    // Mark app as ready after a short delay
+    const timer = setTimeout(() => setAppReady(true), 500);
+    return () => clearTimeout(timer);
+  }, []);
+
+  // Check network status
+  useEffect(() => {
+    const handleOnline = () => setIsOnline(true);
+    const handleOffline = () => setIsOnline(false);
+    
+    window.addEventListener('online', handleOnline);
+    window.addEventListener('offline', handleOffline);
+    
+    return () => {
+      window.removeEventListener('online', handleOnline);
+      window.removeEventListener('offline', handleOffline);
+    };
+  }, []);
+
+  // Check landscape mode
   useEffect(() => {
     const checkMode = () => {
       setIsLandscapeMode(window.innerWidth > window.innerHeight && window.innerWidth < 1024);
     };
+    
     checkMode();
     window.addEventListener('resize', checkMode);
     return () => window.removeEventListener('resize', checkMode);
   }, []);
 
+  // Check if user is banned
   useEffect(() => {
-    let userToken = localStorage.getItem('vortex_utk') || 'vx_' + Math.random().toString(36).substr(2, 9);
-    localStorage.setItem('vortex_utk', userToken);
-    return onSnapshot(doc(db, "blacklist", userToken), (doc) => {
-      if (doc.exists()) setIsBanned(true);
-    });
+    let userToken = localStorage.getItem('vortex_utk');
+    if (!userToken) {
+      userToken = 'vx_' + Math.random().toString(36).substring(2, 11);
+      localStorage.setItem('vortex_utk', userToken);
+    }
+    
+    // Only check ban in production
+    if (process.env.NODE_ENV === 'production') {
+      const unsubscribe = onSnapshot(doc(db, "blacklist", userToken), (doc) => {
+        if (doc.exists()) {
+          console.warn('User is banned:', userToken);
+          setIsBanned(true);
+        }
+      });
+      
+      return () => unsubscribe();
+    }
   }, []);
 
-  if (isBanned) return (
-    <div className="flex items-center justify-center min-h-screen text-white bg-black">
-      <div className="text-center p-10 border border-red-600/20 bg-red-600/10 rounded-[2.5rem]">
-        <ShieldAlert size={48} className="mx-auto mb-4 text-red-600" />
-        <h1 className="text-2xl font-black uppercase">Access Denied</h1>
+  // Global error handler
+  useEffect(() => {
+    const handleError = (event) => {
+      console.error('Global Error:', event.error);
+      
+      // Don't show error modal for minor errors
+      if (event.error?.message?.includes('ResizeObserver') || 
+          event.error?.message?.includes('fetch')) {
+        return;
+      }
+    };
+    
+    window.addEventListener('error', handleError);
+    window.addEventListener('unhandledrejection', handleError);
+    
+    return () => {
+      window.removeEventListener('error', handleError);
+      window.removeEventListener('unhandledrejection', handleError);
+    };
+  }, []);
+
+  if (isBanned) {
+    return (
+      <div className="flex items-center justify-center min-h-screen text-white bg-black">
+        <div className="text-center p-10 border border-red-600/20 bg-red-600/10 rounded-[2.5rem] max-w-md">
+          <ShieldAlert size={48} className="mx-auto mb-4 text-red-600" />
+          <h1 className="text-2xl font-black uppercase mb-2">Access Restricted</h1>
+          <p className="text-white/70 mb-4">This device has been restricted from accessing Vortex Live.</p>
+          <div className="text-xs text-white/40 mt-4">
+            ID: {localStorage.getItem('vortex_utk')?.substring(0, 10)}...
+          </div>
+        </div>
       </div>
-    </div>
-  );
+    );
+  }
 
   return (
-    <Router>
-      <div className="min-h-screen bg-[#050505] text-white flex flex-col selection:bg-red-600">
-        {!isLandscapeMode && <Navbar partners={defaultPartners} />}
-        
-        {/* ULTRA PRO: Edge-to-edge container */}
-        <div className="flex-1 w-full">
-          <main className="w-full h-full">
-            <Routes>
-              <Route path="/" element={<Home />} />
-              <Route path="/match/:id" element={<MatchDetails />} />
-              <Route path="/admin" element={<Admin />} />
-              <Route path="*" element={<Navigate to="/" />} />
-            </Routes>
-          </main>
-        </div>
+    <ErrorBoundary>
+      <Router>
+        <div className="min-h-screen bg-[#050505] text-white flex flex-col selection:bg-red-600">
+          {/* Network Status Indicator */}
+          {!isOnline && (
+            <div className="px-4 py-2 bg-yellow-600/90 text-center text-sm font-bold">
+              ⚠️ You are offline. Some features may be limited.
+            </div>
+          )}
+          
+          {/* Debug Banner for Development */}
+          {process.env.NODE_ENV === 'development' && (
+            <div className="px-4 py-2 bg-blue-600/90 text-center text-sm font-bold flex items-center justify-center gap-2">
+              <div className="w-2 h-2 bg-green-400 rounded-full animate-pulse"></div>
+              DEVELOPMENT MODE - Local Build
+            </div>
+          )}
+          
+          {!isLandscapeMode && <Navbar partners={defaultPartners} />}
+          
+          {/* Main Content Area */}
+          <div className="flex-1 w-full">
+            <Suspense fallback={<LoadingFallback />}>
+              <Routes>
+                <Route path="/" element={<Home />} />
+                <Route path="/match/:id" element={<MatchDetails />} />
+                <Route path="/admin" element={<Admin />} />
+                <Route path="*" element={<Navigate to="/" />} />
+              </Routes>
+            </Suspense>
+          </div>
 
-        {!isLandscapeMode && <Footer />}
-      </div>
-    </Router>
+          {!isLandscapeMode && <Footer />}
+          
+          {/* App Status Footer */}
+          {appReady && (
+            <div className="fixed bottom-4 right-4 z-50">
+              <div className="flex items-center gap-2 px-3 py-1 bg-black/80 rounded-full text-xs text-white/60">
+                <div className={`w-2 h-2 rounded-full ${isOnline ? 'bg-green-500' : 'bg-red-500'}`}></div>
+                <span>Vortex Live</span>
+                <span className="text-white/40">•</span>
+                <span>{isOnline ? 'Online' : 'Offline'}</span>
+              </div>
+            </div>
+          )}
+        </div>
+      </Router>
+    </ErrorBoundary>
   );
 }
 
