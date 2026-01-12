@@ -82,7 +82,7 @@ const STATUS_MAP = {
 };
 
 // ========================
-// UTILITY FUNCTIONS - KEEP ORIGINAL
+// UTILITY FUNCTIONS - UPDATED WITH AUTO-DETECTION
 // ========================
 
 const fetchWithRotation = async (endpoint) => {
@@ -160,6 +160,133 @@ const generateStreamUrls = (matchId) => {
 };
 
 // ========================
+// NEW: AUTO LIVE DETECTION FUNCTIONS
+// ========================
+
+/**
+ * Calculate exact minute based on kickoff time
+ * Follows match timeline logic:
+ * 0-45 mins: First half (1H)
+ * 45-60 mins: Half time (HT)
+ * 60-105 mins: Second half (2H)
+ * 105-120 mins: Full time (FT)
+ * 120-135 mins: Extra time first half (ET)
+ * 135-150 mins: Extra time half time (HT)
+ * 150-165 mins: Extra time second half (ET)
+ * 165-180 mins: Match finished (FT)
+ */
+const calculateMatchMinuteAndStatus = (kickoffTime) => {
+    const now = new Date();
+    const kickoff = new Date(kickoffTime);
+    const diffMs = now - kickoff;
+    const diffMinutes = Math.floor(diffMs / (1000 * 60));
+    
+    // If match hasn't started yet
+    if (diffMinutes < 0) {
+        return { minute: 0, status: 'NS' };
+    }
+    
+    // Regular time logic
+    if (diffMinutes <= 45) {
+        return { minute: diffMinutes, status: '1H' };
+    } else if (diffMinutes <= 60) {
+        return { minute: 45, status: 'HT' };
+    } else if (diffMinutes <= 105) {
+        return { minute: diffMinutes - 15, status: '2H' }; // -15 for halftime
+    } else if (diffMinutes <= 120) {
+        return { minute: 90, status: 'FT' };
+    }
+    
+    // Extra time logic
+    else if (diffMinutes <= 135) {
+        return { minute: diffMinutes - 30, status: 'ET' }; // Extra time first half
+    } else if (diffMinutes <= 150) {
+        return { minute: 105, status: 'HT' }; // Extra time halftime
+    } else if (diffMinutes <= 165) {
+        return { minute: diffMinutes - 45, status: 'ET' }; // Extra time second half
+    } else if (diffMinutes <= 180) {
+        return { minute: 120, status: 'FT' }; // Match finished
+    }
+    
+    // Match definitely finished if > 180 minutes
+    return { minute: 120, status: 'FT' };
+};
+
+/**
+ * Detect and update matches that should be live based on kickoff time
+ * This works even if external API doesn't mark them as live
+ */
+const autoDetectLiveMatches = async () => {
+    console.log("🔍 Auto Live Detection running...");
+    
+    const now = new Date();
+    const oneHourAgo = new Date(now.getTime() - (60 * 60 * 1000)); // Matches that started up to 1 hour ago
+    const threeHoursAgo = new Date(now.getTime() - (3 * 60 * 60 * 1000)); // Matches that started up to 3 hours ago
+    
+    try {
+        // Get all matches that are scheduled to have started recently
+        const matchesSnapshot = await db.collection("matches")
+            .where("status", "in", ["NS", "1H", "HT", "2H"]) // Only check matches that aren't finished
+            .get();
+        
+        console.log(`Checking ${matchesSnapshot.size} matches for auto-detection`);
+        
+        let newlyDetectedCount = 0;
+        let updatedCount = 0;
+        
+        for (const doc of matchesSnapshot.docs) {
+            const match = doc.data();
+            const matchId = doc.id;
+            const kickoffTime = match.kickoff;
+            
+            if (!kickoffTime) continue;
+            
+            const { minute, status } = calculateMatchMinuteAndStatus(kickoffTime);
+            
+            // Only update if match has actually started (status changed from NS to something else)
+            // OR if minute has changed significantly
+            const shouldUpdate = 
+                (match.status === 'NS' && status !== 'NS') || // Match just started
+                (match.status !== status) || // Status changed
+                (match.minute !== minute && Math.abs(match.minute - minute) >= 2); // Minute changed significantly
+            
+            if (shouldUpdate) {
+                const updates = {
+                    status: status,
+                    minute: minute,
+                    lastUpdated: admin.firestore.FieldValue.serverTimestamp()
+                };
+                
+                // If match just started, send notification
+                if (match.status === 'NS' && status !== 'NS') {
+                    await sendTelegram(
+                        `🔄 *Auto-Detected LIVE Match!*\n` +
+                        `⚽ ${match.home.name} vs ${match.away.name}\n` +
+                        `🏆 ${match.league}\n` +
+                        `⏰ Minute: ${minute}' | Status: ${status}\n` +
+                        `🔴 Match automatically detected as live!`
+                    );
+                    newlyDetectedCount++;
+                }
+                
+                await doc.ref.update(updates);
+                updatedCount++;
+                
+                console.log(`Updated ${match.home.name} vs ${match.away.name}: ${match.status} -> ${status}, ${match.minute}' -> ${minute}'`);
+            }
+        }
+        
+        console.log(`Auto-detection complete: ${newlyDetectedCount} newly detected, ${updatedCount} updated`);
+        
+        return { newlyDetectedCount, updatedCount };
+        
+    } catch (error) {
+        console.error("Auto-detection error:", error);
+        throw error;
+    }
+};
+
+// ========================
 // CORE SYNC ENGINE - FIXED WITH PROPER FILTERING
 // ========================
 
@@ -205,6 +332,7 @@ const runGlobalSync = async () => {
             
             const streamUrls = generateStreamUrls(matchId);
             
+            // ✅ UPDATED: Add ALL fields frontend expects
             const matchData = {
                 id: matchId,
                 home: { 
@@ -220,8 +348,16 @@ const runGlobalSync = async () => {
                 status: normalizeStatus(m.fixture.status.short),
                 minute: Number(m.fixture.status.elapsed || 0),
                 league: m.league.name,
+                // ✅ ADDED: Frontend needs these
+                leagueId: m.league.id,
+                leagueCountry: m.league.country || '',
+                leagueLogo: m.league.logo || '',
                 isElite: isEliteLeague(m.league.id),
-                kickoff: m.fixture.date,
+                // ✅ FIXED: Convert to Lagos time (UTC+1)
+                kickoff: new Date(new Date(m.fixture.date).getTime() + (60 * 60 * 1000)).toISOString(),
+                // ✅ ADDED: Venue and referee data
+                venue: m.fixture.venue?.name || 'Stadium TBD',
+                referee: m.fixture.referee || 'Referee TBD',
                 aiPick: generateAIPick(m.teams.home.name, m.teams.away.name),
                 
                 streamUrl1: streamUrls.streamUrl1,
@@ -233,6 +369,10 @@ const runGlobalSync = async () => {
                 streamServer1: streamUrls.streamServer1,
                 streamServer2: streamUrls.streamServer2,
                 streamServer3: streamUrls.streamServer3,
+                
+                // ✅ ADDED: Manual match flags
+                addedManually: false,
+                streamsManuallyUpdated: false,
                 
                 lastUpdated: admin.firestore.FieldValue.serverTimestamp()
             };
@@ -254,30 +394,33 @@ const runGlobalSync = async () => {
 };
 
 // ========================
-// EXPORTED FUNCTIONS - KEEP ORIGINAL BUT UPDATE MEMORY
+// EXPORTED FUNCTIONS - UPDATED WITH AUTO DETECTION
 // ========================
 
-// 1. Live Bot (Every 2 Minutes) - INCREASE MEMORY
+// 1. UPDATED: vortexLiveBot (Every 2 Minutes) - Now with auto-detection PART 1
 exports.vortexLiveBot = onSchedule({ 
     schedule: "every 2 minutes", 
     timeZone: "Africa/Lagos", 
     region: "us-central1",
-    memory: "512MiB",  // Increased from default
+    memory: "512MiB",
     timeoutSeconds: 120
 }, async () => {
-    console.log("Live Bot running at:", new Date().toISOString());
+    console.log("🚀 Vortex Live Bot running at:", new Date().toISOString());
     
     const settingsDoc = await db.collection("settings").doc("bot").get();
     if (settingsDoc.exists && settingsDoc.data().isActive === false) return;
 
     try {
+        // ========================
+        // PART 1: Fetch matches already marked as LIVE by external API
+        // ========================
         const data = await fetchWithRotation('fixtures?live=all');
         const liveMatches = data.response || [];
-        console.log(`Live matches found: ${liveMatches.length}`);
+        console.log(`📊 API Live matches found: ${liveMatches.length}`);
         
         // Filter live matches for elite leagues only
         const eliteLiveMatches = liveMatches.filter(m => isEliteLeague(m.league.id));
-        console.log(`Elite live matches: ${eliteLiveMatches.length}`);
+        console.log(`🎯 Elite live matches from API: ${eliteLiveMatches.length}`);
         
         for (const m of eliteLiveMatches) {
             const matchId = String(m.fixture.id);
@@ -294,21 +437,32 @@ exports.vortexLiveBot = onSchedule({
 
             if (oldDoc.exists) {
                 const old = oldDoc.data();
+                // Check for goals
                 if (m.goals.home > (old.home?.score || 0) || m.goals.away > (old.away?.score || 0)) {
-                    await sendTelegram(`⚽ *GOAL!* ${m.teams.home.name} ${m.goals.home}-${m.goals.away} ${m.teams.away.name}`);
+                    await sendTelegram(
+                        `⚽ *GOAL!*\n` +
+                        `${m.teams.home.name} ${m.goals.home}-${m.goals.away} ${m.teams.away.name}\n` +
+                        `🏆 ${m.league.name}\n` +
+                        `⏰ ${updateData.minute}' | ${updateData.status}`
+                    );
                 }
                 await matchRef.update(updateData);
             } else {
                 const streamUrls = generateStreamUrls(matchId);
                 
-                await matchRef.set({
+                const newMatchData = {
                     ...updateData,
                     id: matchId,
                     home: { name: m.teams.home.name, logo: m.teams.home.logo, score: m.goals.home },
                     away: { name: m.teams.away.name, logo: m.teams.away.logo, score: m.goals.away },
                     league: m.league.name,
+                    leagueId: m.league.id,
+                    leagueCountry: m.league.country || '',
+                    leagueLogo: m.league.logo || '',
                     isElite: isEliteLeague(m.league.id),
-                    kickoff: m.fixture.date,
+                    kickoff: new Date(new Date(m.fixture.date).getTime() + (60 * 60 * 1000)).toISOString(),
+                    venue: m.fixture.venue?.name || 'Stadium TBD',
+                    referee: m.fixture.referee || 'Referee TBD',
                     aiPick: generateAIPick(m.teams.home.name, m.teams.away.name),
                     streamUrl1: streamUrls.streamUrl1,
                     streamUrl2: streamUrls.streamUrl2,
@@ -318,12 +472,31 @@ exports.vortexLiveBot = onSchedule({
                     streamQuality3: streamUrls.streamQuality3,
                     streamServer1: streamUrls.streamServer1,
                     streamServer2: streamUrls.streamServer2,
-                    streamServer3: streamUrls.streamServer3
-                }, { merge: true });
+                    streamServer3: streamUrls.streamServer3,
+                    addedManually: false,
+                    streamsManuallyUpdated: false
+                };
+                
+                await matchRef.set(newMatchData, { merge: true });
             }
         }
         
-        console.log("Live Bot completed successfully");
+        // ========================
+        // PART 2: NEW - Automatically detect matches whose kickoff time has passed
+        // ========================
+        console.log("🔄 Starting auto-detection of matches...");
+        const autoResult = await autoDetectLiveMatches();
+        
+        if (autoResult.newlyDetectedCount > 0) {
+            await sendTelegram(
+                `🔴 *Auto-Detection Summary*\n` +
+                `Newly detected live matches: ${autoResult.newlyDetectedCount}\n` +
+                `Total matches updated: ${autoResult.updatedCount}\n` +
+                `✅ System is working even without API updates!`
+            );
+        }
+        
+        console.log(`✅ Live Bot completed: ${eliteLiveMatches.length} API live + ${autoResult.newlyDetectedCount} auto-detected`);
         
     } catch (error) {
         console.error("Live Bot error:", error);
@@ -331,13 +504,41 @@ exports.vortexLiveBot = onSchedule({
     }
 });
 
-// 2. Daily Sync (7:30 AM) - INCREASE MEMORY & TIMEOUT
+// 2. NEW: autoLiveDetector (Every 1 Minute) - More frequent checking
+exports.autoLiveDetector = onSchedule({ 
+    schedule: "every 1 minutes", 
+    timeZone: "Africa/Lagos", 
+    region: "us-central1",
+    memory: "256MiB",
+    timeoutSeconds: 60
+}, async () => {
+    console.log("⏰ Auto Live Detector running at:", new Date().toISOString());
+    
+    try {
+        // Run auto-detection logic
+        const result = await autoDetectLiveMatches();
+        
+        // Only send summary if we detected something new
+        if (result.newlyDetectedCount > 0) {
+            console.log(`🎉 Auto-detector found ${result.newlyDetectedCount} new live matches`);
+        }
+        
+        return result;
+        
+    } catch (error) {
+        console.error("Auto-detector error:", error);
+        // Don't send Telegram for this one to avoid spam
+        return { error: error.message };
+    }
+});
+
+// 3. Daily Sync (7:30 AM)
 exports.dailySync = onSchedule({ 
     schedule: "30 7 * * *", 
     timeZone: "Africa/Lagos", 
     region: "us-central1",
-    memory: "1GiB",  // Increased for processing more leagues
-    timeoutSeconds: 300  // 5 minutes timeout
+    memory: "1GiB",
+    timeoutSeconds: 300
 }, async () => {
     console.log("Daily Sync started at:", new Date().toISOString());
     
@@ -350,11 +551,11 @@ exports.dailySync = onSchedule({
     }
 });
 
-// 3. Emergency Sync (HTTP Trigger) - INCREASE MEMORY
+// 4. Emergency Sync (HTTP Trigger)
 exports.emergencySync = onRequest({ 
     cors: true, 
     region: "us-central1",
-    memory: "1GiB",  // Increased
+    memory: "1GiB",
     timeoutSeconds: 300
 }, async (req, res) => {
     // Set CORS headers
@@ -386,7 +587,7 @@ exports.emergencySync = onRequest({
     }
 });
 
-// 4. Cleanup (Daily 6:45 AM)
+// 5. Cleanup (Daily 6:45 AM)
 exports.morningCleanup = onSchedule({ 
     schedule: "45 6 * * *", 
     timeZone: "Africa/Lagos", 
@@ -400,7 +601,7 @@ exports.morningCleanup = onSchedule({
     await sendTelegram("🏁 *Database Cleared for new day.*");
 });
 
-// 5. Stream Update Function (Admin Panel)
+// 6. Stream Update Function (Admin Panel)
 exports.updateStreams = onRequest({
     cors: true,
     region: "us-central1",
@@ -452,7 +653,7 @@ exports.updateStreams = onRequest({
     }
 });
 
-// 6. Health Check
+// 7. Health Check
 exports.healthCheck = onRequest({ 
     cors: true, 
     region: "us-central1",
@@ -465,7 +666,8 @@ exports.healthCheck = onRequest({
         await healthRef.set({
             timestamp: admin.firestore.FieldValue.serverTimestamp(),
             status: 'healthy',
-            checkedAt: new Date().toISOString()
+            checkedAt: new Date().toISOString(),
+            autoDetection: 'active'
         }, { merge: true });
         
         const matchesSnapshot = await db.collection('matches').limit(5).get();
@@ -475,7 +677,12 @@ exports.healthCheck = onRequest({
             service: 'vortex-live-backend',
             timestamp: new Date().toISOString(),
             matches: matchesSnapshot.size,
-            eliteLeaguesConfigured: ELITE_LEAGUES.length
+            eliteLeaguesConfigured: ELITE_LEAGUES.length,
+            features: {
+                autoLiveDetection: true,
+                telegramNotifications: true,
+                streamLinks: true
+            }
         });
         
     } catch (error) {
@@ -489,4 +696,122 @@ exports.healthCheck = onRequest({
     }
 });
 
-console.log("✅ Firebase Functions code loaded successfully");
+// 8. Fix existing data
+exports.fixExistingMatches = onRequest({
+    cors: true,
+    region: "us-central1",
+    memory: "1GiB"
+}, async (req, res) => {
+    res.set("Access-Control-Allow-Origin", "*");
+    
+    try {
+        const snapshot = await db.collection("matches").get();
+        const batch = db.batch();
+        
+        let updated = 0;
+        
+        snapshot.docs.forEach(doc => {
+            const data = doc.data();
+            const updates = {};
+            
+            // Add missing league fields
+            if (!data.leagueId) {
+                const leagueMap = {
+                    'Premier League': 39,
+                    'La Liga': 140,
+                    'Serie A': 135,
+                    'Bundesliga': 78,
+                    'Ligue 1': 61,
+                    'Champions League': 1,
+                    'Europa League': 2,
+                    'FA Cup': 45,
+                    'Copa del Rey': 143,
+                    'Coppa Italia': 137,
+                    'DFB-Pokal': 81
+                };
+                updates.leagueId = leagueMap[data.league] || 0;
+            }
+            
+            if (!data.leagueCountry) updates.leagueCountry = '';
+            if (!data.leagueLogo) updates.leagueLogo = '';
+            if (!data.venue) updates.venue = 'Stadium TBD';
+            if (!data.referee) updates.referee = 'Referee TBD';
+            if (data.addedManually === undefined) updates.addedManually = false;
+            if (data.streamsManuallyUpdated === undefined) updates.streamsManuallyUpdated = false;
+            
+            // Fix "TBA" team names
+            if (data.home?.name === 'TBA' || data.home?.name === 'TBD') {
+                updates['home.name'] = data.home?.name === 'TBA' ? '' : data.home?.name;
+            }
+            
+            if (data.away?.name === 'TBA' || data.away?.name === 'TBD') {
+                updates['away.name'] = data.away?.name === 'TBA' ? '' : data.away?.name;
+            }
+            
+            // Convert kickoff to Lagos time if not already
+            if (data.kickoff && !data.kickoff.includes('+01:00')) {
+                try {
+                    const date = new Date(data.kickoff);
+                    const lagosTime = new Date(date.getTime() + (60 * 60 * 1000)).toISOString();
+                    updates.kickoff = lagosTime;
+                } catch (e) {
+                    console.log(`Couldn't convert time for match ${doc.id}`);
+                }
+            }
+            
+            if (Object.keys(updates).length > 0) {
+                batch.update(doc.ref, updates);
+                updated++;
+            }
+        });
+        
+        await batch.commit();
+        
+        res.json({ 
+            success: true, 
+            updated: updated,
+            total: snapshot.size,
+            message: `Fixed ${updated} out of ${snapshot.size} matches`
+        });
+        
+    } catch (error) {
+        console.error("Fix error:", error);
+        res.status(500).json({ success: false, error: error.message });
+    }
+});
+
+// 9. NEW: Manual trigger for auto-detection
+exports.triggerAutoDetection = onRequest({
+    cors: true,
+    region: "us-central1",
+    memory: "256MiB"
+}, async (req, res) => {
+    res.set("Access-Control-Allow-Origin", "*");
+    res.set("Access-Control-Allow-Methods", "GET, OPTIONS");
+    res.set("Access-Control-Allow-Headers", "Content-Type");
+    
+    if (req.method === "OPTIONS") {
+        res.status(204).send("");
+        return;
+    }
+    
+    try {
+        console.log("Manual auto-detection triggered");
+        const result = await autoDetectLiveMatches();
+        
+        res.status(200).json({
+            success: true,
+            message: "Auto-detection completed successfully",
+            result: result
+        });
+        
+    } catch (error) {
+        console.error("Manual trigger error:", error);
+        res.status(500).json({
+            success: false,
+            error: error.message
+        });
+    }
+});
+
+console.log("✅ Firebase Functions code loaded with AUTO-LIVE DETECTION");

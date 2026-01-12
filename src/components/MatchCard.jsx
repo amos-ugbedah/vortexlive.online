@@ -1,9 +1,10 @@
 /* eslint-disable */
-import React, { memo, useCallback } from 'react';
+import React, { memo, useCallback, useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { 
   ShieldCheck, BrainCircuit, Play, Clock, Trophy, Tv, Zap, 
-  MapPin, UserCheck, Calendar, Award, Star, Radio
+  MapPin, UserCheck, Calendar, Award, Star, Radio, AlertCircle,
+  Wifi, WifiOff, TrendingUp, Timer, CheckCircle, RefreshCw
 } from 'lucide-react';
 import { 
   formatMatchTime, 
@@ -11,19 +12,51 @@ import {
   isMatchFinished, 
   isMatchUpcoming,
   getStreamCount,
-  getStreamDisplay,
-  getStreamQualityColor,
   getLeagueDisplay,
   isEliteMatch,
   getVenueDisplay,
   getRefereeDisplay,
   formatAIPick,
-  getLastUpdateTime
+  getLastUpdateTime,
+  calculateEstimatedMinute,
+  calculateEstimatedStatus,
+  isAutoDetected,
+  getMatchStatusText,
+  shouldShowWatchLive,
+  getDecodedStreamUrl,
+  getMatchPhase
 } from '../lib/matchUtils';
 
 const MatchCard = memo(({ match: m }) => {
   const navigate = useNavigate();
+  const [isAutoDetectedState, setIsAutoDetected] = useState(false);
+  const [estimatedMinute, setEstimatedMinute] = useState(0);
+  const [estimatedStatus, setEstimatedStatus] = useState('NS');
+  const [shouldShowLiveButton, setShouldShowLiveButton] = useState(false);
+  const [matchPhase, setMatchPhase] = useState('unknown');
   
+  // Update auto-detection state
+  useEffect(() => {
+    if (m) {
+      const autoDetected = isAutoDetected(m);
+      setIsAutoDetected(autoDetected);
+      
+      // Calculate estimated values
+      const calcMinute = calculateEstimatedMinute(m);
+      const calcStatus = calculateEstimatedStatus(m);
+      setEstimatedMinute(calcMinute);
+      setEstimatedStatus(calcStatus);
+      
+      // Check if should show live button
+      const showLive = shouldShowWatchLive(m);
+      setShouldShowLiveButton(showLive);
+      
+      // Set match phase
+      const phase = getMatchPhase(m);
+      setMatchPhase(phase);
+    }
+  }, [m]);
+
   // Early return for invalid match
   if (!m || typeof m !== 'object') {
     return (
@@ -50,35 +83,43 @@ const MatchCard = memo(({ match: m }) => {
   const isUpcoming = isMatchUpcoming(m);
   const isElite = isEliteMatch(m);
   
-  // Get status display
+  // Use calculated values for display
+  const displayMinute = m?.minute || estimatedMinute;
+  const displayStatus = m?.status || estimatedStatus;
+  
+  // Get status display with auto-detection support
   const getStatusDisplay = () => {
-    if (isLive) {
-      const minute = Number(m?.minute) || 0;
-      if (m?.status === 'HT') return 'HALF TIME';
+    // If match is auto-detected but API says NS, use estimated status
+    const effectiveStatus = isAutoDetectedState && m?.status === 'NS' ? estimatedStatus : m?.status;
+    const effectiveMinute = isAutoDetectedState && (!m?.minute || m?.minute === 0) ? estimatedMinute : displayMinute;
+    
+    if (isLive || effectiveStatus === '1H' || effectiveStatus === '2H' || effectiveStatus === 'ET') {
+      const minute = Number(effectiveMinute) || 0;
+      if (effectiveStatus === 'HT') return 'HT';
       return `${minute}'`;
     }
     
-    if (isFinished) return 'FINAL';
+    if (isFinished) return 'FT';
     
     if (isUpcoming) {
-      try {
-        return formatMatchTime(m?.kickoff);
-      } catch {
-        return 'SOON';
-      }
+      const timeDisplay = formatMatchTime(m?.kickoff);
+      return timeDisplay === 'TBD' ? 'SOON' : timeDisplay;
     }
     
-    const statusMap = {
-      'ET': 'EXTRA TIME',
-      'P': 'PENALTIES',
-      'SUSP': 'SUSPENDED',
-      'PST': 'POSTPONED',
-      'CANC': 'CANCELLED',
-      'ABD': 'ABANDONED',
-      'AWD': 'AWARDED'
+    // Special statuses
+    const status = String(effectiveStatus || '').toUpperCase();
+    const specialStatuses = {
+      'ET': 'ET',
+      'P': 'PEN',
+      'SUSP': 'SUSP',
+      'INT': 'SUSP',
+      'PST': 'POST',
+      'CANC': 'CANC',
+      'ABD': 'ABD',
+      'AWD': 'AWD'
     };
     
-    return statusMap[m?.status] || '--';
+    return specialStatuses[status] || '--';
   };
 
   // Handle card click
@@ -88,23 +129,33 @@ const MatchCard = memo(({ match: m }) => {
     }
   }, [safeId, navigate]);
 
-  // Get button text
+  // Get button text based on auto-detection
   const getButtonText = () => {
+    if (shouldShowLiveButton) return 'WATCH LIVE';
     if (isLive) return 'WATCH LIVE';
     if (isUpcoming) return 'VIEW DETAILS';
     if (isFinished) return 'MATCH ENDED';
+    
+    // Auto-detected but not marked live by API
+    if (isAutoDetectedState) return 'WATCH LIVE';
+    
     return 'VIEW MATCH';
   };
 
   // Get button icon
   const getButtonIcon = () => {
-    if (isLive) return <Play size={12} fill="currentColor" className="animate-pulse" />;
+    if (shouldShowLiveButton || isLive) return <Play size={12} fill="currentColor" className="animate-pulse" />;
+    if (isAutoDetectedState) return <Wifi size={12} className="animate-pulse" />;
     if (isUpcoming) return <Clock size={12} />;
     return null;
   };
 
-  // Get status background color
+  // Get status background color with auto-detection indicator
   const getStatusBgColor = () => {
+    if (isAutoDetectedState) {
+      return 'bg-gradient-to-r from-purple-600 to-purple-700 text-white shadow-lg shadow-purple-600/30';
+    }
+    
     if (isLive) return 'bg-gradient-to-r from-red-600 to-red-700 text-white shadow-lg shadow-red-600/30';
     if (isFinished) return 'bg-gradient-to-r from-gray-700 to-gray-800 text-gray-300';
     if (isUpcoming) return 'bg-gradient-to-r from-blue-600 to-blue-700 text-blue-100';
@@ -116,7 +167,11 @@ const MatchCard = memo(({ match: m }) => {
 
   // Get button background color
   const getButtonBgColor = () => {
-    if (isLive) return 'bg-gradient-to-r from-red-600 to-red-700 text-white hover:from-red-700 hover:to-red-800 shadow-lg shadow-red-600/20';
+    if (isAutoDetectedState) {
+      return 'bg-gradient-to-r from-purple-600 to-purple-700 text-white hover:from-purple-700 hover:to-purple-800 shadow-lg shadow-purple-600/20';
+    }
+    
+    if (shouldShowLiveButton || isLive) return 'bg-gradient-to-r from-red-600 to-red-700 text-white hover:from-red-700 hover:to-red-800 shadow-lg shadow-red-600/20';
     if (isUpcoming) return 'bg-gradient-to-r from-blue-600 to-blue-700 text-white hover:from-blue-700 hover:to-blue-800';
     if (isFinished) return 'bg-gradient-to-r from-gray-700 to-gray-800 text-gray-300 hover:from-gray-800 hover:to-gray-900';
     return 'bg-gradient-to-r from-gray-800 to-gray-900 text-gray-400 hover:from-gray-900 hover:to-black';
@@ -128,7 +183,6 @@ const MatchCard = memo(({ match: m }) => {
   
   // Stream info
   const streamCount = getStreamCount(m);
-  const streamDisplay = getStreamDisplay(m);
   
   // New backend features
   const leagueDisplay = getLeagueDisplay(m);
@@ -141,7 +195,7 @@ const MatchCard = memo(({ match: m }) => {
 
   // Truncate team names intelligently
   const truncateTeamName = (name, maxLength = 14) => {
-    if (!name) return 'TBA';
+    if (!name || name.trim() === '') return 'TBD';
     if (name.length <= maxLength) return name;
     
     const words = name.split(' ');
@@ -166,12 +220,41 @@ const MatchCard = memo(({ match: m }) => {
     return null;
   };
 
+  // Get team initials for fallback
+  const getTeamInitial = (name) => {
+    if (!name || name.trim() === '') return '?';
+    return name.charAt(0).toUpperCase();
+  };
+
+  // Get match status text for tooltips
+  const getMatchStatusTooltip = () => {
+    const statusText = getMatchStatusText(m);
+    if (isAutoDetectedState) {
+      return `Auto-detected: ${statusText} (API hasn't updated yet)`;
+    }
+    return statusText;
+  };
+
+  // Get stream quality indicator
+  const getStreamQualityIndicator = () => {
+    if (streamCount === 0) return null;
+    
+    const qualities = [];
+    if (m.streamQuality1 && m.streamQuality1 !== 'Unknown') qualities.push(m.streamQuality1);
+    if (m.streamQuality2 && m.streamQuality2 !== 'Unknown') qualities.push(m.streamQuality2);
+    if (m.streamQuality3 && m.streamQuality3 !== 'Unknown') qualities.push(m.streamQuality3);
+    
+    const uniqueQualities = [...new Set(qualities)];
+    return uniqueQualities.join(', ') || 'HD';
+  };
+
   return (
     <div 
       className={`group relative flex flex-col justify-between overflow-hidden rounded-2xl border border-white/5 bg-gradient-to-br from-gray-900/50 to-black p-5 transition-all duration-300 hover:border-red-500/30 hover:shadow-2xl hover:shadow-red-500/10 ${
         isFinished ? 'opacity-80' : 'hover:-translate-y-1'
       } ${isElite ? 'border-yellow-500/20 bg-gradient-to-br from-yellow-900/10 to-black' : ''}
-      ${isManualMatch ? 'border-purple-500/20' : ''}`}
+      ${isManualMatch ? 'border-purple-500/20' : ''}
+      ${isAutoDetectedState ? 'border-green-500/20 bg-gradient-to-br from-green-900/10 to-black' : ''}`}
       role="article"
       aria-label={`${m?.home?.name || 'Home'} vs ${m?.away?.name || 'Away'} match`}
     >
@@ -185,9 +268,19 @@ const MatchCard = memo(({ match: m }) => {
         </div>
       )}
       
-      {/* Stream Badge */}
-      {streamCount > 0 && (
+      {/* Auto-Detected Badge */}
+      {isAutoDetectedState && (
         <div className="absolute top-3 left-3 z-10">
+          <div className="flex items-center gap-1 px-2 py-1 bg-gradient-to-r from-green-600 to-green-700 rounded-full shadow-lg shadow-green-600/30 animate-pulse">
+            <Wifi size={10} className="text-white" />
+            <span className="text-[8px] font-black uppercase text-white tracking-widest">AUTO</span>
+          </div>
+        </div>
+      )}
+      
+      {/* Stream Badge */}
+      {streamCount > 0 && !isAutoDetectedState && (
+        <div className={`absolute top-3 ${isAutoDetectedState ? 'top-12' : 'left-3'} z-10`}>
           <div className={`flex items-center gap-1 px-2 py-1 bg-gradient-to-r from-green-600 to-green-700 rounded-full shadow-lg shadow-green-600/30 ${
             streamsManuallyUpdated ? 'from-purple-600 to-purple-700 shadow-purple-600/30' : ''
           }`}>
@@ -201,7 +294,7 @@ const MatchCard = memo(({ match: m }) => {
 
       {/* Manual Match Badge */}
       {isManualMatch && (
-        <div className="absolute top-12 left-3 z-10">
+        <div className={`absolute ${isAutoDetectedState ? 'top-12' : 'top-3'} ${streamCount > 0 ? 'top-12' : 'top-3'} right-3 z-10`}>
           <div className="flex items-center gap-1 px-2 py-1 bg-gradient-to-r from-purple-600 to-purple-700 rounded-full shadow-lg shadow-purple-600/30">
             <Star size={10} className="text-white" />
             <span className="text-[8px] font-black uppercase text-white tracking-widest">MANUAL</span>
@@ -213,21 +306,21 @@ const MatchCard = memo(({ match: m }) => {
       <div className="flex items-center justify-between mb-6 relative z-0">
         <div className="flex items-center gap-2 flex-1 min-w-0">
           {/* League Logo */}
-          <div className={`p-1.5 rounded-lg ${isElite ? 'bg-yellow-600/20' : 'bg-red-600/20'}`}>
+          <div className={`p-1.5 rounded-lg ${isElite ? 'bg-yellow-600/20' : isAutoDetectedState ? 'bg-green-600/20' : 'bg-red-600/20'}`}>
             {getLeagueLogo() ? (
               <img 
                 src={getLeagueLogo()} 
                 className="w-4 h-4 object-contain"
-                alt={`${m?.league || 'League'} logo`}
+                alt={`${leagueDisplay || 'League'} logo`}
                 onError={(e) => {
                   e.target.style.display = 'none';
                   e.target.parentElement.innerHTML = `
-                    <ShieldCheck size={14} class="${isElite ? 'text-yellow-400' : 'text-red-400'}" />
+                    <ShieldCheck size={14} class="${isElite ? 'text-yellow-400' : isAutoDetectedState ? 'text-green-400' : 'text-red-400'}" />
                   `;
                 }}
               />
             ) : (
-              <ShieldCheck size={14} className={isElite ? 'text-yellow-400' : 'text-red-400'} />
+              <ShieldCheck size={14} className={isElite ? 'text-yellow-400' : isAutoDetectedState ? 'text-green-400' : 'text-red-400'} />
             )}
           </div>
           
@@ -242,8 +335,16 @@ const MatchCard = memo(({ match: m }) => {
             
             {/* Match Info Badges */}
             <div className="flex items-center gap-1.5 mt-1">
+              {/* Auto-detected indicator */}
+              {isAutoDetectedState && (
+                <div className="flex items-center gap-0.5" title="Auto-detected by system">
+                  <TrendingUp size={8} className="text-green-400 animate-pulse" />
+                  <span className="text-[9px] text-green-400 font-bold">AUTO</span>
+                </div>
+              )}
+              
               {/* Venue */}
-              {venueDisplay !== 'Venue TBD' && (
+              {venueDisplay && venueDisplay !== 'Venue TBD' && venueDisplay !== 'TBD' && (
                 <div className="flex items-center gap-0.5">
                   <MapPin size={8} className="text-white/40" />
                   <span className="text-[9px] text-white/40 truncate max-w-[80px]" title={venueDisplay}>
@@ -253,7 +354,7 @@ const MatchCard = memo(({ match: m }) => {
               )}
               
               {/* Referee */}
-              {refereeDisplay !== 'Referee TBD' && (
+              {refereeDisplay && refereeDisplay !== 'Referee TBD' && refereeDisplay !== 'TBD' && (
                 <div className="flex items-center gap-0.5">
                   <UserCheck size={8} className="text-white/40" />
                   <span className="text-[9px] text-white/40 truncate max-w-[60px]" title={refereeDisplay}>
@@ -265,12 +366,16 @@ const MatchCard = memo(({ match: m }) => {
           </div>
         </div>
         
-        {/* Status Badge */}
+        {/* Status Badge - With auto-detection indicator */}
         <div 
-          className={`px-3 py-1.5 rounded-full text-[11px] font-black uppercase tracking-wider whitespace-nowrap ${getStatusBgColor()}`}
+          className={`px-3 py-1.5 rounded-full text-[11px] font-black uppercase tracking-wider whitespace-nowrap ${getStatusBgColor()} relative group/status`}
           aria-live="polite"
+          title={getMatchStatusTooltip()}
         >
           {getStatusDisplay()}
+          {isAutoDetectedState && (
+            <div className="absolute -top-1 -right-1 w-3 h-3 bg-green-500 rounded-full border border-white animate-pulse"></div>
+          )}
         </div>
       </div>
 
@@ -288,12 +393,12 @@ const MatchCard = memo(({ match: m }) => {
                   loading="lazy"
                   onError={(e) => {
                     e.target.style.display = 'none';
-                    e.target.parentElement.innerHTML = `<div class="text-white/30 font-bold text-xl">${m.home.name.charAt(0)}</div>`;
+                    e.target.parentElement.innerHTML = `<div class="text-white/30 font-bold text-xl">${getTeamInitial(m.home.name)}</div>`;
                   }}
                 />
               ) : (
                 <div className="text-white/30 font-bold text-xl">
-                  {m?.home?.name?.charAt(0) || 'H'}
+                  {getTeamInitial(m?.home?.name)}
                 </div>
               )}
             </div>
@@ -312,7 +417,9 @@ const MatchCard = memo(({ match: m }) => {
             </p>
             <div className="text-xs font-bold text-white/50">
               {homeScore > 0 && (
-                <span className="font-mono">{homeScore}</span>
+                <span className="font-mono bg-gradient-to-r from-red-600 to-red-700 bg-clip-text text-transparent">
+                  {homeScore}
+                </span>
               )}
             </div>
           </div>
@@ -325,15 +432,37 @@ const MatchCard = memo(({ match: m }) => {
             <span className="text-lg font-black text-red-500 mx-1">-</span>
             <span className="text-2xl font-black text-white font-mono">{awayScore}</span>
           </div>
-          {isLive && m?.minute > 0 && (
-            <div className="flex items-center gap-1 px-2 py-0.5 bg-red-600/20 rounded-full">
-              <div className="w-1.5 h-1.5 bg-red-500 rounded-full animate-pulse"></div>
-              <span className="text-[9px] font-black uppercase text-red-400 tracking-widest">
-                LIVE • {m?.minute || 0}'
+          
+          {/* Live indicator with auto-detection */}
+          {(shouldShowLiveButton || isLive) && (
+            <div className={`flex items-center gap-1 px-2 py-0.5 rounded-full ${
+              isAutoDetectedState 
+                ? 'bg-green-600/20 border border-green-500/20' 
+                : 'bg-red-600/20 border border-red-500/20'
+            }`}>
+              <div className={`w-1.5 h-1.5 rounded-full animate-pulse ${
+                isAutoDetectedState ? 'bg-green-500' : 'bg-red-500'
+              }`}></div>
+              <span className={`text-[9px] font-black uppercase tracking-widest ${
+                isAutoDetectedState ? 'text-green-400' : 'text-red-400'
+              }`}>
+                {isAutoDetectedState ? 'AUTO • ' : 'LIVE • '}
+                {displayMinute || 0}'
               </span>
             </div>
           )}
-          {!isLive && !isFinished && (
+          
+          {/* Upcoming indicator */}
+          {isUpcoming && !shouldShowLiveButton && (
+            <div className="flex items-center gap-1 px-2 py-0.5 bg-blue-600/20 rounded-full border border-blue-500/20">
+              <Clock size={8} className="text-blue-400" />
+              <span className="text-[9px] font-black uppercase text-blue-400 tracking-widest">
+                {formatMatchTime(m?.kickoff)}
+              </span>
+            </div>
+          )}
+          
+          {!shouldShowLiveButton && !isLive && !isFinished && !isUpcoming && (
             <span className="text-[10px] font-black uppercase text-white/40 tracking-widest">
               VS
             </span>
@@ -352,12 +481,12 @@ const MatchCard = memo(({ match: m }) => {
                   loading="lazy"
                   onError={(e) => {
                     e.target.style.display = 'none';
-                    e.target.parentElement.innerHTML = `<div class="text-white/30 font-bold text-xl">${m.away.name.charAt(0)}</div>`;
+                    e.target.parentElement.innerHTML = `<div class="text-white/30 font-bold text-xl">${getTeamInitial(m.away.name)}</div>`;
                   }}
                 />
               ) : (
                 <div className="text-white/30 font-bold text-xl">
-                  {m?.away?.name?.charAt(0) || 'A'}
+                  {getTeamInitial(m?.away?.name)}
                 </div>
               )}
             </div>
@@ -376,7 +505,9 @@ const MatchCard = memo(({ match: m }) => {
             </p>
             <div className="text-xs font-bold text-white/50">
               {awayScore > 0 && (
-                <span className="font-mono">{awayScore}</span>
+                <span className="font-mono bg-gradient-to-r from-red-600 to-red-700 bg-clip-text text-transparent">
+                  {awayScore}
+                </span>
               )}
             </div>
           </div>
@@ -387,7 +518,7 @@ const MatchCard = memo(({ match: m }) => {
       <div className="mb-4 space-y-2">
         {/* AI Prediction */}
         <div className="flex items-center justify-start gap-2 px-4 py-3 bg-gradient-to-r from-gray-800/50 to-black/50 rounded-xl border border-white/5">
-          <BrainCircuit size={14} className={isElite ? 'text-yellow-400' : 'text-red-400'} />
+          <BrainCircuit size={14} className={isElite ? 'text-yellow-400' : isAutoDetectedState ? 'text-green-400' : 'text-red-400'} />
           <span className="text-xs font-bold text-white/70 truncate max-w-full" title={aiPickDisplay}>
             {aiPickDisplay || 'AI analysis in progress...'}
           </span>
@@ -397,32 +528,39 @@ const MatchCard = memo(({ match: m }) => {
         <div className="flex items-center justify-between px-3 py-2 bg-black/30 rounded-lg border border-white/5">
           {/* Stream Quality Indicator */}
           {streamCount > 0 && (
-            <div className="flex items-center gap-1.5">
+            <div className="flex items-center gap-1.5" title={`${streamCount} stream(s) available: ${getStreamQualityIndicator()}`}>
               <Radio size={10} className="text-green-400" />
               <div className="flex gap-1">
-                {[1, 2, 3, 4, 5].slice(0, streamCount).map((num) => (
-                  <div key={num} className="w-1.5 h-1.5 bg-green-500 rounded-full"></div>
+                {[1, 2, 3].slice(0, streamCount).map((num) => (
+                  <div 
+                    key={num} 
+                    className={`w-1.5 h-1.5 rounded-full ${
+                      num === 1 ? 'bg-green-500' : 
+                      num === 2 ? 'bg-blue-500' : 
+                      'bg-purple-500'
+                    }`}
+                  ></div>
                 ))}
               </div>
               <span className="text-[10px] text-white/60">x{streamCount}</span>
             </div>
           )}
           
+          {/* Match Phase Indicator */}
+          <div className="flex items-center gap-1" title={`Match phase: ${matchPhase}`}>
+            {matchPhase === 'live' && <Zap size={10} className="text-red-400" />}
+            {matchPhase === 'upcoming' && <Clock size={10} className="text-blue-400" />}
+            {matchPhase === 'finished' && <CheckCircle size={10} className="text-gray-400" />}
+            <span className="text-[10px] text-white/40">{matchPhase.toUpperCase()}</span>
+          </div>
+          
           {/* Last Updated */}
           {lastUpdateTime && (
-            <div className="flex items-center gap-1">
+            <div className="flex items-center gap-1" title={`Last updated: ${lastUpdateTime}`}>
               <Calendar size={10} className="text-white/40" />
-              <span className="text-[10px] text-white/40" title={`Last updated: ${lastUpdateTime}`}>
+              <span className="text-[10px] text-white/40">
                 {lastUpdateTime}
               </span>
-            </div>
-          )}
-          
-          {/* Manual Stream Update Indicator */}
-          {streamsManuallyUpdated && (
-            <div className="flex items-center gap-1" title="Streams manually updated">
-              <Award size={10} className="text-purple-400" />
-              <span className="text-[10px] text-purple-400">UPDATED</span>
             </div>
           )}
         </div>
@@ -432,27 +570,53 @@ const MatchCard = memo(({ match: m }) => {
       <button 
         onClick={handleCardClick}
         disabled={!safeId || safeId === 'undefined' || safeId === 'null'}
-        className={`w-full py-3.5 rounded-xl text-xs font-black uppercase tracking-widest transition-all flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed ${getButtonBgColor()}`}
+        className={`w-full py-3.5 rounded-xl text-xs font-black uppercase tracking-widest transition-all flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed ${
+          getButtonBgColor()
+        } group/button`}
         aria-label={`${getButtonText()} - ${m?.home?.name || 'Home'} vs ${m?.away?.name || 'Away'}`}
       >
         {getButtonIcon()}
-        {getButtonText()}
+        <span>{getButtonText()}</span>
+        
+        {/* Auto-detection indicator on button */}
+        {isAutoDetectedState && (
+          <div className="absolute -top-1 -right-1 w-4 h-4 bg-green-500 rounded-full border-2 border-white/90 animate-pulse">
+            <div className="w-full h-full flex items-center justify-center">
+              <Timer size={8} className="text-white" />
+            </div>
+          </div>
+        )}
         
         {/* Stream Quality Badge */}
         {streamCount > 0 && (
-          <span className={`ml-1 px-1.5 py-0.5 rounded text-[10px] font-bold ${
-            isLive ? 'bg-white/20' : 'bg-black/20'
+          <span className={`ml-1 px-1.5 py-0.5 rounded text-[10px] font-bold transition-colors ${
+            shouldShowLiveButton || isLive ? 'bg-white/20 group-hover/button:bg-white/30' : 
+            isAutoDetectedState ? 'bg-white/20 group-hover/button:bg-white/30' : 
+            'bg-black/20 group-hover/button:bg-black/30'
           }`}>
-            {streamCount}x {isLive ? 'LIVE' : 'HD'}
+            {streamCount}x {getStreamQualityIndicator()}
           </span>
         )}
       </button>
+      
+      {/* Auto-detection explanation tooltip */}
+      {isAutoDetectedState && (
+        <div className="mt-3 px-3 py-2 bg-gradient-to-r from-green-900/30 to-green-900/10 rounded-lg border border-green-500/20">
+          <div className="flex items-center gap-2">
+            <AlertCircle size={10} className="text-green-400" />
+            <span className="text-[10px] text-green-300 font-bold">
+              Auto-detected: Match started but API hasn't updated yet
+            </span>
+          </div>
+        </div>
+      )}
       
       {/* Debug Info (only in development) */}
       {process.env.NODE_ENV === 'development' && (
         <div className="mt-2 pt-2 border-t border-white/5">
           <div className="text-[8px] text-white/20 font-mono truncate">
-            ID: {safeId} | League ID: {m?.leagueId || 'N/A'} | Elite: {isElite ? 'YES' : 'NO'}
+            ID: {safeId} | Phase: {matchPhase} | API: {m?.status} | Est: {estimatedStatus} | 
+            API min: {m?.minute} | Est min: {estimatedMinute} | Auto: {isAutoDetectedState ? 'YES' : 'NO'}
           </div>
         </div>
       )}

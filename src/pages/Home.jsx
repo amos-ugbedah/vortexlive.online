@@ -2,7 +2,7 @@
 import React, { useState, useEffect, useMemo, useCallback, useRef, memo } from 'react';
 import { db } from '../lib/firebase';
 import { collection, onSnapshot, query, orderBy } from 'firebase/firestore'; 
-import { Volume2, Radio, Trees, Sparkles, Zap, Clock, Trophy, Target, TrendingUp, Award, Shield, Users, BarChart, Crown, Star, TrendingDown, TrendingUpIcon } from 'lucide-react';
+import { Volume2, Radio, Trees, Sparkles, Zap, Clock, Trophy, Target, TrendingUp, Award, Shield, Users, BarChart, Crown, Star } from 'lucide-react';
 import SearchBar from '../components/SearchBar';
 import MatchCard from '../components/MatchCard';
 import { normalizeMatch, isMatchLive, isMatchUpcoming, isMatchFinished } from '../lib/matchUtils';
@@ -33,14 +33,13 @@ const Home = memo(() => {
     }
   }, [soundEnabled]);
 
-  // Fetch matches
+  // Fetch matches - UPDATED: Simplified query
   useEffect(() => {
     if (!db) return;
 
-    // Order by elite status first, then by kickoff time (soonest first)
+    // Order by kickoff time (soonest first)
     const q = query(
       collection(db, 'matches'), 
-      orderBy('isElite', 'desc'),
       orderBy('kickoff', 'asc')
     );
     
@@ -101,7 +100,7 @@ const Home = memo(() => {
       .filter(m => m.aiPick && m.aiPick.trim() !== '')
       .slice(0, 5);
 
-    // Categorize for display
+    // Categorize for display - FIXED: Elite matches are marked with isElite flag
     const categorized = {
       eliteLive: filtered.filter(m => m.isElite && isMatchLive(m)),
       regularLive: filtered.filter(m => !m.isElite && isMatchLive(m)),
@@ -135,6 +134,9 @@ const Home = memo(() => {
       const teams = {};
       
       league.matches.forEach(match => {
+        // Skip if team names are empty
+        if (!match.home?.name || !match.away?.name) return;
+        
         // Add home team
         if (!teams[match.home.name]) {
           teams[match.home.name] = {
@@ -165,7 +167,7 @@ const Home = memo(() => {
           };
         }
 
-        // Update stats
+        // Update stats only for finished matches
         if (match.status === 'FT') {
           teams[match.home.name].played++;
           teams[match.away.name].played++;
@@ -424,37 +426,7 @@ const Home = memo(() => {
           )}
         </main>
 
-        {/* FOOTER STATS */}
-        {totalMatches > 0 && (
-          <footer className="border-t border-white/5 bg-gradient-to-r from-black/50 to-transparent py-4 px-6">
-            <div className="max-w-[1400px] mx-auto">
-              <div className="flex flex-wrap items-center justify-between gap-4 text-xs text-white/40">
-                <div className="flex items-center gap-6">
-                  <span className="flex items-center gap-2">
-                    <div className="w-2.5 h-2.5 bg-gradient-to-r from-red-600 to-red-500 rounded-full animate-pulse"></div>
-                    <span className="font-black">Live: {categorized.eliteLive.length + categorized.regularLive.length}</span>
-                  </span>
-                  <span className="flex items-center gap-2">
-                    <div className="w-2.5 h-2.5 bg-gradient-to-r from-blue-600 to-blue-500 rounded-full"></div>
-                    <span className="font-black">Upcoming: {categorized.upcoming.length}</span>
-                  </span>
-                  <span className="flex items-center gap-2">
-                    <div className="w-2.5 h-2.5 bg-gradient-to-r from-gray-600 to-gray-500 rounded-full"></div>
-                    <span className="font-black">Finished: {categorized.finished.length}</span>
-                  </span>
-                </div>
-                <div className="flex items-center gap-4">
-                  <span className="font-black">Total Matches: {totalMatches}</span>
-                  <span className="text-white/10">|</span>
-                  <span className="font-black flex items-center gap-2">
-                    <Star size={12} className="text-yellow-500" />
-                    Elite: {matches.filter(m => m.isElite).length}
-                  </span>
-                </div>
-              </div>
-            </div>
-          </footer>
-        )}
+        {/* FOOTER STATS - REMOVED from here */}
       </div>
 
       {/* RIGHT SIDEBAR - STATS, TABLES & ADS */}

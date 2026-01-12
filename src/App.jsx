@@ -1,3 +1,4 @@
+/* eslint-disable */
 import React, { useEffect, useState, Suspense, lazy } from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import { db } from './lib/firebase';
@@ -66,6 +67,47 @@ const LoadingFallback = () => (
     </div>
     <p className="text-sm font-bold uppercase tracking-wider text-white/40">LOADING VORTEX STREAMS</p>
   </div>
+);
+
+// Main App Layout Component
+const AppLayout = ({ children, isLandscapeMode, partners, isOnline, appReady }) => (
+  <>
+    {/* Network Status Indicator */}
+    {!isOnline && (
+      <div className="px-4 py-2 bg-yellow-600/90 text-center text-sm font-bold sticky top-0 z-50">
+        ⚠️ You are offline. Some features may be limited.
+      </div>
+    )}
+    
+    {/* Debug Banner for Development */}
+    {process.env.NODE_ENV === 'development' && (
+      <div className="px-4 py-2 bg-blue-600/90 text-center text-sm font-bold flex items-center justify-center gap-2 sticky top-0 z-50">
+        <div className="w-2 h-2 bg-green-400 rounded-full animate-pulse"></div>
+        DEVELOPMENT MODE - Local Build
+      </div>
+    )}
+    
+    {!isLandscapeMode && <Navbar partners={partners} />}
+    
+    {/* Main Content Area */}
+    <main className="flex-1 w-full">
+      {children}
+    </main>
+
+    {!isLandscapeMode && <Footer />}
+    
+    {/* App Status Footer */}
+    {appReady && (
+      <div className="fixed bottom-4 right-4 z-50">
+        <div className="flex items-center gap-2 px-3 py-1 bg-black/80 backdrop-blur-sm rounded-full text-xs text-white/60 border border-white/10">
+          <div className={`w-2 h-2 rounded-full ${isOnline ? 'bg-green-500 animate-pulse' : 'bg-red-500'}`}></div>
+          <span>Vortex Live</span>
+          <span className="text-white/40">•</span>
+          <span>{isOnline ? 'Online' : 'Offline'}</span>
+        </div>
+      </div>
+    )}
+  </>
 );
 
 function App() {
@@ -187,48 +229,48 @@ function App() {
     <ErrorBoundary>
       <Router>
         <div className="min-h-screen bg-[#050505] text-white flex flex-col selection:bg-red-600">
-          {/* Network Status Indicator */}
-          {!isOnline && (
-            <div className="px-4 py-2 bg-yellow-600/90 text-center text-sm font-bold">
-              ⚠️ You are offline. Some features may be limited.
-            </div>
-          )}
-          
-          {/* Debug Banner for Development */}
-          {process.env.NODE_ENV === 'development' && (
-            <div className="px-4 py-2 bg-blue-600/90 text-center text-sm font-bold flex items-center justify-center gap-2">
-              <div className="w-2 h-2 bg-green-400 rounded-full animate-pulse"></div>
-              DEVELOPMENT MODE - Local Build
-            </div>
-          )}
-          
-          {!isLandscapeMode && <Navbar partners={defaultPartners} />}
-          
-          {/* Main Content Area */}
-          <div className="flex-1 w-full">
-            <Suspense fallback={<LoadingFallback />}>
-              <Routes>
-                <Route path="/" element={<Home />} />
-                <Route path="/match/:id" element={<MatchDetails />} />
-                <Route path="/admin" element={<Admin />} />
-                <Route path="*" element={<Navigate to="/" />} />
-              </Routes>
-            </Suspense>
-          </div>
-
-          {!isLandscapeMode && <Footer />}
-          
-          {/* App Status Footer */}
-          {appReady && (
-            <div className="fixed bottom-4 right-4 z-50">
-              <div className="flex items-center gap-2 px-3 py-1 bg-black/80 rounded-full text-xs text-white/60">
-                <div className={`w-2 h-2 rounded-full ${isOnline ? 'bg-green-500' : 'bg-red-500'}`}></div>
-                <span>Vortex Live</span>
-                <span className="text-white/40">•</span>
-                <span>{isOnline ? 'Online' : 'Offline'}</span>
-              </div>
-            </div>
-          )}
+          <Routes>
+            <Route path="/" element={
+              <AppLayout 
+                isLandscapeMode={isLandscapeMode}
+                partners={defaultPartners}
+                isOnline={isOnline}
+                appReady={appReady}
+              >
+                <Suspense fallback={<LoadingFallback />}>
+                  <Home />
+                </Suspense>
+              </AppLayout>
+            } />
+            
+            <Route path="/match/:id" element={
+              <AppLayout 
+                isLandscapeMode={isLandscapeMode}
+                partners={defaultPartners}
+                isOnline={isOnline}
+                appReady={appReady}
+              >
+                <Suspense fallback={<LoadingFallback />}>
+                  <MatchDetails />
+                </Suspense>
+              </AppLayout>
+            } />
+            
+            <Route path="/admin" element={
+              <AppLayout 
+                isLandscapeMode={isLandscapeMode}
+                partners={defaultPartners}
+                isOnline={isOnline}
+                appReady={appReady}
+              >
+                <Suspense fallback={<LoadingFallback />}>
+                  <Admin />
+                </Suspense>
+              </AppLayout>
+            } />
+            
+            <Route path="*" element={<Navigate to="/" />} />
+          </Routes>
         </div>
       </Router>
     </ErrorBoundary>
