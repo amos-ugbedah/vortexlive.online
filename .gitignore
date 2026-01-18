@@ -225,7 +225,7 @@ pnpm-lock.yaml
 dist/
 build/
 out/
-lib/
+# REMOVED: lib/ - This was ignoring src/lib/ which contains source code!
 es/
 cjs/
 umd/
