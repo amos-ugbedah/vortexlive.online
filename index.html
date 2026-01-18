@@ -9,11 +9,23 @@
   <title>VortexLive | Free HD Football Live Streams</title>
   <meta name="description" content="Watch free live football streams in HD.">
 
+  <meta name="referrer" content="no-referrer" />
+
   <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate" />
   <meta http-equiv="Pragma" content="no-cache" />
   <meta http-equiv="Expires" content="0" />
 
   <script src="https://cdn.onesignal.com/sdks/web/v16/OneSignalSDK.page.js" defer></script>
+  
+  <style>
+    /* Ensures the video player fills the container correctly */
+    .vortex-player-wrapper iframe {
+      width: 100%;
+      height: 100%;
+      aspect-ratio: 16 / 9;
+      background-color: #000;
+    }
+  </style>
 </head>
 <body class="bg-[#0a0a0c]">
   <div id="root"></div>
@@ -30,5 +42,29 @@
   <script type="module" src="/src/main.jsx"></script>
 
   <script src="https://quge5.com/88/tag.min.js" data-zone="199008" async data-cfasync="false"></script>
+
+  <script>
+    /**
+     * Use this function inside your React components to load a stream.
+     * It ensures the iframe is created with the strict security bypass.
+     */
+    window.mountVortexStream = function(containerId, streamUrl) {
+      const container = document.getElementById(containerId);
+      if (!container) return;
+
+      // Create a fresh iframe to avoid cache/lock issues
+      const ifr = document.createElement('iframe');
+      ifr.src = streamUrl;
+      ifr.setAttribute('allowfullscreen', 'true');
+      ifr.setAttribute('frameborder', '0');
+      ifr.setAttribute('referrerpolicy', 'no-referrer');
+      
+      // Sandbox prevents the streaming site from redirecting your whole page to ads
+      ifr.setAttribute('sandbox', 'allow-scripts allow-same-origin allow-presentation allow-forms');
+
+      container.innerHTML = ''; // Clear previous player
+      container.appendChild(ifr);
+    };
+  </script>
 </body>
 </html>

@@ -1,5 +1,7 @@
 {
   "projects": {
     "default": "votexlive-3a8cb"
-  }
+  },
+  "targets": {},
+  "etags": {}
 }
