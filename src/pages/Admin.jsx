@@ -49,6 +49,27 @@ const STATUS_OPTIONS = [
   { value: 'FINISHED', label: 'Finished', color: 'bg-gray-600/20 text-gray-400' }
 ];
 
+// SAFE BASE64 DECODE FUNCTION
+const safeDecodeBase64 = (str) => {
+  if (!str) return '';
+  try {
+    // Check if it's already a URL (not base64)
+    if (str.includes('://') || str.startsWith('http') || str.startsWith('//')) {
+      return str;
+    }
+    // Check if it looks like valid base64
+    const base64Regex = /^[A-Za-z0-9+/]*={0,2}$/;
+    if (!base64Regex.test(str)) {
+      console.warn('Invalid base64 format, returning original:', str.substring(0, 50));
+      return str;
+    }
+    return atob(str);
+  } catch (error) {
+    console.warn('Base64 decode failed, returning original:', error.message);
+    return str;
+  }
+};
+
 function Admin() {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [matches, setMatches] = useState([]);
@@ -485,8 +506,8 @@ function Admin() {
             <Cpu size={32} />
           </div>
           <div>
-            <h2 className="text-4xl italic font-black text-white uppercase tracking-tighter">
-              Vortex <span className="bg-gradient-to-r from-red-600 to-purple-600 bg-clip-text text-transparent">ULTRA PRO</span>
+            <h2 className="text-4xl italic font-black tracking-tighter text-white uppercase">
+              Vortex <span className="text-transparent bg-gradient-to-r from-red-600 to-purple-600 bg-clip-text">ULTRA PRO</span>
             </h2>
             <p className="text-[10px] text-zinc-500 font-bold uppercase tracking-[0.4em] mt-2">
               Advanced Control & Moderation Engine
@@ -495,7 +516,7 @@ function Admin() {
         </div>
 
         <div className="flex flex-wrap items-center gap-3">
-          <div className="flex items-center gap-2 px-4 py-2 bg-black/50 border border-white/5 rounded-xl">
+          <div className="flex items-center gap-2 px-4 py-2 border bg-black/50 border-white/5 rounded-xl">
             <Activity size={14} className="text-green-500 animate-pulse" />
             <span className="text-xs font-bold">
               {systemStats.liveMatches} LIVE • {systemStats.eliteMatches} ELITE
@@ -517,21 +538,21 @@ function Admin() {
             <button 
               onClick={handleSyncToday} 
               disabled={isSyncing}
-              className="bg-gradient-to-r from-red-600 to-orange-600 hover:from-red-700 hover:to-orange-700 px-6 py-3 rounded-xl font-bold text-xs uppercase transition-all flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed shadow-lg shadow-red-600/20"
+              className="flex items-center gap-2 px-6 py-3 text-xs font-bold uppercase transition-all shadow-lg bg-gradient-to-r from-red-600 to-orange-600 hover:from-red-700 hover:to-orange-700 rounded-xl disabled:opacity-50 disabled:cursor-not-allowed shadow-red-600/20"
             >
               <RefreshCw size={16} className={isSyncing ? 'animate-spin' : ''}/> 
               {isSyncing ? 'SYNCING...' : 'SYNC NOW'}
             </button>
-            <div className="absolute hidden group-hover:block bg-black/90 border border-white/10 p-3 rounded-xl text-xs mt-2 z-50 w-48">
-              <button onClick={() => handleAdvancedSync('live')} className="block w-full text-left p-2 hover:bg-white/5 rounded">Sync Live Only</button>
-              <button onClick={() => handleAdvancedSync('upcoming')} className="block w-full text-left p-2 hover:bg-white/5 rounded">Sync Upcoming</button>
-              <button onClick={handleBulkDelete} className="block w-full text-left p-2 hover:bg-red-500/10 text-red-400 rounded">Bulk Delete</button>
+            <div className="absolute z-50 hidden w-48 p-3 mt-2 text-xs border group-hover:block bg-black/90 border-white/10 rounded-xl">
+              <button onClick={() => handleAdvancedSync('live')} className="block w-full p-2 text-left rounded hover:bg-white/5">Sync Live Only</button>
+              <button onClick={() => handleAdvancedSync('upcoming')} className="block w-full p-2 text-left rounded hover:bg-white/5">Sync Upcoming</button>
+              <button onClick={handleBulkDelete} className="block w-full p-2 text-left text-red-400 rounded hover:bg-red-500/10">Bulk Delete</button>
             </div>
           </div>
 
           <button 
             onClick={() => setShowAddMatch(true)}
-            className="bg-gradient-to-r from-white to-zinc-200 text-black px-6 py-3 rounded-xl font-bold text-xs uppercase flex items-center gap-2 hover:from-zinc-200 hover:to-zinc-300 transition-all shadow-lg"
+            className="flex items-center gap-2 px-6 py-3 text-xs font-bold text-black uppercase transition-all shadow-lg bg-gradient-to-r from-white to-zinc-200 rounded-xl hover:from-zinc-200 hover:to-zinc-300"
           >
             <Plus size={16}/> Inject Match
           </button>
@@ -541,7 +562,7 @@ function Admin() {
               sessionStorage.removeItem('vx_admin_auth'); 
               window.location.reload(); 
             }} 
-            className="p-3 border bg-zinc-900 border-white/10 rounded-xl text-zinc-500 hover:text-red-600 hover:border-red-600/20 transition-all"
+            className="p-3 transition-all border bg-zinc-900 border-white/10 rounded-xl text-zinc-500 hover:text-red-600 hover:border-red-600/20"
           >
             <LogOut size={20} />
           </button>
@@ -549,8 +570,8 @@ function Admin() {
       </header>
 
       {/* SYSTEM DASHBOARD */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
-        <div className="p-5 bg-gradient-to-br from-zinc-900 to-black border border-white/5 rounded-2xl">
+      <div className="grid grid-cols-1 gap-4 mb-8 md:grid-cols-2 lg:grid-cols-4">
+        <div className="p-5 border bg-gradient-to-br from-zinc-900 to-black border-white/5 rounded-2xl">
           <div className="flex items-center justify-between mb-3">
             <Tv size={18} className="text-blue-500" />
             <span className="text-xs font-bold text-zinc-500">TOTAL</span>
@@ -559,7 +580,7 @@ function Admin() {
           <p className="text-[10px] text-zinc-500 mt-1">Active Matches</p>
         </div>
         
-        <div className="p-5 bg-gradient-to-br from-zinc-900 to-black border border-white/5 rounded-2xl">
+        <div className="p-5 border bg-gradient-to-br from-zinc-900 to-black border-white/5 rounded-2xl">
           <div className="flex items-center justify-between mb-3">
             <Activity size={18} className="text-red-500 animate-pulse" />
             <span className="text-xs font-bold text-zinc-500">LIVE</span>
@@ -568,7 +589,7 @@ function Admin() {
           <p className="text-[10px] text-zinc-500 mt-1">In Play Now</p>
         </div>
         
-        <div className="p-5 bg-gradient-to-br from-zinc-900 to-black border border-white/5 rounded-2xl">
+        <div className="p-5 border bg-gradient-to-br from-zinc-900 to-black border-white/5 rounded-2xl">
           <div className="flex items-center justify-between mb-3">
             <Trophy size={18} className="text-yellow-500" />
             <span className="text-xs font-bold text-zinc-500">ELITE</span>
@@ -577,7 +598,7 @@ function Admin() {
           <p className="text-[10px] text-zinc-500 mt-1">Premium Events</p>
         </div>
         
-        <div className="p-5 bg-gradient-to-br from-zinc-900 to-black border border-white/5 rounded-2xl">
+        <div className="p-5 border bg-gradient-to-br from-zinc-900 to-black border-white/5 rounded-2xl">
           <div className="flex items-center justify-between mb-3">
             <Key size={18} className="text-purple-500" />
             <span className="text-xs font-bold text-zinc-500">API</span>
@@ -588,10 +609,10 @@ function Admin() {
       </div>
 
       {/* CONTROL PANEL */}
-      <div className="flex flex-col lg:flex-row gap-6 mb-8">
-        <div className="lg:w-1/4 space-y-4">
-          <div className="p-5 bg-zinc-900/30 border border-white/5 rounded-2xl">
-            <h3 className="text-xs font-bold uppercase text-zinc-400 mb-4 flex items-center gap-2">
+      <div className="flex flex-col gap-6 mb-8 lg:flex-row">
+        <div className="space-y-4 lg:w-1/4">
+          <div className="p-5 border bg-zinc-900/30 border-white/5 rounded-2xl">
+            <h3 className="flex items-center gap-2 mb-4 text-xs font-bold uppercase text-zinc-400">
               <Settings size={14} /> System Controls
             </h3>
             
@@ -637,7 +658,7 @@ function Admin() {
                 <input
                   type="text"
                   placeholder="Team, league, etc..."
-                  className="w-full bg-black/50 border border-white/5 p-2 rounded-lg text-sm outline-none focus:border-red-600/50"
+                  className="w-full p-2 text-sm border rounded-lg outline-none bg-black/50 border-white/5 focus:border-red-600/50"
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
                 />
@@ -645,8 +666,8 @@ function Admin() {
             </div>
           </div>
           
-          <div className="p-5 bg-black/40 border border-white/5 rounded-2xl">
-            <h3 className="text-xs font-bold uppercase text-zinc-400 mb-4 flex items-center gap-2">
+          <div className="p-5 border bg-black/40 border-white/5 rounded-2xl">
+            <h3 className="flex items-center gap-2 mb-4 text-xs font-bold uppercase text-zinc-400">
               <Terminal size={14} /> Engine Status
             </h3>
             <div className="space-y-2">
@@ -662,8 +683,8 @@ function Admin() {
               </div>
               <div className="pt-3">
                 <p className="text-[10px] text-zinc-500 mb-1">Live Feed</p>
-                <div className="bg-black/50 p-3 rounded-lg h-20 overflow-y-auto">
-                  <p className="text-xs font-mono text-green-500">{botLogs}</p>
+                <div className="h-20 p-3 overflow-y-auto rounded-lg bg-black/50">
+                  <p className="font-mono text-xs text-green-500">{botLogs}</p>
                 </div>
               </div>
             </div>
@@ -673,19 +694,19 @@ function Admin() {
         {/* MATCH MANAGEMENT */}
         <div className="lg:w-3/4">
           <div className="flex items-center justify-between mb-4">
-            <h3 className="text-xs font-bold uppercase text-zinc-500 flex items-center gap-2">
+            <h3 className="flex items-center gap-2 text-xs font-bold uppercase text-zinc-500">
               <Monitor size={14}/> Match Management ({filteredMatches.length})
             </h3>
             <div className="flex items-center gap-2">
               <button 
                 onClick={() => setShowAddMatch(true)}
-                className="px-3 py-1 bg-white/10 hover:bg-white/20 text-xs rounded-lg transition-colors flex items-center gap-2"
+                className="flex items-center gap-2 px-3 py-1 text-xs transition-colors rounded-lg bg-white/10 hover:bg-white/20"
               >
                 <Plus size={12} /> Add
               </button>
               <button 
                 onClick={handleBulkDelete}
-                className="px-3 py-1 bg-red-600/20 hover:bg-red-600/30 text-red-400 text-xs rounded-lg transition-colors flex items-center gap-2"
+                className="flex items-center gap-2 px-3 py-1 text-xs text-red-400 transition-colors rounded-lg bg-red-600/20 hover:bg-red-600/30"
               >
                 <Trash2 size={12} /> Bulk Delete
               </button>
@@ -693,7 +714,7 @@ function Admin() {
           </div>
           
           {filteredMatches.length === 0 ? (
-            <div className="p-8 border bg-zinc-900/10 border-white/5 rounded-2xl text-center">
+            <div className="p-8 text-center border bg-zinc-900/10 border-white/5 rounded-2xl">
               <p className="text-zinc-500">No matches found. {searchQuery ? 'Try a different search.' : 'Run Global Sync or add matches manually.'}</p>
             </div>
           ) : (
@@ -703,12 +724,12 @@ function Admin() {
                   key={match.id} 
                   className={`p-5 border rounded-2xl transition-all hover:border-white/10 ${match.isHidden ? 'bg-black/30 border-yellow-600/20' : 'bg-zinc-900/10 border-white/5'}`}
                 >
-                  <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-4">
+                  <div className="flex flex-col justify-between gap-4 mb-4 md:flex-row md:items-center">
                     <div className="flex items-center gap-4">
                       <div className="flex flex-col items-center">
-                        <div className="w-12 h-12 flex items-center justify-center bg-black/50 rounded-full overflow-hidden">
+                        <div className="flex items-center justify-center w-12 h-12 overflow-hidden rounded-full bg-black/50">
                           {match.home?.logo ? (
-                            <img src={match.home.logo} className="w-10 h-10 object-contain" alt={match.home.name} />
+                            <img src={match.home.logo} className="object-contain w-10 h-10" alt={match.home.name} />
                           ) : (
                             <span className="text-lg font-bold">{match.home?.name?.charAt(0) || 'H'}</span>
                           )}
@@ -719,16 +740,16 @@ function Admin() {
                       <div className="text-center">
                         <div className="flex items-center gap-4">
                           <span className="text-2xl font-black">{match.home?.score || 0}</span>
-                          <span className="text-red-600 text-sm font-bold">VS</span>
+                          <span className="text-sm font-bold text-red-600">VS</span>
                           <span className="text-2xl font-black">{match.away?.score || 0}</span>
                         </div>
-                        <p className="text-sm text-zinc-400 mt-1">{match.home?.name} vs {match.away?.name}</p>
+                        <p className="mt-1 text-sm text-zinc-400">{match.home?.name} vs {match.away?.name}</p>
                       </div>
                       
                       <div className="flex flex-col items-center">
-                        <div className="w-12 h-12 flex items-center justify-center bg-black/50 rounded-full overflow-hidden">
+                        <div className="flex items-center justify-center w-12 h-12 overflow-hidden rounded-full bg-black/50">
                           {match.away?.logo ? (
-                            <img src={match.away.logo} className="w-10 h-10 object-contain" alt={match.away.name} />
+                            <img src={match.away.logo} className="object-contain w-10 h-10" alt={match.away.name} />
                           ) : (
                             <span className="text-lg font-bold">{match.away?.name?.charAt(0) || 'A'}</span>
                           )}
@@ -756,7 +777,7 @@ function Admin() {
                     </div>
                   </div>
                   
-                  <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+                  <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
                     {/* Quick Controls */}
                     <div className="space-y-3">
                       <p className="text-[10px] font-bold uppercase text-zinc-500">Quick Actions</p>
@@ -765,7 +786,7 @@ function Admin() {
                           <button
                             key={action}
                             onClick={() => handleQuickAction(action, match)}
-                            className="px-3 py-1 bg-white/5 hover:bg-white/10 text-xs rounded-lg transition-colors"
+                            className="px-3 py-1 text-xs transition-colors rounded-lg bg-white/5 hover:bg-white/10"
                           >
                             {action.charAt(0).toUpperCase() + action.slice(1)}
                           </button>
@@ -793,7 +814,7 @@ function Admin() {
                           <input
                             type="number"
                             defaultValue={match.home?.score || 0}
-                            className="w-full bg-black/50 border border-white/5 p-2 rounded-lg text-center font-bold"
+                            className="w-full p-2 font-bold text-center border rounded-lg bg-black/50 border-white/5"
                             onBlur={(e) => handleUpdateScore(match.id, 'home', e.target.value)}
                           />
                         </div>
@@ -801,7 +822,7 @@ function Admin() {
                           <input
                             type="number"
                             defaultValue={match.away?.score || 0}
-                            className="w-full bg-black/50 border border-white/5 p-2 rounded-lg text-center font-bold"
+                            className="w-full p-2 font-bold text-center border rounded-lg bg-black/50 border-white/5"
                             onBlur={(e) => handleUpdateScore(match.id, 'away', e.target.value)}
                           />
                         </div>
@@ -809,7 +830,7 @@ function Admin() {
                       <div className="flex items-center gap-2">
                         <select
                           value={match.status}
-                          className="flex-1 bg-black/50 border border-white/5 p-2 rounded-lg text-xs"
+                          className="flex-1 p-2 text-xs border rounded-lg bg-black/50 border-white/5"
                           onChange={(e) => handleUpdateStatus(match.id, e.target.value, match.minute)}
                         >
                           {STATUS_OPTIONS.map(opt => (
@@ -819,7 +840,7 @@ function Admin() {
                         <input
                           type="number"
                           defaultValue={match.minute}
-                          className="w-20 bg-black/50 border border-white/5 p-2 rounded-lg text-xs"
+                          className="w-20 p-2 text-xs border rounded-lg bg-black/50 border-white/5"
                           onBlur={(e) => handleUpdateStatus(match.id, match.status, e.target.value)}
                         />
                       </div>
@@ -829,21 +850,21 @@ function Admin() {
                     <div className="space-y-3">
                       <p className="text-[10px] font-bold uppercase text-zinc-500">Stream & Info</p>
                       <textarea
-                        defaultValue={match.streamUrl1 ? atob(match.streamUrl1) : ''}
-                        className="w-full bg-black/50 border border-white/5 p-2 rounded-lg text-xs h-20 resize-none"
+                        defaultValue={match.streamUrl1 ? safeDecodeBase64(match.streamUrl1) : ''}
+                        className="w-full h-20 p-2 text-xs border rounded-lg resize-none bg-black/50 border-white/5"
                         onBlur={(e) => handleUpdateStream(match.id, e.target.value)}
                         placeholder="Stream URL..."
                       />
                       <div className="flex items-center gap-2">
                         <button
                           onClick={() => handleDeleteMatch(match.id)}
-                          className="flex-1 px-3 py-2 bg-red-600/20 hover:bg-red-600/30 text-red-400 text-xs rounded-lg transition-colors flex items-center justify-center gap-2"
+                          className="flex items-center justify-center flex-1 gap-2 px-3 py-2 text-xs text-red-400 transition-colors rounded-lg bg-red-600/20 hover:bg-red-600/30"
                         >
                           <Trash2 size={12} /> Delete
                         </button>
                         <button
                           onClick={() => setEditingMatchId(editingMatchId === match.id ? null : match.id)}
-                          className="flex-1 px-3 py-2 bg-white/5 hover:bg-white/10 text-xs rounded-lg transition-colors"
+                          className="flex-1 px-3 py-2 text-xs transition-colors rounded-lg bg-white/5 hover:bg-white/10"
                         >
                           {editingMatchId === match.id ? 'Done' : 'More'}
                         </button>
@@ -853,20 +874,20 @@ function Admin() {
                   
                   {/* Expanded Editor */}
                   {editingMatchId === match.id && (
-                    <div className="mt-4 pt-4 border-t border-white/5 space-y-4">
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div className="pt-4 mt-4 space-y-4 border-t border-white/5">
+                      <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
                         <div>
                           <p className="text-[10px] font-bold uppercase text-zinc-500 mb-2">League & Time</p>
                           <input
                             type="text"
                             defaultValue={match.league}
-                            className="w-full bg-black/50 border border-white/5 p-2 rounded-lg text-sm"
+                            className="w-full p-2 text-sm border rounded-lg bg-black/50 border-white/5"
                             onBlur={(e) => updateDoc(doc(db, "matches", match.id), { 
                               league: e.target.value,
                               lastUpdated: serverTimestamp() 
                             })}
                           />
-                          <p className="text-xs text-zinc-500 mt-2">
+                          <p className="mt-2 text-xs text-zinc-500">
                             Kickoff: {new Date(match.kickoff).toLocaleString()}
                           </p>
                         </div>
@@ -874,7 +895,7 @@ function Admin() {
                           <p className="text-[10px] font-bold uppercase text-zinc-500 mb-2">AI Prediction</p>
                           <textarea
                             defaultValue={match.aiPick}
-                            className="w-full bg-black/50 border border-white/5 p-2 rounded-lg text-xs h-24 resize-none"
+                            className="w-full h-24 p-2 text-xs border rounded-lg resize-none bg-black/50 border-white/5"
                             onBlur={(e) => handleUpdateAIPick(match.id, e.target.value)}
                           />
                         </div>
@@ -891,7 +912,7 @@ function Admin() {
       {/* TICKER SYSTEM */}
       <div className="mt-8">
         <div className="flex items-center justify-between mb-4">
-          <h3 className="text-xs font-bold uppercase text-zinc-500 flex items-center gap-2">
+          <h3 className="flex items-center gap-2 text-xs font-bold uppercase text-zinc-500">
             <Globe size={14}/> Global Ticker System
           </h3>
           <div className="flex items-center gap-2">
@@ -900,14 +921,14 @@ function Admin() {
                 const messages = tickerMessages.slice(0, 5);
                 messages.forEach(msg => deleteDoc(doc(db, "ticker", msg.id)));
               }}
-              className="px-3 py-1 bg-red-600/20 hover:bg-red-600/30 text-red-400 text-xs rounded-lg transition-colors"
+              className="px-3 py-1 text-xs text-red-400 transition-colors rounded-lg bg-red-600/20 hover:bg-red-600/30"
             >
               Clear Recent
             </button>
           </div>
         </div>
         
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
           <div className="lg:col-span-2">
             <div className="bg-zinc-900/30 border border-white/5 rounded-2xl h-[400px] flex flex-col">
               <div className="p-4 border-b border-white/5">
@@ -916,17 +937,17 @@ function Admin() {
                   <span className="text-[10px] text-zinc-500">{tickerMessages.length} messages</span>
                 </div>
               </div>
-              <div className="flex-1 overflow-y-auto p-4 space-y-3">
+              <div className="flex-1 p-4 space-y-3 overflow-y-auto">
                 {tickerMessages.length === 0 ? (
-                  <p className="text-zinc-500 text-center p-8">No ticker messages yet</p>
+                  <p className="p-8 text-center text-zinc-500">No ticker messages yet</p>
                 ) : (
                   tickerMessages.map((msg) => (
-                    <div key={msg.id} className="p-3 bg-black/40 border border-white/5 rounded-xl">
+                    <div key={msg.id} className="p-3 border bg-black/40 border-white/5 rounded-xl">
                       <div className="flex items-start justify-between">
-                        <p className="text-sm flex-1">{msg.text}</p>
+                        <p className="flex-1 text-sm">{msg.text}</p>
                         <button
                           onClick={() => deleteDoc(doc(db, "ticker", msg.id))}
-                          className="ml-2 text-zinc-600 hover:text-red-500 transition-colors"
+                          className="ml-2 transition-colors text-zinc-600 hover:text-red-500"
                         >
                           <X size={14} />
                         </button>
@@ -956,43 +977,43 @@ function Admin() {
           </div>
           
           <div className="space-y-4">
-            <div className="bg-black/40 border border-white/5 rounded-2xl p-5">
-              <h4 className="text-xs font-bold mb-3">Broadcast Message</h4>
+            <div className="p-5 border bg-black/40 border-white/5 rounded-2xl">
+              <h4 className="mb-3 text-xs font-bold">Broadcast Message</h4>
               <textarea
                 value={tickerInput}
                 onChange={e => setTickerInput(e.target.value)}
-                className="w-full bg-black/50 border border-white/5 p-3 rounded-lg text-sm h-32 resize-none mb-3"
+                className="w-full h-32 p-3 mb-3 text-sm border rounded-lg resize-none bg-black/50 border-white/5"
                 placeholder="Type global announcement..."
               />
               <div className="flex gap-2">
                 <button
                   onClick={handleBroadcast}
                   disabled={!tickerInput.trim()}
-                  className="flex-1 bg-red-600 hover:bg-red-700 p-3 rounded-lg font-bold text-sm disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                  className="flex items-center justify-center flex-1 gap-2 p-3 text-sm font-bold bg-red-600 rounded-lg hover:bg-red-700 disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   <Send size={16} /> Broadcast
                 </button>
               </div>
             </div>
             
-            <div className="bg-black/40 border border-white/5 rounded-2xl p-5">
-              <h4 className="text-xs font-bold mb-3">System Quick Commands</h4>
+            <div className="p-5 border bg-black/40 border-white/5 rounded-2xl">
+              <h4 className="mb-3 text-xs font-bold">System Quick Commands</h4>
               <div className="space-y-2">
                 <button
                   onClick={() => setTickerInput('⚡ SYSTEM: Server maintenance in 10 minutes')}
-                  className="w-full text-left p-2 bg-white/5 hover:bg-white/10 rounded-lg text-sm"
+                  className="w-full p-2 text-sm text-left rounded-lg bg-white/5 hover:bg-white/10"
                 >
                   ⚡ Maintenance Alert
                 </button>
                 <button
                   onClick={() => setTickerInput('🎯 AI: New predictions available for elite matches')}
-                  className="w-full text-left p-2 bg-white/5 hover:bg-white/10 rounded-lg text-sm"
+                  className="w-full p-2 text-sm text-left rounded-lg bg-white/5 hover:bg-white/10"
                 >
                   🎯 AI Update
                 </button>
                 <button
                   onClick={() => setTickerInput('⚠️ URGENT: Stream issues detected, fixing now...')}
-                  className="w-full text-left p-2 bg-white/5 hover:bg-white/10 rounded-lg text-sm"
+                  className="w-full p-2 text-sm text-left rounded-lg bg-white/5 hover:bg-white/10"
                 >
                   ⚠️ Stream Alert
                 </button>
@@ -1006,30 +1027,30 @@ function Admin() {
       {showAddMatch && (
         <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/90 backdrop-blur-sm p-4">
           <form onSubmit={handleManualAdd} className="bg-zinc-900 p-6 md:p-8 rounded-2xl border border-white/10 w-full max-w-4xl space-y-5 max-h-[90vh] overflow-y-auto">
-            <div className="flex justify-between items-center mb-4">
-              <h3 className="text-xl font-black uppercase tracking-tighter">Inject New Match Signal</h3>
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-xl font-black tracking-tighter uppercase">Inject New Match Signal</h3>
               <button 
                 type="button" 
                 onClick={() => setShowAddMatch(false)}
-                className="p-2 bg-white/5 rounded-full hover:bg-white/10 transition-colors"
+                className="p-2 transition-colors rounded-full bg-white/5 hover:bg-white/10"
               >
                 <X size={20} />
               </button>
             </div>
             
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
               <div className="space-y-3">
                 <h4 className="text-sm font-bold text-zinc-400">Home Team</h4>
                 <input 
                   placeholder="Team Name" 
                   required 
-                  className="w-full bg-black border border-white/5 p-3 rounded-lg text-sm" 
+                  className="w-full p-3 text-sm bg-black border rounded-lg border-white/5" 
                   value={newMatch.homeName}
                   onChange={e => setNewMatch({...newMatch, homeName: e.target.value})} 
                 />
                 <input 
                   placeholder="Logo URL" 
-                  className="w-full bg-black border border-white/5 p-3 rounded-lg text-sm" 
+                  className="w-full p-3 text-sm bg-black border rounded-lg border-white/5" 
                   value={newMatch.homeLogo}
                   onChange={e => setNewMatch({...newMatch, homeLogo: e.target.value})} 
                 />
@@ -1039,25 +1060,25 @@ function Admin() {
                 <input 
                   placeholder="Team Name" 
                   required 
-                  className="w-full bg-black border border-white/5 p-3 rounded-lg text-sm" 
+                  className="w-full p-3 text-sm bg-black border rounded-lg border-white/5" 
                   value={newMatch.awayName}
                   onChange={e => setNewMatch({...newMatch, awayName: e.target.value})} 
                 />
                 <input 
                   placeholder="Logo URL" 
-                  className="w-full bg-black border border-white/5 p-3 rounded-lg text-sm" 
+                  className="w-full p-3 text-sm bg-black border rounded-lg border-white/5" 
                   value={newMatch.awayLogo}
                   onChange={e => setNewMatch({...newMatch, awayLogo: e.target.value})} 
                 />
               </div>
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
               <div className="space-y-2">
                 <label className="text-xs font-bold text-zinc-400">League</label>
                 <input 
                   placeholder="Premier League" 
-                  className="w-full bg-black border border-white/5 p-3 rounded-lg text-sm" 
+                  className="w-full p-3 text-sm bg-black border rounded-lg border-white/5" 
                   value={newMatch.league}
                   onChange={e => setNewMatch({...newMatch, league: e.target.value})} 
                 />
@@ -1066,7 +1087,7 @@ function Admin() {
                 <label className="text-xs font-bold text-zinc-400">Kickoff Time</label>
                 <input 
                   type="datetime-local" 
-                  className="w-full bg-black border border-white/5 p-3 rounded-lg text-sm" 
+                  className="w-full p-3 text-sm bg-black border rounded-lg border-white/5" 
                   value={newMatch.kickoff}
                   onChange={e => setNewMatch({...newMatch, kickoff: e.target.value})} 
                 />
@@ -1074,7 +1095,7 @@ function Admin() {
               <div className="space-y-2">
                 <label className="text-xs font-bold text-zinc-400">Match Status</label>
                 <select 
-                  className="w-full bg-black border border-white/5 p-3 rounded-lg text-sm"
+                  className="w-full p-3 text-sm bg-black border rounded-lg border-white/5"
                   value={newMatch.status}
                   onChange={e => setNewMatch({...newMatch, status: e.target.value})}
                 >
@@ -1085,13 +1106,13 @@ function Admin() {
               </div>
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+            <div className="grid grid-cols-1 gap-4 md:grid-cols-4">
               <div className="space-y-2">
                 <label className="text-xs font-bold text-zinc-400">Minute</label>
                 <input 
                   type="number" 
                   placeholder="0" 
-                  className="w-full bg-black border border-white/5 p-3 rounded-lg text-sm" 
+                  className="w-full p-3 text-sm bg-black border rounded-lg border-white/5" 
                   value={newMatch.minute}
                   onChange={e => setNewMatch({...newMatch, minute: e.target.value})} 
                 />
@@ -1101,7 +1122,7 @@ function Admin() {
                 <input 
                   placeholder="https://..." 
                   required 
-                  className="w-full bg-black border border-white/5 p-3 rounded-lg text-sm" 
+                  className="w-full p-3 text-sm bg-black border rounded-lg border-white/5" 
                   value={newMatch.stream1}
                   onChange={e => setNewMatch({...newMatch, stream1: e.target.value})} 
                 />
@@ -1132,13 +1153,13 @@ function Admin() {
               <label className="text-xs font-bold text-zinc-400">AI Prediction (Optional)</label>
               <textarea 
                 placeholder="Custom AI prediction or leave empty for auto-generation"
-                className="w-full bg-black border border-white/5 p-3 rounded-lg text-sm h-24 resize-none"
+                className="w-full h-24 p-3 text-sm bg-black border rounded-lg resize-none border-white/5"
                 value={newMatch.aiPick}
                 onChange={e => setNewMatch({...newMatch, aiPick: e.target.value})}
               />
             </div>
 
-            <button type="submit" className="w-full bg-gradient-to-r from-red-600 to-orange-600 py-4 rounded-lg font-bold uppercase tracking-widest hover:from-red-700 hover:to-orange-700 transition-all shadow-lg shadow-red-600/20">
+            <button type="submit" className="w-full py-4 font-bold tracking-widest uppercase transition-all rounded-lg shadow-lg bg-gradient-to-r from-red-600 to-orange-600 hover:from-red-700 hover:to-orange-700 shadow-red-600/20">
               Inject & Broadcast
             </button>
           </form>
