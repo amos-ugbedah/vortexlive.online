@@ -1,3 +1,4 @@
+functions/
 .git
 .gitignore
 node_modules
@@ -5,10 +6,6 @@ node_modules
 .cache
 .vscode
 dist
-functions
 firebase.json
 firestore.*
 storage.rules
-*.local
-.env
-.env.local

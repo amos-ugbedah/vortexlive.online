@@ -1,7 +1,7 @@
 {
   "name": "vortex-live",
   "private": true,
-  "version": "2.6.3",
+  "version": "2.6.4",
   "type": "module",
   "config": {
     "strict-peer-dependencies": false
@@ -32,9 +32,9 @@
     "serve:prod": "npm run build:clean && npm run serve",
     "test:build": "npm run build:clean && echo ✅ Build successful || echo ❌ Build failed",
     "test:serve": "npm run build:clean && npm run serve",
-    "postinstall": "echo 'Dependencies installed successfully'",
-    "postbuild": "echo 'Build completed'",
-    "version": "echo Vortex Live v2.6.3",
+    "postinstall": "echo 'Vortex Live v2.6.4 - Dependencies installed'",
+    "postbuild": "echo 'Build completed for v2.6.4'",
+    "version": "echo Vortex Live v2.6.4",
     "update:cache": "firebase deploy --only hosting --force && echo ⚡ Cache busted!",
     "health": "curl -s https://us-central1-votexlive-3a8cb.cloudfunctions.net/healthCheck || echo ❌ Health check failed",
     "logs": "firebase functions:log",
@@ -43,7 +43,9 @@
     "purge:cdn": "echo ⚡ Manually clear browser cache with Ctrl+Shift+R",
     "deploy:ui": "npm run build:clean && firebase deploy --only hosting --force && echo 🔄 UI Deployed! Use Ctrl+Shift+R to see changes",
     "vercel-build": "npm run build",
-    "vercel-dev": "npm run dev"
+    "vercel-dev": "npm run dev",
+    "vercel-install": "npm install --legacy-peer-deps",
+    "deploy:firebase-now": "npm run build:clean && firebase deploy --only hosting --force && echo ✅ Firebase deployed! Open: https://votexlive-3a8cb.web.app"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.89.0",
@@ -84,8 +86,8 @@
     "vite-plugin-html-env": "^1.0.2"
   },
   "engines": {
-    "node": "18.x",
-    "npm": "9.x"
+    "node": "18",
+    "npm": "9"
   },
   "browserslist": {
     "production": [

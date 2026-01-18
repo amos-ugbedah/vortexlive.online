@@ -1,5 +1,5 @@
 {
-  "name": "functions",
+  "name": "vortex-live-functions",
   "scripts": {
     "serve": "firebase emulators:start --only functions",
     "shell": "firebase functions:shell",
@@ -17,7 +17,7 @@
     "firebase-functions": "^7.0.3"
   },
   "private": true,
-  "version": "1.0.0",
+  "version": "2.6.3",
   "description": "",
   "keywords": [],
   "author": "",
