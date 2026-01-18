@@ -233,14 +233,14 @@ const Home = memo(() => {
   return (
     <div className="flex flex-col lg:flex-row w-full min-h-screen bg-gradient-to-br from-[#050505] via-black to-[#0a0a0a] text-white">
       {/* MOBILE HEADER */}
-      <div className="lg:hidden sticky top-0 z-50 w-full px-4 py-3 bg-black/95 backdrop-blur-2xl border-b border-white/5">
+      <div className="sticky top-0 z-50 w-full px-4 py-3 border-b lg:hidden bg-black/95 backdrop-blur-2xl border-white/5">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-3">
             <div className="p-2 bg-gradient-to-br from-red-600 to-red-700 rounded-xl">
               <Radio size={20} className="text-white animate-pulse" />
             </div>
             <div>
-              <h1 className="text-lg font-black uppercase tracking-tight">
+              <h1 className="text-lg font-black tracking-tight uppercase">
                 VORTEX<span className="text-red-600">PRO</span>
               </h1>
               <p className="text-[8px] text-white/20 uppercase tracking-widest">LIVE SPORTS</p>
@@ -248,7 +248,7 @@ const Home = memo(() => {
           </div>
           <button 
             onClick={() => setShowSidebar(!showSidebar)}
-            className="p-2 bg-white/5 rounded-lg"
+            className="p-2 rounded-lg bg-white/5"
           >
             <span className="text-xs font-bold">{showSidebar ? 'Hide' : 'Show'} Stats</span>
           </button>
@@ -258,14 +258,14 @@ const Home = memo(() => {
       {/* MAIN CONTENT */}
       <div className="flex-1 lg:pr-[380px]">
         {/* DESKTOP HEADER */}
-        <header className="hidden lg:block sticky top-0 z-40 w-full px-6 py-5 border-b bg-black/95 backdrop-blur-2xl border-white/5">
+        <header className="sticky top-0 z-40 hidden w-full px-6 py-5 border-b lg:block bg-black/95 backdrop-blur-2xl border-white/5">
           <div className="max-w-[1400px] mx-auto flex items-center justify-between">
             <div className="flex items-center gap-5">
-              <div className="p-3 bg-gradient-to-br from-red-600 to-red-700 rounded-2xl shadow-lg shadow-red-600/30">
+              <div className="p-3 shadow-lg bg-gradient-to-br from-red-600 to-red-700 rounded-2xl shadow-red-600/30">
                 <Radio size={24} className="text-white animate-pulse" />
               </div>
               <div>
-                <h1 className="text-3xl italic font-black uppercase leading-none">
+                <h1 className="text-3xl italic font-black leading-none uppercase">
                   VORTEX<span className="text-red-600">ULTRA</span>
                 </h1>
                 <p className="text-[10px] font-black text-white/20 uppercase tracking-[0.4em] mt-1">
@@ -291,7 +291,7 @@ const Home = memo(() => {
         </header>
 
         {/* QUICK FILTERS */}
-        <div className="px-4 lg:px-6 py-4 border-b border-white/5 bg-gradient-to-r from-black/50 to-transparent">
+        <div className="px-4 py-4 border-b lg:px-6 border-white/5 bg-gradient-to-r from-black/50 to-transparent">
           <div className="max-w-[1400px] mx-auto">
             <div className="flex flex-wrap items-center gap-2 lg:gap-3">
               <button
@@ -345,8 +345,8 @@ const Home = memo(() => {
           {totalMatches === 0 ? (
             <div className="flex flex-col items-center justify-center py-32 opacity-40">
               <Trees size={80} className="text-white/20" />
-              <h2 className="text-2xl font-black uppercase mt-8 tracking-tighter">No Matches Found</h2>
-              <p className="text-sm mt-3 text-white/40 text-center max-w-md">
+              <h2 className="mt-8 text-2xl font-black tracking-tighter uppercase">No Matches Found</h2>
+              <p className="max-w-md mt-3 text-sm text-center text-white/40">
                 {searchTerm ? `No matches found for "${searchTerm}"` : 'Check back later or run the sync function'}
               </p>
             </div>
@@ -356,15 +356,15 @@ const Home = memo(() => {
               {categorized.eliteLive.length > 0 && (
                 <section className="animate-fadeIn">
                   <div className="flex items-center gap-3 mb-6">
-                    <div className="w-2 h-8 bg-gradient-to-b from-red-600 via-yellow-500 to-orange-500 rounded-full" />
+                    <div className="w-2 h-8 rounded-full bg-gradient-to-b from-red-600 via-yellow-500 to-orange-500" />
                     <div className="flex items-center gap-3">
                       <Crown size={20} className="text-yellow-500" />
-                      <h2 className="text-xl lg:text-2xl italic font-black uppercase tracking-tight">
-                        Elite Live Action <span className="text-base text-yellow-500/70 ml-2">({categorized.eliteLive.length})</span>
+                      <h2 className="text-xl italic font-black tracking-tight uppercase lg:text-2xl">
+                        Elite Live Action <span className="ml-2 text-base text-yellow-500/70">({categorized.eliteLive.length})</span>
                       </h2>
                     </div>
                   </div>
-                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 lg:gap-6">
+                  <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 lg:gap-6">
                     {categorized.eliteLive.map(m => (
                       <MatchCard key={m.id} match={m} />
                     ))}
@@ -376,12 +376,12 @@ const Home = memo(() => {
               {categorized.regularLive.length > 0 && (
                 <section className="animate-fadeIn">
                   <div className="flex items-center gap-3 mb-6">
-                    <div className="w-2 h-8 bg-gradient-to-b from-red-600 to-orange-500 rounded-full animate-pulse" />
-                    <h2 className="text-xl lg:text-2xl italic font-black uppercase tracking-tight text-white/90">
-                      Live Now <span className="text-base text-red-500/70 ml-2">({categorized.regularLive.length})</span>
+                    <div className="w-2 h-8 rounded-full bg-gradient-to-b from-red-600 to-orange-500 animate-pulse" />
+                    <h2 className="text-xl italic font-black tracking-tight uppercase lg:text-2xl text-white/90">
+                      Live Now <span className="ml-2 text-base text-red-500/70">({categorized.regularLive.length})</span>
                     </h2>
                   </div>
-                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 lg:gap-6">
+                  <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 lg:gap-6">
                     {categorized.regularLive.map(m => (
                       <MatchCard key={m.id} match={m} />
                     ))}
@@ -393,12 +393,12 @@ const Home = memo(() => {
               {categorized.upcoming.length > 0 && (
                 <section className="animate-fadeIn">
                   <div className="flex items-center gap-3 mb-6">
-                    <div className="w-2 h-8 bg-gradient-to-b from-blue-600 to-cyan-500 rounded-full" />
-                    <h2 className="text-xl lg:text-2xl italic font-black uppercase tracking-tight text-white/80">
-                      Upcoming Schedule <span className="text-base text-blue-500/70 ml-2">({categorized.upcoming.length})</span>
+                    <div className="w-2 h-8 rounded-full bg-gradient-to-b from-blue-600 to-cyan-500" />
+                    <h2 className="text-xl italic font-black tracking-tight uppercase lg:text-2xl text-white/80">
+                      Upcoming Schedule <span className="ml-2 text-base text-blue-500/70">({categorized.upcoming.length})</span>
                     </h2>
                   </div>
-                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 lg:gap-6 opacity-90">
+                  <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 lg:gap-6 opacity-90">
                     {categorized.upcoming.map(m => (
                       <MatchCard key={m.id} match={m} />
                     ))}
@@ -410,12 +410,12 @@ const Home = memo(() => {
               {categorized.finished.length > 0 && (
                 <section className="animate-fadeIn">
                   <div className="flex items-center gap-3 mb-6">
-                    <div className="w-2 h-8 bg-gradient-to-b from-gray-600 to-gray-400 rounded-full" />
-                    <h2 className="text-xl lg:text-2xl italic font-black uppercase tracking-tight text-white/60">
-                      Recent Results <span className="text-base text-gray-500/70 ml-2">({categorized.finished.length})</span>
+                    <div className="w-2 h-8 rounded-full bg-gradient-to-b from-gray-600 to-gray-400" />
+                    <h2 className="text-xl italic font-black tracking-tight uppercase lg:text-2xl text-white/60">
+                      Recent Results <span className="ml-2 text-base text-gray-500/70">({categorized.finished.length})</span>
                     </h2>
                   </div>
-                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 lg:gap-6 opacity-80">
+                  <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 lg:gap-6 opacity-80">
                     {categorized.finished.map(m => (
                       <MatchCard key={m.id} match={m} />
                     ))}
@@ -438,40 +438,40 @@ const Home = memo(() => {
               <div className="p-2 bg-gradient-to-br from-purple-600 to-pink-600 rounded-xl">
                 <BarChart size={18} className="text-white" />
               </div>
-              <h3 className="text-lg font-black uppercase tracking-tight">Stats & Tables</h3>
+              <h3 className="text-lg font-black tracking-tight uppercase">Stats & Tables</h3>
             </div>
             <button 
               onClick={() => setShowSidebar(false)}
-              className="lg:hidden p-2 text-white/40 hover:text-white"
+              className="p-2 lg:hidden text-white/40 hover:text-white"
             >
               ✕
             </button>
           </div>
 
           {/* 500% BONUS BANNER */}
-          <div className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-yellow-900/40 via-yellow-800/20 to-black border border-yellow-600/30 p-5">
-            <div className="absolute top-0 right-0 w-32 h-32 bg-yellow-600/10 rounded-full -translate-y-8 translate-x-8"></div>
-            <div className="absolute bottom-0 left-0 w-24 h-24 bg-yellow-500/5 rounded-full -translate-x-6 translate-y-6"></div>
+          <div className="relative p-5 overflow-hidden border rounded-2xl bg-gradient-to-br from-yellow-900/40 via-yellow-800/20 to-black border-yellow-600/30">
+            <div className="absolute top-0 right-0 w-32 h-32 translate-x-8 -translate-y-8 rounded-full bg-yellow-600/10"></div>
+            <div className="absolute bottom-0 left-0 w-24 h-24 -translate-x-6 translate-y-6 rounded-full bg-yellow-500/5"></div>
             
             <div className="relative z-10 text-center">
               <div className="mb-4">
                 <div className="inline-flex items-center gap-2 px-4 py-1.5 bg-gradient-to-r from-yellow-600 to-yellow-700 rounded-full mb-3">
                   <Sparkles size={14} className="text-white" />
-                  <span className="text-xs font-black uppercase tracking-widest">500% BOOSTER</span>
+                  <span className="text-xs font-black tracking-widest uppercase">500% BOOSTER</span>
                   <Sparkles size={14} className="text-white" />
                 </div>
-                <h4 className="text-2xl font-black mb-1 leading-tight">
+                <h4 className="mb-1 text-2xl font-black leading-tight">
                   500% <span className="text-yellow-400">BONUS</span>
                 </h4>
-                <p className="text-xs text-white/60 mb-4">
+                <p className="mb-4 text-xs text-white/60">
                   Use code below for exclusive bonus
                 </p>
               </div>
 
               {/* BONUS CODE */}
               <div className="mb-5">
-                <p className="text-xs text-white/40 mb-2 uppercase tracking-widest">Bonus Code</p>
-                <div className="bg-gradient-to-r from-yellow-900/30 to-yellow-800/20 border-2 border-yellow-600/30 rounded-xl p-4">
+                <p className="mb-2 text-xs tracking-widest uppercase text-white/40">Bonus Code</p>
+                <div className="p-4 border-2 bg-gradient-to-r from-yellow-900/30 to-yellow-800/20 border-yellow-600/30 rounded-xl">
                   <p className="text-3xl font-black tracking-widest text-yellow-400">VORTEX</p>
                   <p className="text-[10px] text-white/40 mt-1">Copy and apply during deposit</p>
                 </div>
@@ -495,19 +495,19 @@ const Home = memo(() => {
                 <div className="p-1.5 bg-gradient-to-br from-red-600/20 to-red-500/10 rounded-lg">
                   <Trophy size={16} className="text-red-400" />
                 </div>
-                <h4 className="text-sm font-black uppercase tracking-wider text-white/80">League Standings</h4>
+                <h4 className="text-sm font-black tracking-wider uppercase text-white/80">League Standings</h4>
               </div>
               
               {leagueStandings.map((league, idx) => (
-                <div key={idx} className="bg-gradient-to-br from-white/5 to-transparent border border-white/5 rounded-xl p-4">
+                <div key={idx} className="p-4 border bg-gradient-to-br from-white/5 to-transparent border-white/5 rounded-xl">
                   <div className="flex items-center justify-between mb-3">
-                    <h5 className="text-xs font-bold text-white/90 truncate">{league.name}</h5>
+                    <h5 className="text-xs font-bold truncate text-white/90">{league.name}</h5>
                     <span className="text-[10px] text-white/40">{league.topTeams.length} teams</span>
                   </div>
                   
                   <div className="space-y-2">
                     {league.topTeams.map((team, index) => (
-                      <div key={index} className="flex items-center justify-between p-2 bg-black/20 rounded-lg">
+                      <div key={index} className="flex items-center justify-between p-2 rounded-lg bg-black/20">
                         <div className="flex items-center gap-2">
                           <div className={`w-5 h-5 flex items-center justify-center rounded text-[10px] font-bold ${
                             index === 0 ? 'bg-yellow-600 text-yellow-100' :
@@ -547,7 +547,7 @@ const Home = memo(() => {
               <div className="p-1.5 bg-gradient-to-br from-blue-600/20 to-blue-500/10 rounded-lg">
                 <Target size={16} className="text-blue-400" />
               </div>
-              <h4 className="text-sm font-black uppercase tracking-wider text-white/80">AI Predictions</h4>
+              <h4 className="text-sm font-black tracking-wider uppercase text-white/80">AI Predictions</h4>
             </div>
             
             <div className="space-y-3">
@@ -555,21 +555,21 @@ const Home = memo(() => {
                 aiPicks.map((match, index) => (
                   <div 
                     key={match.id} 
-                    className="bg-gradient-to-br from-white/5 to-transparent border border-white/5 rounded-xl p-4 hover:border-blue-500/20 transition-colors"
+                    className="p-4 transition-colors border bg-gradient-to-br from-white/5 to-transparent border-white/5 rounded-xl hover:border-blue-500/20"
                   >
                     <div className="flex items-center justify-between mb-2">
                       <div className="flex items-center gap-2">
-                        <div className="w-6 h-6 flex items-center justify-center bg-black/40 rounded-full overflow-hidden">
+                        <div className="flex items-center justify-center w-6 h-6 overflow-hidden rounded-full bg-black/40">
                           {match.home?.logo ? (
-                            <img src={match.home.logo} className="w-4 h-4 object-contain" alt={match.home.name} />
+                            <img src={match.home.logo} className="object-contain w-4 h-4" alt={match.home.name} />
                           ) : (
                             <span className="text-xs font-bold">{match.home?.name?.charAt(0) || 'H'}</span>
                           )}
                         </div>
                         <span className="text-xs font-bold text-white/40">vs</span>
-                        <div className="w-6 h-6 flex items-center justify-center bg-black/40 rounded-full overflow-hidden">
+                        <div className="flex items-center justify-center w-6 h-6 overflow-hidden rounded-full bg-black/40">
                           {match.away?.logo ? (
-                            <img src={match.away.logo} className="w-4 h-4 object-contain" alt={match.away.name} />
+                            <img src={match.away.logo} className="object-contain w-4 h-4" alt={match.away.name} />
                           ) : (
                             <span className="text-xs font-bold">{match.away?.name?.charAt(0) || 'A'}</span>
                           )}
@@ -595,7 +595,7 @@ const Home = memo(() => {
                   </div>
                 ))
               ) : (
-                <div className="text-center py-6 text-white/30">
+                <div className="py-6 text-center text-white/30">
                   <span className="text-sm">No AI predictions yet</span>
                 </div>
               )}
@@ -603,17 +603,17 @@ const Home = memo(() => {
           </div>
 
           {/* 1XBET AD */}
-          <div className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-green-900/40 via-green-800/20 to-black border border-green-600/30 p-5">
-            <div className="absolute bottom-0 left-0 w-20 h-20 bg-green-500/10 rounded-full -translate-x-8 translate-y-8"></div>
+          <div className="relative p-5 overflow-hidden border rounded-2xl bg-gradient-to-br from-green-900/40 via-green-800/20 to-black border-green-600/30">
+            <div className="absolute bottom-0 left-0 w-20 h-20 -translate-x-8 translate-y-8 rounded-full bg-green-500/10"></div>
             <div className="relative z-10 text-center">
               <div className="mb-4">
-                <div className="inline-flex items-center px-4 py-2 bg-gradient-to-r from-green-600 to-green-700 rounded-lg mb-3">
+                <div className="inline-flex items-center px-4 py-2 mb-3 rounded-lg bg-gradient-to-r from-green-600 to-green-700">
                   <span className="text-xl font-black">1XBET</span>
                 </div>
-                <h4 className="text-xl font-black mb-2">
+                <h4 className="mb-2 text-xl font-black">
                   BEST <span className="text-green-400">ODDS</span> GUARANTEED
                 </h4>
-                <p className="text-xs text-white/60 mb-4">
+                <p className="mb-4 text-xs text-white/60">
                   Up to €1,500 bonus + 150 free spins
                 </p>
               </div>
@@ -627,12 +627,12 @@ const Home = memo(() => {
           </div>
 
           {/* QUICK STATS */}
-          <div className="bg-gradient-to-br from-blue-900/20 via-blue-800/10 to-black border border-blue-600/20 rounded-2xl p-5">
+          <div className="p-5 border bg-gradient-to-br from-blue-900/20 via-blue-800/10 to-black border-blue-600/20 rounded-2xl">
             <div className="flex items-center gap-3 mb-4">
               <div className="p-1.5 bg-gradient-to-br from-blue-600/20 to-blue-500/10 rounded-lg">
                 <TrendingUp size={16} className="text-blue-400" />
               </div>
-              <h4 className="text-sm font-black uppercase tracking-wider text-white/80">Live Match Stats</h4>
+              <h4 className="text-sm font-black tracking-wider uppercase text-white/80">Live Match Stats</h4>
             </div>
             <div className="space-y-3">
               <div className="flex items-center justify-between">
