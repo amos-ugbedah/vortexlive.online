@@ -3,6 +3,9 @@
   "private": true,
   "version": "2.6.3",
   "type": "module",
+  "config": {
+    "strict-peer-dependencies": false
+  },
   "scripts": {
     "dev": "vite --port 3000 --host",
     "build": "vite build",
@@ -29,8 +32,8 @@
     "serve:prod": "npm run build:clean && npm run serve",
     "test:build": "npm run build:clean && echo ✅ Build successful || echo ❌ Build failed",
     "test:serve": "npm run build:clean && npm run serve",
-    "postinstall": "echo ✅ Dependencies installed successfully for Vortex Live v2.6.3",
-    "postbuild": "echo ✅ Build completed for $(date +\"%Y-%m-%d %H:%M:%S\") && if exist dist (echo 📁 Build directory: dist && echo 📄 Files: && dir /b dist\\*.html) else (echo ❌ Build directory not found)",
+    "postinstall": "echo 'Dependencies installed successfully'",
+    "postbuild": "echo 'Build completed'",
     "version": "echo Vortex Live v2.6.3",
     "update:cache": "firebase deploy --only hosting --force && echo ⚡ Cache busted!",
     "health": "curl -s https://us-central1-votexlive-3a8cb.cloudfunctions.net/healthCheck || echo ❌ Health check failed",
@@ -38,7 +41,9 @@
     "logs:bot": "firebase functions:log --only vortexLiveBot",
     "logs:auto": "firebase functions:log --only autoLiveDetector",
     "purge:cdn": "echo ⚡ Manually clear browser cache with Ctrl+Shift+R",
-    "deploy:ui": "npm run build:clean && firebase deploy --only hosting --force && echo 🔄 UI Deployed! Use Ctrl+Shift+R to see changes"
+    "deploy:ui": "npm run build:clean && firebase deploy --only hosting --force && echo 🔄 UI Deployed! Use Ctrl+Shift+R to see changes",
+    "vercel-build": "npm run build",
+    "vercel-dev": "npm run dev"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.89.0",
@@ -79,8 +84,8 @@
     "vite-plugin-html-env": "^1.0.2"
   },
   "engines": {
-    "node": ">=18.0.0",
-    "npm": ">=9.0.0"
+    "node": "18.x",
+    "npm": "9.x"
   },
   "browserslist": {
     "production": [
