@@ -13,8 +13,7 @@
         "firebase-debug.log",
         "firebase-debug.*.log",
         "*.map"
-      ],
-      "predeploy": "npm --prefix \"$RESOURCE_DIR\" run build"
+      ]
     }
   ],
   "hosting": {
@@ -24,106 +23,12 @@
     "ignore": [
       "firebase.json",
       "**/.*",
-      "**/node_modules/**",
-      "**/.cache/**"
+      "**/node_modules/**"
     ],
     "rewrites": [
       {
         "source": "**",
         "destination": "/index.html"
-      }
-    ],
-    "headers": [
-      {
-        "source": "**",
-        "headers": [
-          {
-            "key": "X-Content-Type-Options",
-            "value": "nosniff"
-          },
-          {
-            "key": "X-Frame-Options",
-            "value": "DENY"
-          },
-          {
-            "key": "X-XSS-Protection",
-            "value": "1; mode=block"
-          },
-          {
-            "key": "Referrer-Policy",
-            "value": "strict-origin-when-cross-origin"
-          },
-          {
-            "key": "Cache-Control",
-            "value": "no-cache, no-store, must-revalidate"
-          }
-        ]
-      },
-      {
-        "source": "service-worker.js",
-        "headers": [
-          {
-            "key": "Cache-Control",
-            "value": "no-cache, no-store, must-revalidate"
-          },
-          {
-            "key": "Service-Worker-Allowed",
-            "value": "/"
-          }
-        ]
-      },
-      {
-        "source": "**/*.@(js|css|mjs)",
-        "headers": [
-          {
-            "key": "Cache-Control",
-            "value": "public, max-age=0, must-revalidate"
-          },
-          {
-            "key": "Vary",
-            "value": "Accept-Encoding"
-          }
-        ]
-      },
-      {
-        "source": "**/*.@(json|xml|txt|md)",
-        "headers": [
-          {
-            "key": "Cache-Control",
-            "value": "public, max-age=300"
-          }
-        ]
-      },
-      {
-        "source": "**/*.@(png|jpg|jpeg|gif|svg|ico|webp|avif|bmp)",
-        "headers": [
-          {
-            "key": "Cache-Control",
-            "value": "public, max-age=86400"
-          }
-        ]
-      },
-      {
-        "source": "**/*.@(woff|woff2|ttf|eot|otf)",
-        "headers": [
-          {
-            "key": "Cache-Control",
-            "value": "public, max-age=604800"
-          },
-          {
-            "key": "Access-Control-Allow-Origin",
-            "value": "*"
-          }
-        ]
-      },
-      {
-        "source": "**/*.@(mp4|webm|ogg|mp3|wav|flac|aac|m4a)",
-        "headers": [
-          {
-            "key": "Cache-Control",
-            "value": "public, max-age=86400"
-          }
-        ]
       }
     ]
   },

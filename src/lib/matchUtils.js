@@ -76,8 +76,10 @@ export const normalizeMatch = (data, id) => {
 
 export const isMatchLive = (match) => {
   if (!match) return false;
+  // STRICT CHECK: Must have actually reached kickoff time to be live
+  const hasStarted = new Date() >= new Date(match.kickoff);
   const liveStatuses = ['1H', 'HT', '2H', 'ET', 'BT', 'P', 'LIVE', 'IN_PLAY'];
-  return liveStatuses.includes(match.status);
+  return liveStatuses.includes(match.status) && hasStarted;
 };
 
 export const isMatchUpcoming = (match) => match?.status === 'NS';
@@ -90,7 +92,10 @@ export const isEliteMatch = (match) => {
 };
 
 export const isAutoDetected = (match) => {
-  return match ? !match.addedManually : true;
+  if (!match) return false;
+  // Only auto-detect if NOT manual AND currently past kickoff time
+  const hasStarted = new Date() >= new Date(match.kickoff);
+  return !match.addedManually && hasStarted;
 };
 
 export const formatMatchTime = (kickoff) => {
@@ -108,7 +113,12 @@ export const getMatchStatusText = (match) => {
   if (match.status === 'NS') return formatMatchTime(match.kickoff);
   if (match.status === 'HT') return 'Half Time';
   if (match.status === 'FT') return 'Full Time';
-  if (isMatchLive(match)) return `${match.minute || 0}'`;
+  
+  // If match is live, show minute. If minute is 0 but it's live, show '1'
+  if (isMatchLive(match)) {
+    const min = Number(match.minute || 0);
+    return min > 0 ? `${min}'` : "1'";
+  }
   return match.status;
 };
 
@@ -122,7 +132,10 @@ export const calculateEstimatedStatus = (match) => {
 export const calculateEstimatedMinute = (match) => {
   if (!match) return null;
   const min = Number(match.minute);
-  if (isNaN(min) || min <= 0) return null;
+  if (isNaN(min) || min <= 0) {
+    // If it's live but minute is 0, return 1 (Match just started)
+    return isMatchLive(match) ? 1 : null;
+  }
   return min > 90 ? "90+" : min;
 };
 
@@ -165,7 +178,6 @@ export const sortMatches = (matches) => {
   });
 };
 
-// MANDATORY DEFAULT EXPORT FOR COMPONENTS USING "import utils from..."
 export default {
   normalizeMatch,
   formatMatchTime,
@@ -183,5 +195,4 @@ export default {
   sortMatches
 };
 
-// ADDED: Export for the constants used in other files
 export { STATUS_MAP, ELITE_LEAGUES, decodeBase64 };
