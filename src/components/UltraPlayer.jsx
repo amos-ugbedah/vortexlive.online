@@ -3,7 +3,8 @@ import React from 'react';
 
 /**
  * ULTRA PLAYER (Vortex Premium)
- * Designed to bypass domain-blocking from providers like Sportsbay and FootyHunter.
+ * Version 2.0 - Enhanced Stealth & Permission Bypass
+ * Designed to bypass domain-blocking and sandbox restrictions from providers.
  */
 const UltraPlayer = ({ url }) => {
   if (!url) {
@@ -16,7 +17,6 @@ const UltraPlayer = ({ url }) => {
 
   // Ensure we are using the direct embed link if possible
   const getProcessedUrl = (target) => {
-    // If the URL is from sportsbay or footyhunter, we ensure it's clean
     if (target.includes('sportsbay') || target.includes('footyhunter')) {
       return target;
     }
@@ -30,18 +30,18 @@ const UltraPlayer = ({ url }) => {
         className="w-full h-full border-0"
         allow="autoplay; fullscreen; encrypted-media; picture-in-picture"
         
-        /* VORTEX STEALTH MODE:
-          'no-referrer' is the most important part. It tells the browser 
-          NOT to tell the provider (Sportsbay) that this request is 
-          coming from vortexlive.online.
+        /* VORTEX STEALTH MODE: 
+           Prevents the provider from seeing 'vortexlive.online' as the source.
         */
         referrerPolicy="no-referrer"
         
-        /* SANDBOX:
-          We MUST allow 'same-origin' so the player can load its internal data,
-          and 'scripts' so the video controls work.
+        /* ENHANCED SANDBOX:
+           Added: 
+           - allow-top-navigation: Allows the player to handle internal redirects.
+           - allow-popups: Required for many players to initialize the video session.
+           - allow-modals: Prevents the player from crashing if it tries to show an alert.
         */
-        sandbox="allow-scripts allow-same-origin allow-forms allow-presentation allow-pointer-lock"
+        sandbox="allow-scripts allow-same-origin allow-forms allow-presentation allow-pointer-lock allow-top-navigation allow-popups allow-modals"
         
         loading="eager"
         title="Vortex Ultra Stream"
