@@ -13,19 +13,9 @@ const db = admin.firestore();
 // CONFIGURATION - STRICT ELITE ONLY
 // ========================
 const API_KEYS = [
-    "c07116b7224340b30c1a2f4cbbf4abe7", 
-    "0e3ac987340e582eb85a41758dc7c33a5dfcec72f940e836d960fe68a28fe904", 
-    "3671908177msh066f984698c094ap1c8360jsndb2bc44e1c65", 
-    "700ca9a1ed18bf1b842e0210e9ae73ce", 
-    "2f977aee380c7590bcf18759dfc18aacd0827b65c4d5df6092ecad5f29aebc33", 
-    "13026e250b0dc9c788acceb0c5ace63c", 
-    "36d031751e132991fd998a3f0f5088b7d1f2446ca9b44351b2a90fde76581478",
-    "08a2395d18de848b4d3542d71234a61212aa43a3027ba11d7d3de3682c6159aa",
-    "3d8bb3c294a4b486d95057721a00d13ed22eacc05e57ad357bc8b3872d8d68a8",
-    "36d031751e132991fd998a3f0f5088b7d1f2446ca9b44351b2a90fde76581478",
-    "714aeef1f191d12498698e299e0b8008",
-    "752fdf198919e11c7773a1d5656a958c"
-];
+    "73d38c6b7bafeaf281c27f35852c157b",
+    
+ ];
 
 const TELEGRAM_TOKEN = "8126112394:AAH7-da80z0C7tLco-ZBoZryH_6hhZBKfhE";
 const CHAT_ID = "@LivefootballVortex";
@@ -103,7 +93,7 @@ const fetchWithRotation = async (endpoint) => {
                 headers: {
                     'Accept': 'application/json',
                     ...(isRapid ? { 'x-rapidapi-key': key, 'x-rapidapi-host': 'api-football-v1.p.rapidapi.com' } 
-                                : { 'x-apisports-key': key, 'x-apisports-host': 'v3.football.api-sports.io' })
+                                 : { 'x-apisports-key': key, 'x-apisports-host': 'v3.football.api-sports.io' })
                 },
                 timeout: 15000
             };
@@ -237,13 +227,13 @@ const autoDetectLiveMatches = async () => {
 };
 
 // ========================
-// SCHEDULED EXPORTS
+// SCHEDULED EXPORTS - UPDATED REGION
 // ========================
 
 exports.vortexLiveBot = onSchedule({ 
     schedule: "every 2 minutes", 
     timeZone: "Africa/Lagos", 
-    region: "us-central1"
+    region: "europe-west1"
 }, async () => {
     try {
         const data = await fetchWithRotation('fixtures?live=all');
@@ -279,20 +269,24 @@ exports.vortexLiveBot = onSchedule({
 exports.dailySync = onSchedule({ 
     schedule: "30 7 * * *", 
     timeZone: "Africa/Lagos", 
-    region: "us-central1"
+    region: "europe-west1"
 }, async () => {
     const res = await runGlobalSync();
     await sendTelegram(`🌅 *Sync Complete:* Found ${res.eliteCount} Elite matches today.`);
 });
 
-exports.emergencySync = onRequest({ cors: true, region: "us-central1" }, async (req, res) => {
+exports.emergencySync = onRequest({ cors: true, region: "europe-west1" }, async (req, res) => {
     try {
         const result = await runGlobalSync();
         res.status(200).json({ success: true, ...result });
     } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
-exports.morningCleanup = onSchedule({ schedule: "45 6 * * *", timeZone: "Africa/Lagos", region: "us-central1" }, async () => {
+exports.morningCleanup = onSchedule({ 
+    schedule: "45 6 * * *", 
+    timeZone: "Africa/Lagos", 
+    region: "europe-west1" 
+}, async () => {
     const snap = await db.collection("matches").get();
     const batch = db.batch();
     snap.docs.forEach(doc => batch.delete(doc.ref));

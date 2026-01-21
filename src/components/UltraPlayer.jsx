@@ -1,20 +1,23 @@
 /* eslint-disable */
-
 import React from 'react';
 
+/**
+ * ULTRA PLAYER (Vortex Premium)
+ * Designed to bypass domain-blocking from providers like Sportsbay and FootyHunter.
+ */
 const UltraPlayer = ({ url }) => {
   if (!url) {
     return (
       <div className="flex items-center justify-center w-full h-full text-sm italic bg-zinc-950 text-zinc-500">
-        No Signal Detected...
+        Waiting for Uplink...
       </div>
     );
   }
 
-  // Logic to ensure the URL is embed-ready
+  // Ensure we are using the direct embed link if possible
   const getProcessedUrl = (target) => {
-    // If it's a footyhunter link, we ensure it's loaded as a clean frame
-    if (target.includes('footyhunterhd.shop')) {
+    // If the URL is from sportsbay or footyhunter, we ensure it's clean
+    if (target.includes('sportsbay') || target.includes('footyhunter')) {
       return target;
     }
     return target;
@@ -27,19 +30,30 @@ const UltraPlayer = ({ url }) => {
         className="w-full h-full border-0"
         allow="autoplay; fullscreen; encrypted-media; picture-in-picture"
         
-        /* VORTEX BYPASS:
-           'no-referrer' hides your website URL from footyhunter.
-           This stops them from blocking the stream because of "Cross-Origin".
+        /* VORTEX STEALTH MODE:
+          'no-referrer' is the most important part. It tells the browser 
+          NOT to tell the provider (Sportsbay) that this request is 
+          coming from vortexlive.online.
         */
         referrerPolicy="no-referrer"
         
         /* SANDBOX:
-           'allow-same-origin' is REQUIRED for footyhunter's PHP player to load its own scripts.
+          We MUST allow 'same-origin' so the player can load its internal data,
+          and 'scripts' so the video controls work.
         */
-        sandbox="allow-scripts allow-same-origin allow-forms allow-presentation"
-        loading="lazy"
+        sandbox="allow-scripts allow-same-origin allow-forms allow-presentation allow-pointer-lock"
+        
+        loading="eager"
         title="Vortex Ultra Stream"
       ></iframe>
+
+      {/* Aesthetic Overlay */}
+      <div className="absolute pointer-events-none top-3 left-3">
+        <div className="flex items-center gap-2 bg-black/50 backdrop-blur-md px-3 py-1.5 rounded-full border border-white/10">
+          <div className="w-2 h-2 bg-red-600 rounded-full animate-pulse" />
+          <span className="text-[10px] font-bold text-white tracking-widest uppercase">Server 3: Ultra HD</span>
+        </div>
+      </div>
     </div>
   );
 };

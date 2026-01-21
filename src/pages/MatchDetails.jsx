@@ -98,7 +98,8 @@ const MatchDetails = () => {
         <div className="grid grid-cols-1 gap-8 lg:grid-cols-12">
           <div className="space-y-6 lg:col-span-8">
             <div className="relative aspect-video bg-black rounded-[2rem] overflow-hidden border border-white/10 shadow-2xl">
-              {stream && isLive ? (
+              {/* VORTEX BYPASS LOGIC: We load the stream even if pre-match so users see the provider's standing-by screen */}
+              {stream && !isFinished ? (
                 <div key={`${refreshKey}-${activeServer}`} className="w-full h-full">
                   {isM3U8 ? <IPTVPlayer url={stream} /> : <UltraPlayer url={stream} />}
                 </div>
@@ -106,18 +107,19 @@ const MatchDetails = () => {
                 <div className="flex flex-col items-center justify-center h-full p-8 text-center bg-zinc-900/50">
                   <Radio size={64} className="mb-4 text-red-600 animate-pulse" />
                   <h2 className="text-xl font-black tracking-widest uppercase">
-                    {isUpcoming ? 'Signal Standing By' : 'Broadcast Finished'}
+                    {isFinished ? 'Broadcast Finished' : 'Signal Lost'}
                   </h2>
                   <p className="max-w-md mt-2 text-sm text-center text-white/40">
-                    {isUpcoming 
-                      ? `Uplink available at ${new Date(match.kickoff).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}` 
-                      : 'The live event has concluded.'}
+                    {isFinished 
+                      ? 'The live event has concluded.' 
+                      : 'No active uplink detected for this match yet.'}
                   </p>
                 </div>
               )}
             </div>
 
-            {isLive && (
+            {/* SERVER SWITCHER - Show whenever there is a stream available */}
+            {stream && !isFinished && (
               <div className="flex flex-wrap gap-3">
                 {[1, 2, 3].map((srv) => match[`streamUrl${srv}`] && (
                   <button 
@@ -187,7 +189,7 @@ const MatchDetails = () => {
         <div className="relative flex-1 overflow-hidden">
           <div className="animate-ticker">
             <span className="mx-8 text-[12px] font-black uppercase italic tracking-wider">
-              🛰️ STATUS: {isLive ? 'BROADCAST ACTIVE' : 'STANDING BY'} ... {match.home.name} vs {match.away.name} ... RESOLUTION: 4K ULTRA HD ...
+              🛰️ STATUS: {isLive ? 'BROADCAST ACTIVE' : isUpcoming ? 'PRE-MATCH UPLINK' : 'FEED TERMINATED'} ... {match.home.name} vs {match.away.name} ... RESOLUTION: 4K ULTRA HD ...
             </span>
           </div>
         </div>
