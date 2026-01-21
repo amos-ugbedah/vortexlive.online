@@ -1,23 +1,20 @@
 /* eslint-disable */
+
 import React from 'react';
 
-/**
- * ULTRA PLAYER (Vortex Premium)
- * Version 2.0 - Enhanced Stealth & Permission Bypass
- * Designed to bypass domain-blocking and sandbox restrictions from providers.
- */
 const UltraPlayer = ({ url }) => {
   if (!url) {
     return (
       <div className="flex items-center justify-center w-full h-full text-sm italic bg-zinc-950 text-zinc-500">
-        Waiting for Uplink...
+        No Signal Detected...
       </div>
     );
   }
 
-  // Ensure we are using the direct embed link if possible
+  // Logic to ensure the URL is embed-ready
   const getProcessedUrl = (target) => {
-    if (target.includes('sportsbay') || target.includes('footyhunter')) {
+    // If it's a footyhunter link, we ensure it's loaded as a clean frame
+    if (target.includes('footyhunterhd.shop')) {
       return target;
     }
     return target;
@@ -30,30 +27,19 @@ const UltraPlayer = ({ url }) => {
         className="w-full h-full border-0"
         allow="autoplay; fullscreen; encrypted-media; picture-in-picture"
         
-        /* VORTEX STEALTH MODE: 
-           Prevents the provider from seeing 'vortexlive.online' as the source.
+        /* VORTEX BYPASS:
+           'no-referrer' hides your website URL from footyhunter.
+           This stops them from blocking the stream because of "Cross-Origin".
         */
         referrerPolicy="no-referrer"
         
-        /* ENHANCED SANDBOX:
-           Added: 
-           - allow-top-navigation: Allows the player to handle internal redirects.
-           - allow-popups: Required for many players to initialize the video session.
-           - allow-modals: Prevents the player from crashing if it tries to show an alert.
+        /* SANDBOX:
+           'allow-same-origin' is REQUIRED for footyhunter's PHP player to load its own scripts.
         */
-        sandbox="allow-scripts allow-same-origin allow-forms allow-presentation allow-pointer-lock allow-top-navigation allow-popups allow-modals"
-        
-        loading="eager"
+        sandbox="allow-scripts allow-same-origin allow-forms allow-presentation"
+        loading="lazy"
         title="Vortex Ultra Stream"
       ></iframe>
-
-      {/* Aesthetic Overlay */}
-      <div className="absolute pointer-events-none top-3 left-3">
-        <div className="flex items-center gap-2 bg-black/50 backdrop-blur-md px-3 py-1.5 rounded-full border border-white/10">
-          <div className="w-2 h-2 bg-red-600 rounded-full animate-pulse" />
-          <span className="text-[10px] font-bold text-white tracking-widest uppercase">Server 3: Ultra HD</span>
-        </div>
-      </div>
     </div>
   );
 };
