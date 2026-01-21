@@ -97,8 +97,8 @@ const MatchDetails = () => {
 
         <div className="grid grid-cols-1 gap-8 lg:grid-cols-12">
           <div className="space-y-6 lg:col-span-8">
-            <div className="relative aspect-video bg-black rounded-[2rem] overflow-hidden border border-white/10 shadow-2xl">
-              {/* VORTEX BYPASS LOGIC: We load the stream even if pre-match so users see the provider's standing-by screen */}
+            {/* VORTEX PLAYER BOX: Reduced border-radius slightly to stop edge flickering */}
+            <div className="relative overflow-hidden bg-black border shadow-2xl aspect-video rounded-2xl border-white/10">
               {stream && !isFinished ? (
                 <div key={`${refreshKey}-${activeServer}`} className="w-full h-full">
                   {isM3U8 ? <IPTVPlayer url={stream} /> : <UltraPlayer url={stream} />}
@@ -118,7 +118,6 @@ const MatchDetails = () => {
               )}
             </div>
 
-            {/* SERVER SWITCHER - Show whenever there is a stream available */}
             {stream && !isFinished && (
               <div className="flex flex-wrap gap-3">
                 {[1, 2, 3].map((srv) => match[`streamUrl${srv}`] && (
@@ -198,6 +197,7 @@ const MatchDetails = () => {
   );
 };
 
+// Sub-components (LoadingScreen, TeamUI, StatBar) remain unchanged below...
 const LoadingScreen = ({ id }) => (
   <div className="flex flex-col items-center justify-center min-h-screen bg-[#020202]">
     <div className="w-16 h-16 mb-6 border-4 border-red-600 rounded-full border-t-transparent animate-spin" />

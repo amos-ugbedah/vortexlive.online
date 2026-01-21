@@ -10,9 +10,7 @@ const UltraPlayer = ({ url }) => {
     );
   }
 
-  // Vortex Stream Processor
   const getProcessedUrl = (target) => {
-    // If it's StreamEast or similar, they usually need the 'direct' embed path
     if (target.includes('thestreameast.life')) {
       return target;
     }
@@ -20,30 +18,28 @@ const UltraPlayer = ({ url }) => {
   };
 
   return (
-    <div className="relative w-full h-full bg-black">
+    <div className="relative w-full h-full overflow-hidden bg-black" style={{ transform: 'translateZ(0)', willChange: 'transform' }}>
       <iframe
         src={getProcessedUrl(url)}
         className="w-full h-full border-0"
+        /* VORTEX MAXIMIZE: Essential permissions for the internal player buttons to work */
         allow="autoplay; fullscreen; encrypted-media; picture-in-picture"
+        allowFullScreen={true}
+        webkitallowfullscreen="true"
+        mozallowfullscreen="true"
         
-        /* VORTEX BYPASS 3.0: 
-          We are removing the 'sandbox' attribute temporarily. 
-          Some providers check for the existence of the word 'sandbox' and block if found.
-          'no-referrer' still protects your domain identity.
-        */
         referrerPolicy="no-referrer"
         
-        /* Removing sandbox allows the provider's scripts to run natively.
-           This is why StreamEast works well—it doesn't fight the browser.
-        */
+        /* Hardware acceleration to stop blinking/color shifts */
+        style={{ transform: 'translateZ(0)', width: '100%', height: '100%' }}
         
         loading="eager"
         title="Vortex Ultra Stream"
       ></iframe>
 
-      {/* Aesthetic Overlay */}
-      <div className="absolute pointer-events-none top-3 left-3">
-        <div className="flex items-center gap-2 bg-black/50 backdrop-blur-md px-3 py-1.5 rounded-full border border-white/10">
+      {/* Aesthetic Overlay - Simplified to prevent z-index blinking */}
+      <div className="absolute z-10 pointer-events-none top-3 left-3">
+        <div className="flex items-center gap-2 bg-zinc-900/80 px-3 py-1.5 rounded-full border border-white/10 shadow-lg">
           <div className="w-2 h-2 bg-red-600 rounded-full animate-pulse" />
           <span className="text-[10px] font-bold text-white tracking-widest uppercase">Server 3: Ultra HD</span>
         </div>
