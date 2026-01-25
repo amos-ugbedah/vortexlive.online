@@ -13,35 +13,30 @@ const MatchCard = memo(({ match: m }) => {
   const matchData = useMemo(() => {
     if (!m) return null;
 
-    // --- STRICT TIME VALIDATION ---
     const now = new Date();
     const kickoff = new Date(m.kickoff);
-    const hasStarted = now >= kickoff; // Cannot be LIVE if now is before kickoff
+    const hasStarted = now >= kickoff;
 
-    const autoLive = utils.isAutoDetected(m) && hasStarted;
-    const estMinute = utils.calculateEstimatedMinute(m);
+    // 1. Check if Finished (Trust the scraper FT status above all else)
+    const isFinished = utils.isMatchFinished(m);
     
-    // Logic: Is it actually live right now?
-    const isLive = (utils.isMatchLive(m) || autoLive) && !utils.isMatchFinished(m) && hasStarted;
+    // 2. Determine Live Status
+    // A match is Live if it is NOT finished AND (the scraper says it's live OR time has passed kickoff)
+    const isLive = !isFinished && (utils.isMatchLive(m) || (hasStarted && m.status !== 'NS'));
 
+    // 3. Determine Status Text
     let statusText = utils.getMatchStatusText(m);
-    if (isLive) {
-        if (m.status === 'HT') {
-            statusText = 'HT';
-        } else {
-            const displayMin = m.minute || estMinute;
-            statusText = displayMin > 0 ? `${displayMin}'` : 'LIVE';
-        }
-    } else if (!hasStarted) {
-        // Force display of kickoff time if it hasn't started
-        statusText = kickoff.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+    
+    // If it's live but minute is missing, ensure we don't show 0'
+    if (isLive && m.status !== 'HT') {
+       const displayMin = Number(m.minute || 0);
+       statusText = displayMin > 0 ? `${displayMin}'` : 'LIVE';
     }
 
     return {
-      isAutoDetected: autoLive,
       isLive,
+      isFinished,
       hasStarted,
-      isFinished: utils.isMatchFinished(m),
       isElite: utils.isEliteMatch(m),
       streamCount: utils.getStreamCount(m),
       safeId: String(m.id || ''),
@@ -51,7 +46,7 @@ const MatchCard = memo(({ match: m }) => {
 
   if (!matchData) return <div className="h-64 border rounded-2xl bg-gray-900/50 animate-pulse border-white/5" />;
 
-  const { isAutoDetected, isLive, isFinished, isElite, streamCount, safeId, statusText } = matchData;
+  const { isLive, isFinished, isElite, streamCount, safeId, statusText } = matchData;
 
   const getStatusStyle = () => {
     if (isLive) return 'bg-red-600 text-white shadow-lg shadow-red-900/40 animate-pulse';
@@ -101,7 +96,7 @@ const MatchCard = memo(({ match: m }) => {
         </div>
       </div>
 
-      {/* Scoreboard - FIXED WIDTHS PREVENT CLUSTERING */}
+      {/* Scoreboard */}
       <div className="flex items-center justify-between px-4 py-8">
         {/* Home Team */}
         <div className="w-[32%] flex flex-col items-center gap-2">
@@ -151,7 +146,7 @@ const MatchCard = memo(({ match: m }) => {
         <button className={`w-full py-3 rounded-xl flex items-center justify-center gap-2 text-[10px] font-black tracking-[0.15em] transition-all
           ${isLive ? 'bg-red-600 hover:bg-red-700 text-white shadow-lg shadow-red-900/30' : 'bg-white/5 hover:bg-white/10 text-white/60'}`}>
           {isLive ? <Play size={12} fill="currentColor" /> : <Clock size={12} />}
-          {isLive ? 'WATCH LIVE' : 'PREVIEW'}
+          {isLive ? 'WATCH LIVE' : (isFinished ? 'MATCH ENDED' : 'PREVIEW')}
         </button>
       </div>
     </div>

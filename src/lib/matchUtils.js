@@ -76,15 +76,30 @@ export const normalizeMatch = (data, id) => {
 
 export const isMatchLive = (match) => {
   if (!match) return false;
-  // STRICT CHECK: Must have actually reached kickoff time to be live
-  const hasStarted = new Date() >= new Date(match.kickoff);
+  const status = String(match.status).toUpperCase();
+  
+  // If scraper says it's Finished or Upcoming, it is NOT live.
+  if (isMatchFinished(match) || status === 'NS') return false;
+
   const liveStatuses = ['1H', 'HT', '2H', 'ET', 'BT', 'P', 'LIVE', 'IN_PLAY'];
-  return liveStatuses.includes(match.status) && hasStarted;
+  const hasStarted = new Date() >= new Date(match.kickoff);
+  
+  return liveStatuses.includes(status) || (hasStarted && !match.addedManually);
 };
 
-export const isMatchUpcoming = (match) => match?.status === 'NS';
+export const isMatchUpcoming = (match) => {
+  if (!match) return false;
+  const status = String(match.status).toUpperCase();
+  const hasStarted = new Date() >= new Date(match.kickoff);
+  // Match is only upcoming if status is NS AND kickoff hasn't happened yet
+  return status === 'NS' && !hasStarted;
+};
 
-export const isMatchFinished = (match) => match?.status === 'FT' || match?.status === 'FINISHED';
+export const isMatchFinished = (match) => {
+  if (!match) return false;
+  const status = String(match.status).toUpperCase();
+  return status === 'FT' || status === 'FINISHED' || status === 'AET' || status === 'PEN';
+};
 
 export const isEliteMatch = (match) => {
   if (!match) return false;
@@ -93,7 +108,6 @@ export const isEliteMatch = (match) => {
 
 export const isAutoDetected = (match) => {
   if (!match) return false;
-  // Only auto-detect if NOT manual AND currently past kickoff time
   const hasStarted = new Date() >= new Date(match.kickoff);
   return !match.addedManually && hasStarted;
 };
@@ -110,9 +124,9 @@ export const formatMatchTime = (kickoff) => {
 
 export const getMatchStatusText = (match) => {
   if (!match) return '';
-  if (match.status === 'NS') return formatMatchTime(match.kickoff);
+  if (isMatchFinished(match)) return 'Full Time';
   if (match.status === 'HT') return 'Half Time';
-  if (match.status === 'FT') return 'Full Time';
+  if (isMatchUpcoming(match)) return formatMatchTime(match.kickoff);
   
   // If match is live, show minute. If minute is 0 but it's live, show '1'
   if (isMatchLive(match)) {
@@ -133,7 +147,6 @@ export const calculateEstimatedMinute = (match) => {
   if (!match) return null;
   const min = Number(match.minute);
   if (isNaN(min) || min <= 0) {
-    // If it's live but minute is 0, return 1 (Match just started)
     return isMatchLive(match) ? 1 : null;
   }
   return min > 90 ? "90+" : min;
