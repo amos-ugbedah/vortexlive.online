@@ -3,7 +3,7 @@ import React, { memo, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { 
   ShieldCheck, BrainCircuit, Play, Clock, Trophy, Tv, 
-  Wifi, Zap
+  Wifi, Zap, Star
 } from 'lucide-react';
 import * as utils from '../lib/matchUtils';
 
@@ -38,6 +38,7 @@ const MatchCard = memo(({ match: m }) => {
       isFinished,
       hasStarted,
       isElite: utils.isEliteMatch(m),
+      isUEFA: utils.isUEFAMatch(m), // NEW: Check if UEFA match
       streamCount: utils.getStreamCount(m),
       safeId: String(m.id || ''),
       statusText
@@ -46,7 +47,7 @@ const MatchCard = memo(({ match: m }) => {
 
   if (!matchData) return <div className="h-64 border rounded-2xl bg-gray-900/50 animate-pulse border-white/5" />;
 
-  const { isLive, isFinished, isElite, streamCount, safeId, statusText } = matchData;
+  const { isLive, isFinished, isElite, isUEFA, streamCount, safeId, statusText } = matchData;
 
   const getStatusStyle = () => {
     if (isLive) return 'bg-red-600 text-white shadow-lg shadow-red-900/40 animate-pulse';
@@ -60,6 +61,7 @@ const MatchCard = memo(({ match: m }) => {
       className={`group relative flex flex-col overflow-hidden rounded-2xl border transition-all duration-300 cursor-pointer active:scale-[0.98] h-full
         ${isElite ? 'border-yellow-500/30 bg-gradient-to-br from-yellow-950/20 to-black' : 'border-white/5 bg-gray-900/40'}
         ${isLive ? 'border-red-500/30' : ''} 
+        ${isUEFA ? 'border-purple-500/30 bg-gradient-to-br from-purple-950/20 to-black' : ''}
         hover:border-red-500/40 hover:shadow-xl hover:shadow-red-500/5`}
     >
       {/* Badges */}
@@ -76,11 +78,18 @@ const MatchCard = memo(({ match: m }) => {
             </div>
           )}
         </div>
-        {isElite && (
-          <div className="flex items-center gap-1 px-2 py-1 bg-yellow-600 rounded-full text-[8px] font-black text-white shadow-lg">
-            <Trophy size={10} /> <span>ELITE</span>
-          </div>
-        )}
+        <div className="flex gap-1">
+          {isUEFA && (
+            <div className="flex items-center gap-1 px-2 py-1 bg-purple-600 rounded-full text-[8px] font-black text-white shadow-lg">
+              <Star size={10} /> <span>UEFA</span>
+            </div>
+          )}
+          {isElite && !isUEFA && (
+            <div className="flex items-center gap-1 px-2 py-1 bg-yellow-600 rounded-full text-[8px] font-black text-white shadow-lg">
+              <Trophy size={10} /> <span>ELITE</span>
+            </div>
+          )}
+        </div>
       </div>
 
       {/* Header */}

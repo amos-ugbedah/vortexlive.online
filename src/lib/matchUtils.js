@@ -10,9 +10,83 @@ const STATUS_MAP = {
   'LIVE': 'LIVE', 'IN_PLAY': 'LIVE', 'PAUSED': 'HT', 'FINISHED': 'FT', 'SCHEDULED': 'NS', 'TIMED': 'NS'
 };
 
+// UPDATED: EUROPEAN & UEFA LEAGUES ONLY (same as Python)
 const ELITE_LEAGUES = [
-  1, 2, 3, 4, 5, 7, 10, 11, 12, 13, 29, 30, 31, 34, 39, 45, 48, 61, 66, 78, 81, 88, 94, 135, 137, 140, 143, 227, 848
+  1,    // World Cup
+  2,    // Champions League
+  3,    // Europa League
+  4,    // Premier League
+  5,    // La Liga
+  6,    // Serie A
+  7,    // Bundesliga
+  8,    // Ligue 1
+  9,    // Primeira Liga
+  10,   // Eredivisie
+  11,   // Championship
+  12,   // FA Cup
+  13,   // Copa del Rey
+  14,   // Coppa Italia
+  29,   // EFL Cup
+  30,   // Coupe de France
+  31,   // DFB Pokal
+  34,   // KNVB Beker
+  39,   // Taça de Portugal
+  45,   // Serie B
+  48,   // Ligue 2
+  61,   // Bundesliga 2
+  66,   // La Liga 2
+  78,   // UEFA Nations League
+  81,   // European Championship
+  88,   // Conference League
+  94,   // Super Cup (UEFA)
+  135,  // EFL Trophy
+  137,  // FA Trophy
+  140,  // National League
+  141,  // National League North/South
+  143,  // Scottish Premiership
+  227,  // Turkish Süper Lig
+  848   // International Friendlies (European teams only)
 ];
+
+// NEW: Keywords to identify European/UEFA competitions
+const EUROPEAN_KEYWORDS = [
+  "PREMIER", "LALIGA", "SERIE A", "BUNDESLIGA", "LIGUE 1", 
+  "CHAMPIONS", "EUROPA", "CONFERENCE", "EREDIVISIE", "PORTUGAL",
+  "UEFA", "EUROPEAN", "ENGLAND", "SPAIN", "ITALY", "GERMANY", "FRANCE"
+];
+
+// NEW: Keywords to exclude (African/Asian leagues)
+const EXCLUDE_KEYWORDS = [
+  "AFRICA", "AFRICAN", "CAF", "EGYPT", "KENYA", "NIGERIA", "SOUTH AFRICA",
+  "ASIA", "ASIAN", "AFC", "CHINA", "JAPAN", "KOREA", "AUSTRALIA",
+  "USA", "MLS", "MEXICO", "BRAZIL", "ARGENTINA", "CHILE"
+];
+
+// NEW: Check if league is European/UEFA
+export const isEuropeanLeague = (leagueName, leagueId) => {
+  if (!leagueName) return false;
+  
+  const leagueUpper = leagueName.toUpperCase();
+  
+  // Check by ID first (most reliable)
+  if (ELITE_LEAGUES.includes(leagueId)) {
+    return true;
+  }
+  
+  // Must contain at least ONE European keyword
+  const hasEuropeanKeyword = EUROPEAN_KEYWORDS.some(keyword => 
+    leagueUpper.includes(keyword)
+  );
+  
+  if (!hasEuropeanKeyword) return false;
+  
+  // Must NOT contain any exclude keywords
+  const hasExcluded = EXCLUDE_KEYWORDS.some(keyword => 
+    leagueUpper.includes(keyword)
+  );
+  
+  return !hasExcluded;
+};
 
 const decodeBase64 = (str) => {
   try {
@@ -42,6 +116,15 @@ export const normalizeMatch = (data, id) => {
     kickoffDate = data.kickoff || new Date().toISOString();
   }
 
+  // Check if this is a European/UEFA match
+  const isUEFA = data.league?.toUpperCase().includes('UEFA') || 
+                data.league?.toUpperCase().includes('CHAMPIONS') ||
+                data.league?.toUpperCase().includes('EUROPA');
+  
+  const isEliteMatch = data.isElite || 
+                      isEuropeanLeague(data.league, Number(data.leagueId)) ||
+                      ELITE_LEAGUES.includes(Number(data.leagueId));
+
   return {
     id: safeId,
     home: {
@@ -59,7 +142,8 @@ export const normalizeMatch = (data, id) => {
     league: data.league || 'Unknown League',
     leagueId: Number(data.leagueId || 0),
     leagueLogo: data.leagueLogo || '',
-    isElite: data.isElite || ELITE_LEAGUES.includes(Number(data.leagueId)),
+    isElite: isEliteMatch, // UPDATED: Use the European check
+    isUEFA: isUEFA, // NEW: Flag for UEFA matches
     kickoff: kickoffDate,
     venue: data.venue || 'Stadium TBD',
     referee: data.referee || 'Referee TBD',
@@ -104,6 +188,16 @@ export const isMatchFinished = (match) => {
 export const isEliteMatch = (match) => {
   if (!match) return false;
   return Boolean(match.isElite || ELITE_LEAGUES.includes(Number(match.leagueId)));
+};
+
+// NEW: Check if match is UEFA competition
+export const isUEFAMatch = (match) => {
+  if (!match || !match.league) return false;
+  const leagueUpper = match.league.toUpperCase();
+  return leagueUpper.includes('UEFA') || 
+         leagueUpper.includes('CHAMPIONS') || 
+         leagueUpper.includes('EUROPA') ||
+         leagueUpper.includes('CONFERENCE');
 };
 
 export const isAutoDetected = (match) => {
@@ -173,13 +267,29 @@ export const getStreamCount = (match) => {
 
 export const formatAIPick = (text) => text || 'Vortex AI: Analyzing match patterns...';
 
+// UPDATED: Sort matches with UEFA matches first
 export const sortMatches = (matches) => {
   if (!matches) return [];
   return [...matches].sort((a, b) => {
+    // UEFA matches get highest priority
+    const aUEFA = isUEFAMatch(a);
+    const bUEFA = isUEFAMatch(b);
+    if (aUEFA && !bUEFA) return -1;
+    if (!aUEFA && bUEFA) return 1;
+    
+    // Then sort by live status
     const aLive = isMatchLive(a);
     const bLive = isMatchLive(b);
     if (aLive && !bLive) return -1;
     if (!aLive && bLive) return 1;
+    
+    // Then sort by elite status
+    const aElite = isEliteMatch(a);
+    const bElite = isEliteMatch(b);
+    if (aElite && !bElite) return -1;
+    if (!aElite && bElite) return 1;
+    
+    // Then by finish status
     if (!aLive && !bLive) {
       const aFinished = isMatchFinished(a);
       const bFinished = isMatchFinished(b);
@@ -198,6 +308,8 @@ export default {
   isMatchUpcoming,
   isMatchFinished,
   isEliteMatch,
+  isUEFAMatch, // NEW
+  isEuropeanLeague, // NEW
   isAutoDetected,
   getMatchStatusText,
   calculateEstimatedStatus,
@@ -208,4 +320,4 @@ export default {
   sortMatches
 };
 
-export { STATUS_MAP, ELITE_LEAGUES, decodeBase64 };
+export { STATUS_MAP, ELITE_LEAGUES, EUROPEAN_KEYWORDS, EXCLUDE_KEYWORDS, decodeBase64 };
