@@ -1,7 +1,7 @@
 /* eslint-disable */
 import React, { useState, useEffect, useMemo, useCallback, useRef, memo } from 'react';
 import { db } from '../lib/firebase';
-import { collection, onSnapshot, query, orderBy } from 'firebase/firestore'; 
+import { collection, onSnapshot, query } from 'firebase/firestore'; 
 import { Volume2, Radio, Trees, Sparkles, Zap, Clock, Trophy, Target, TrendingUp, Award, Shield, Users, BarChart, Crown, Star } from 'lucide-react';
 import SearchBar from '../components/SearchBar';
 import MatchCard from '../components/MatchCard';
@@ -14,7 +14,6 @@ const Home = memo(() => {
   const [soundEnabled, setSoundEnabled] = useState(false);
   const [activeFilter, setActiveFilter] = useState('all');
   
-  // UPDATED: Closed by default. Logic in useEffect will open it for Desktop users only.
   const [showSidebar, setShowSidebar] = useState(false);
   
   const prevScores = useRef({});
@@ -26,7 +25,6 @@ const Home = memo(() => {
       goalSound.current = new Audio('https://assets.mixkit.co/active_storage/sfx/2042/2042-preview.mp3');
       goalSound.current.volume = 0.3;
 
-      // AUTO-DETECT SCREEN SIZE: If desktop (width > 1024), open sidebar automatically
       if (window.innerWidth >= 1024) {
         setShowSidebar(true);
       }
@@ -44,10 +42,8 @@ const Home = memo(() => {
   useEffect(() => {
     if (!db) return;
 
-    const q = query(
-      collection(db, 'matches'), 
-      orderBy('kickoff', 'asc')
-    );
+    // REMOVED orderBy from the query to ensure data loads regardless of Index status
+    const q = query(collection(db, 'matches'));
     
     const unsubscribe = onSnapshot(q, (snapshot) => {
       const processedMatches = snapshot.docs.map(doc => {
@@ -69,7 +65,14 @@ const Home = memo(() => {
         return data;
       }).filter(Boolean);
 
-      setMatches(processedMatches);
+      // SORT LOCALLY: Sort by kickoff time string (lexicographical sort works for ISO strings)
+      const sorted = processedMatches.sort((a, b) => {
+        const timeA = a.kickoff || "";
+        const timeB = b.kickoff || "";
+        return timeA.localeCompare(timeB);
+      });
+
+      setMatches(sorted);
       setIsLoading(false);
     }, (err) => {
       console.error("Home Snapshot Error:", err);
@@ -142,13 +145,13 @@ const Home = memo(() => {
           teams[match.away.name] = { name: match.away.name, played: 0, won: 0, drawn: 0, lost: 0, points: 0, gf: 0, ga: 0, gd: 0 };
         }
 
-        if (match.status === 'FT') {
+        if (match.status === 'FT' || isMatchFinished(match)) {
           teams[match.home.name].played++;
           teams[match.away.name].played++;
-          teams[match.home.name].gf += match.home.score;
-          teams[match.home.name].ga += match.away.score;
-          teams[match.away.name].gf += match.away.score;
-          teams[match.away.name].ga += match.home.score;
+          teams[match.home.name].gf += (match.home.score || 0);
+          teams[match.home.name].ga += (match.away.score || 0);
+          teams[match.away.name].gf += (match.away.score || 0);
+          teams[match.away.name].ga += (match.home.score || 0);
           
           if (match.home.score > match.away.score) {
             teams[match.home.name].won++;
@@ -267,7 +270,6 @@ const Home = memo(() => {
             </div>
           ) : (
             <div className="max-w-[1400px] mx-auto space-y-8 lg:space-y-12">
-              {/* Render categories based on your existing logic */}
               {categorized.eliteLive.length > 0 && (
                 <section>
                   <h2 className="flex items-center gap-2 mb-6 text-xl italic font-black uppercase">

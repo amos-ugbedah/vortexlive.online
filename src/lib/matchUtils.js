@@ -70,7 +70,6 @@ export const normalizeMatch = (data, id) => {
     streamServer1: data.streamServer1 || 'StreamEast',
     aiPick: data.aiPick || 'Vortex AI: Analyzing match patterns...',
     lastUpdated: data.lastUpdated,
-    announced: !!data.announced,
     addedManually: !!data.addedManually
   };
 };
@@ -78,9 +77,13 @@ export const normalizeMatch = (data, id) => {
 export const isMatchLive = (match) => {
   if (!match) return false;
   const status = String(match.status).toUpperCase();
+  
+  // If scraper says it's Finished or Upcoming, it is NOT live.
   if (isMatchFinished(match) || status === 'NS') return false;
+
   const liveStatuses = ['1H', 'HT', '2H', 'ET', 'BT', 'P', 'LIVE', 'IN_PLAY'];
   const hasStarted = new Date() >= new Date(match.kickoff);
+  
   return liveStatuses.includes(status) || (hasStarted && !match.addedManually);
 };
 
@@ -88,6 +91,7 @@ export const isMatchUpcoming = (match) => {
   if (!match) return false;
   const status = String(match.status).toUpperCase();
   const hasStarted = new Date() >= new Date(match.kickoff);
+  // Match is only upcoming if status is NS AND kickoff hasn't happened yet
   return status === 'NS' && !hasStarted;
 };
 
@@ -123,6 +127,8 @@ export const getMatchStatusText = (match) => {
   if (isMatchFinished(match)) return 'Full Time';
   if (match.status === 'HT') return 'Half Time';
   if (isMatchUpcoming(match)) return formatMatchTime(match.kickoff);
+  
+  // If match is live, show minute. If minute is 0 but it's live, show '1'
   if (isMatchLive(match)) {
     const min = Number(match.minute || 0);
     return min > 0 ? `${min}'` : "1'";
@@ -140,7 +146,9 @@ export const calculateEstimatedStatus = (match) => {
 export const calculateEstimatedMinute = (match) => {
   if (!match) return null;
   const min = Number(match.minute);
-  if (isNaN(min) || min <= 0) return isMatchLive(match) ? 1 : null;
+  if (isNaN(min) || min <= 0) {
+    return isMatchLive(match) ? 1 : null;
+  }
   return min > 90 ? "90+" : min;
 };
 
@@ -150,16 +158,16 @@ export const getDecodedStreamUrl = (url, fallbackIndex = 0) => {
     "https://soccertvhd.com",
     "https://givemereddistreams.top"
   ];
-  if (!url || url === '') return sources[fallbackIndex];
+  if (!url) return sources[fallbackIndex];
   return decodeBase64(url);
 };
 
 export const getStreamCount = (match) => {
   if (!match) return 0;
   let count = 0;
-  if (match.streamUrl1 && match.streamUrl1.length > 5) count++;
-  if (match.streamUrl2 && match.streamUrl2.length > 5) count++;
-  if (match.streamUrl3 && match.streamUrl3.length > 5) count++;
+  if (match.streamUrl1) count++;
+  if (match.streamUrl2) count++;
+  if (match.streamUrl3) count++;
   return count;
 };
 
@@ -184,9 +192,20 @@ export const sortMatches = (matches) => {
 };
 
 export default {
-  normalizeMatch, formatMatchTime, isMatchLive, isMatchUpcoming, isMatchFinished, isEliteMatch,
-  isAutoDetected, getMatchStatusText, calculateEstimatedStatus, calculateEstimatedMinute,
-  getDecodedStreamUrl, getStreamCount, formatAIPick, sortMatches
+  normalizeMatch,
+  formatMatchTime,
+  isMatchLive,
+  isMatchUpcoming,
+  isMatchFinished,
+  isEliteMatch,
+  isAutoDetected,
+  getMatchStatusText,
+  calculateEstimatedStatus,
+  calculateEstimatedMinute,
+  getDecodedStreamUrl,
+  getStreamCount,
+  formatAIPick,
+  sortMatches
 };
 
 export { STATUS_MAP, ELITE_LEAGUES, decodeBase64 };
