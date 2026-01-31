@@ -42,7 +42,6 @@ const Home = memo(() => {
   useEffect(() => {
     if (!db) return;
 
-    // REMOVED orderBy from the query to ensure data loads regardless of Index status
     const q = query(collection(db, 'matches'));
     
     const unsubscribe = onSnapshot(q, (snapshot) => {
@@ -65,7 +64,6 @@ const Home = memo(() => {
         return data;
       }).filter(Boolean);
 
-      // SORT LOCALLY: Sort by kickoff time string (lexicographical sort works for ISO strings)
       const sorted = processedMatches.sort((a, b) => {
         const timeA = a.kickoff || "";
         const timeB = b.kickoff || "";
@@ -101,7 +99,7 @@ const Home = memo(() => {
       filtered = searchFiltered.filter(m => isMatchFinished(m));
     }
 
-    const aiPicks = matches
+    const aiPicksList = matches
       .filter(m => m.aiPick && m.aiPick.trim() !== '')
       .slice(0, 5);
 
@@ -112,12 +110,11 @@ const Home = memo(() => {
       finished: filtered.filter(m => isMatchFinished(m))
     };
 
-    return { categorized, filteredMatches: filtered, aiPicks };
+    return { categorized, filteredMatches: filtered, aiPicks: aiPicksList };
   }, [matches, searchTerm, activeFilter]);
 
   const totalMatches = filteredMatches.length;
 
-  // Generate league standings data
   const leagueStandings = useMemo(() => {
     const leagues = {};
     matches.forEach(match => {
@@ -145,7 +142,7 @@ const Home = memo(() => {
           teams[match.away.name] = { name: match.away.name, played: 0, won: 0, drawn: 0, lost: 0, points: 0, gf: 0, ga: 0, gd: 0 };
         }
 
-        if (match.status === 'FT' || isMatchFinished(match)) {
+        if (isMatchFinished(match)) {
           teams[match.home.name].played++;
           teams[match.away.name].played++;
           teams[match.home.name].gf += (match.home.score || 0);
@@ -224,8 +221,8 @@ const Home = memo(() => {
         </div>
       </div>
 
-      {/* MAIN CONTENT */}
-      <div className="flex-1 lg:pr-[380px]">
+      {/* Changed padding-right to margin-right to prevent sidebar overlap */}
+      <div className="flex-1 lg:mr-[380px] pb-20">
         {/* DESKTOP HEADER */}
         <header className="sticky top-0 z-40 hidden w-full px-6 py-5 border-b lg:block bg-black/95 backdrop-blur-2xl border-white/5">
           <div className="max-w-[1400px] mx-auto flex items-center justify-between">
@@ -261,7 +258,6 @@ const Home = memo(() => {
           </div>
         </div>
 
-        {/* MAIN MATCHES GRID */}
         <main className="p-4 lg:p-6">
           {totalMatches === 0 ? (
             <div className="flex flex-col items-center justify-center py-32 opacity-40">
@@ -309,27 +305,25 @@ const Home = memo(() => {
         </main>
       </div>
 
-      {/* RIGHT SIDEBAR */}
+      {/* RIGHT SIDEBAR - Increased bottom padding and reduced banner height */}
       <div className={`${showSidebar ? 'block' : 'hidden'} lg:block fixed right-0 top-0 h-full w-full lg:w-[380px] bg-black border-l border-white/5 z-30 overflow-y-auto`}>
-        <div className="p-5 space-y-6">
+        <div className="p-5 pb-32 space-y-6">
           <div className="flex items-center justify-between mb-2">
             <h3 className="text-lg font-black tracking-tight uppercase">Stats & Tables</h3>
             <button onClick={() => setShowSidebar(false)} className="p-2 lg:hidden text-white/40 hover:text-white">✕</button>
           </div>
 
-          {/* BONUS CODE */}
-          <div className="p-5 text-center border rounded-2xl bg-gradient-to-br from-yellow-900/40 to-black border-yellow-600/30">
-            <h4 className="mb-4 text-2xl font-black">500% <span className="text-yellow-400">BONUS</span></h4>
-            <div className="p-4 mb-4 border-2 bg-black/40 border-yellow-600/30 rounded-xl">
-              <p className="text-3xl font-black tracking-widest text-yellow-400">VORTEX</p>
+          <div className="p-4 text-center border rounded-2xl bg-gradient-to-br from-yellow-900/40 to-black border-yellow-600/30">
+            <h4 className="mb-2 text-xl font-black">500% <span className="text-yellow-400">BONUS</span></h4>
+            <div className="p-2 mb-3 border-2 bg-black/40 border-yellow-600/30 rounded-xl">
+              <p className="text-2xl font-black tracking-widest text-yellow-400">VORTEX</p>
             </div>
-            <button className="w-full py-3.5 bg-yellow-600 text-white font-black rounded-xl shadow-lg shadow-yellow-600/30">DEPOSIT NOW</button>
+            <button className="w-full py-2.5 bg-yellow-600 text-white font-black rounded-xl shadow-lg shadow-yellow-600/30">DEPOSIT NOW</button>
           </div>
 
-          {/* LEAGUE TABLES */}
           {leagueStandings.map((league, idx) => (
             <div key={idx} className="p-4 border bg-white/5 border-white/5 rounded-xl">
-              <h5 className="mb-3 text-xs font-bold">{league.name}</h5>
+              <h5 className="mb-3 text-xs font-bold uppercase text-white/40">{league.name}</h5>
               {league.topTeams.map((team, index) => (
                 <div key={index} className="flex items-center justify-between p-2 mb-1 rounded bg-black/20">
                   <span className="text-xs">{index + 1}. {team.name}</span>
@@ -339,7 +333,6 @@ const Home = memo(() => {
             </div>
           ))}
 
-          {/* AI PREDICTIONS */}
           <div className="space-y-4">
             <h4 className="text-sm font-black uppercase text-white/80">AI Predictions</h4>
             {aiPicks.map((match) => (
@@ -350,15 +343,6 @@ const Home = memo(() => {
                 </div>
               </div>
             ))}
-          </div>
-
-          {/* QUICK STATS */}
-          <div className="p-5 border bg-blue-900/20 border-blue-600/20 rounded-2xl">
-            <h4 className="mb-4 text-xs font-black uppercase">Vortex Engine Data</h4>
-            <div className="space-y-2 text-xs">
-              <div className="flex justify-between"><span>Live Matches</span><span className="text-green-400">{categorized.eliteLive.length + categorized.regularLive.length}</span></div>
-              <div className="flex justify-between"><span>Accuracy</span><span className="text-purple-400">87.4%</span></div>
-            </div>
           </div>
         </div>
       </div>

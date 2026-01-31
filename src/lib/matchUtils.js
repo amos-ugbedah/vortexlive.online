@@ -1,46 +1,37 @@
 /* eslint-disable */
-
-/**
- * STATUS_MAP: Standardizes various API status strings to Vortex internals.
- */
 const STATUS_MAP = {
   'TBD': 'NS', 'NS': 'NS', '1H': '1H', '2H': '2H', 'HT': 'HT', 'ET': 'ET',
   'BT': 'BT', 'P': 'P', 'SUSP': 'SUSP', 'INT': 'SUSP', 'FT': 'FT', 'AET': 'FT',
   'PEN': 'FT', 'PST': 'PST', 'CANC': 'CANC', 'ABD': 'ABD', 'AWD': 'AWD', 'WO': 'AWD',
-  'LIVE': 'LIVE', 'IN_PLAY': 'LIVE', 'PAUSED': 'HT', 'FINISHED': 'FT', 'SCHEDULED': 'NS', 'TIMED': 'NS'
+  'LIVE': 'LIVE', 'IN_PLAY': 'LIVE', 'PAUSED': 'HT', 'FINISHED': 'FT', 'SCHEDULED': 'NS', 'TIMED': 'NS',
+  '1': 'NS', '2': '1H', '3': 'HT', '4': '2H', '24': 'LIVE'
 };
 
 const ELITE_LEAGUES = [
   1, 2, 3, 4, 5, 7, 10, 11, 12, 13, 29, 30, 31, 34, 39, 45, 48, 61, 66, 78, 81, 88, 94, 135, 137, 140, 143, 227, 848
 ];
 
-const decodeBase64 = (str) => {
-  try {
-    if (!str) return '';
-    return typeof Buffer !== 'undefined' 
-      ? Buffer.from(str, 'base64').toString() 
-      : atob(str);
-  } catch (e) {
-    return str; 
-  }
-};
-
 export const normalizeMatch = (data, id) => {
   if (!data) return null;
-  const safeId = String(data.id || id || '');
+  const safeId = id || data.id || Math.random().toString(36).substr(2, 9);
   
   const normalizeStatus = (status) => {
     if (!status) return 'NS';
     const statusStr = String(status).toUpperCase().trim();
-    return STATUS_MAP[statusStr] || 'NS';
+    return STATUS_MAP[statusStr] || statusStr;
   };
 
   let kickoffDate;
-  if (data.kickoff?.toDate) {
-    kickoffDate = data.kickoff.toDate().toISOString();
-  } else {
-    kickoffDate = data.kickoff || new Date().toISOString();
-  }
+  try {
+    if (data.kickoff?.toDate) {
+      kickoffDate = data.kickoff.toDate().toISOString();
+    } else if (data.kickoff) {
+      const d = new Date(data.kickoff);
+      kickoffDate = isNaN(d.getTime()) ? new Date().toISOString() : d.toISOString();
+    } else {
+      kickoffDate = new Date().toISOString();
+    }
+  } catch (e) { kickoffDate = new Date().toISOString(); }
 
   return {
     id: safeId,
@@ -77,46 +68,28 @@ export const normalizeMatch = (data, id) => {
 export const isMatchLive = (match) => {
   if (!match) return false;
   const status = String(match.status).toUpperCase();
-  
-  // If scraper says it's Finished or Upcoming, it is NOT live.
-  if (isMatchFinished(match) || status === 'NS') return false;
-
-  const liveStatuses = ['1H', 'HT', '2H', 'ET', 'BT', 'P', 'LIVE', 'IN_PLAY'];
-  const hasStarted = new Date() >= new Date(match.kickoff);
-  
-  return liveStatuses.includes(status) || (hasStarted && !match.addedManually);
+  const liveStatuses = ['1H', 'HT', '2H', 'ET', 'BT', 'P', 'LIVE', 'IN_PLAY', '24'];
+  return liveStatuses.includes(status) && !isMatchFinished(match);
 };
 
 export const isMatchUpcoming = (match) => {
   if (!match) return false;
   const status = String(match.status).toUpperCase();
-  const hasStarted = new Date() >= new Date(match.kickoff);
-  // Match is only upcoming if status is NS AND kickoff hasn't happened yet
-  return status === 'NS' && !hasStarted;
+  const now = new Date();
+  const kickoff = new Date(match.kickoff);
+  return (status === 'NS' || status === '1') && now < kickoff;
 };
 
 export const isMatchFinished = (match) => {
   if (!match) return false;
   const status = String(match.status).toUpperCase();
-  return status === 'FT' || status === 'FINISHED' || status === 'AET' || status === 'PEN';
-};
-
-export const isEliteMatch = (match) => {
-  if (!match) return false;
-  return Boolean(match.isElite || ELITE_LEAGUES.includes(Number(match.leagueId)));
-};
-
-export const isAutoDetected = (match) => {
-  if (!match) return false;
-  const hasStarted = new Date() >= new Date(match.kickoff);
-  return !match.addedManually && hasStarted;
+  return ['FT', 'FINISHED', 'AET', 'PEN', 'ABD', 'AWD', 'CANC'].includes(status);
 };
 
 export const formatMatchTime = (kickoff) => {
   if (!kickoff) return 'TBD';
   try {
-    const date = new Date(kickoff);
-    return date.toLocaleTimeString('en-GB', { 
+    return new Date(kickoff).toLocaleTimeString('en-GB', { 
       hour: '2-digit', minute: '2-digit', timeZone: 'Africa/Lagos' 
     });
   } catch (e) { return 'TBD'; }
@@ -125,87 +98,13 @@ export const formatMatchTime = (kickoff) => {
 export const getMatchStatusText = (match) => {
   if (!match) return '';
   if (isMatchFinished(match)) return 'Full Time';
-  if (match.status === 'HT') return 'Half Time';
-  if (isMatchUpcoming(match)) return formatMatchTime(match.kickoff);
-  
-  // If match is live, show minute. If minute is 0 but it's live, show '1'
+  if (match.status === 'HT' || match.status === '3') return 'Half Time';
   if (isMatchLive(match)) {
     const min = Number(match.minute || 0);
-    return min > 0 ? `${min}'` : "1'";
+    return min > 0 ? `${min}'` : "LIVE";
   }
+  if (isMatchUpcoming(match)) return formatMatchTime(match.kickoff);
   return match.status;
 };
 
-export const calculateEstimatedStatus = (match) => {
-  if (isMatchFinished(match)) return "Full Time";
-  if (match.status === 'HT') return "Half Time";
-  if (isMatchLive(match)) return "Live";
-  return "Scheduled";
-};
-
-export const calculateEstimatedMinute = (match) => {
-  if (!match) return null;
-  const min = Number(match.minute);
-  if (isNaN(min) || min <= 0) {
-    return isMatchLive(match) ? 1 : null;
-  }
-  return min > 90 ? "90+" : min;
-};
-
-export const getDecodedStreamUrl = (url, fallbackIndex = 0) => {
-  const sources = [
-    "https://thestreameast.life",
-    "https://soccertvhd.com",
-    "https://givemereddistreams.top"
-  ];
-  if (!url) return sources[fallbackIndex];
-  return decodeBase64(url);
-};
-
-export const getStreamCount = (match) => {
-  if (!match) return 0;
-  let count = 0;
-  if (match.streamUrl1) count++;
-  if (match.streamUrl2) count++;
-  if (match.streamUrl3) count++;
-  return count;
-};
-
-export const formatAIPick = (text) => text || 'Vortex AI: Analyzing match patterns...';
-
-export const sortMatches = (matches) => {
-  if (!matches) return [];
-  return [...matches].sort((a, b) => {
-    const aLive = isMatchLive(a);
-    const bLive = isMatchLive(b);
-    if (aLive && !bLive) return -1;
-    if (!aLive && bLive) return 1;
-    if (!aLive && !bLive) {
-      const aFinished = isMatchFinished(a);
-      const bFinished = isMatchFinished(b);
-      if (aFinished && !bFinished) return 1;
-      if (!aFinished && bFinished) return -1;
-      return new Date(a.kickoff) - new Date(b.kickoff);
-    }
-    return 0;
-  });
-};
-
-export default {
-  normalizeMatch,
-  formatMatchTime,
-  isMatchLive,
-  isMatchUpcoming,
-  isMatchFinished,
-  isEliteMatch,
-  isAutoDetected,
-  getMatchStatusText,
-  calculateEstimatedStatus,
-  calculateEstimatedMinute,
-  getDecodedStreamUrl,
-  getStreamCount,
-  formatAIPick,
-  sortMatches
-};
-
-export { STATUS_MAP, ELITE_LEAGUES, decodeBase64 };
+export default { normalizeMatch, formatMatchTime, isMatchLive, isMatchUpcoming, isMatchFinished, getMatchStatusText };

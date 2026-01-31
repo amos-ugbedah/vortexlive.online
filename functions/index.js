@@ -9,7 +9,11 @@ const db = admin.firestore();
 const TELEGRAM_TOKEN = "8126112394:AAH7-da80z0C7tLco-ZBoZryH_6hhZBKfhE";
 const CHAT_ID = "@LivefootballVortex";
 
-// Helper for Telegram
+// Helper to map numeric API codes to readable statuses
+const STATUS_MAP = {
+    '1': 'NS', '2': '1H', '3': 'HT', '4': '2H', '24': 'LIVE', 'FT': 'FT'
+};
+
 const sendTelegram = async (msg) => {
     try {
         await axios.post(`https://api.telegram.org/bot${TELEGRAM_TOKEN}/sendMessage`, {
@@ -22,10 +26,6 @@ const sendTelegram = async (msg) => {
     }
 };
 
-/**
- * ⚽ LIVE SCORE SCRAPER
- * Mirroring Python ID Logic: slugify(home)-vs-slugify(away)-YYYY-MM-DD
- */
 exports.vortexLiveScraper = onSchedule({
     schedule: "every 2 minutes",
     timeZone: "Africa/Lagos",
@@ -45,22 +45,23 @@ exports.vortexLiveScraper = onSchedule({
                 .replace(/^-+|-+$/g, '');
         };
 
-        const today = new Date().toLocaleDateString('en-CA', {timeZone: 'Africa/Lagos'}); 
+        const todayDate = new Date().toLocaleDateString('en-CA', {timeZone: 'Africa/Lagos'}); 
 
         for (const stage of stages) {
             for (const event of stage.Events) {
                 const homeName = event.T1[0].Nm;
                 const awayName = event.T2[0].Nm;
-                const matchId = `${jsSlugify(homeName)}-vs-${jsSlugify(awayName)}-${today}`;
+                const matchId = `${jsSlugify(homeName)}-vs-${jsSlugify(awayName)}-${todayDate}`;
 
                 const matchRef = db.collection("matches").doc(matchId);
                 const doc = await matchRef.get();
 
                 if (doc.exists) {
+                    const rawStatus = String(event.Eps);
                     batch.update(matchRef, {
                         "home.score": parseInt(event.Tr1 || 0),
                         "away.score": parseInt(event.Tr2 || 0),
-                        "status": event.Eps, // Use raw status from API for better monitoring
+                        "status": STATUS_MAP[rawStatus] || rawStatus, 
                         "minute": parseInt(event.Epi || 0),
                         "lastUpdated": admin.firestore.FieldValue.serverTimestamp()
                     });
@@ -74,16 +75,14 @@ exports.vortexLiveScraper = onSchedule({
     }
 });
 
-/**
- * ⚽ VORTEX MONITOR: Handles Goals, Kickoff, HT, and FT alerts.
- */
 exports.vortexLiveMonitor = onSchedule({ 
     schedule: "every 2 minutes", 
     timeZone: "Africa/Lagos", 
     region: "europe-west1" 
 }, async () => {
-    // We check all matches that have been "touched" by the scraper (non-NS status)
     const snap = await db.collection("matches").get();
+    const batch = db.batch();
+    let hasUpdates = false;
     
     for (const doc of snap.docs) {
         const current = doc.data();
@@ -99,38 +98,37 @@ exports.vortexLiveMonitor = onSchedule({
 
         let alertMsg = "";
 
-        // 1. GOAL DETECTION
+        // Goal Alert logic
         if (hScore > lastAlertScore.h || aScore > lastAlertScore.a) {
             alertMsg = `⚽ *GOAL!* \n\n${hName} *${hScore} - ${aScore}* ${aName}\n\n📺 Watch: https://vortexlive.online/match/${doc.id}`;
-            await matchRef.update({ lastAlertScore: { h: hScore, a: aScore } });
+            batch.update(matchRef, { lastAlertScore: { h: hScore, a: aScore } });
+            hasUpdates = true;
         } 
-        // 2. KICKOFF (Start of 1st Half)
-        else if (lastStatus === "NS" && (currentStatus === "1H" || currentStatus === "LIVE")) {
+        
+        // Status Transition Alerts
+        if (lastStatus === "NS" && (currentStatus === "1H" || currentStatus === "LIVE")) {
             alertMsg = `▶️ *KICK OFF!* \n\n${hName} *${hScore} - ${aScore}* ${aName}\n\n📺 Stream: https://vortexlive.online/match/${doc.id}`;
         }
-        // 3. HALF TIME
         else if (lastStatus !== "HT" && currentStatus === "HT") {
             alertMsg = `⏸ *HALF TIME* \n\n${hName} *${hScore} - ${aScore}* ${aName}\n\nPlayers are taking a break. Stay tuned!`;
         }
-        // 4. START OF 2ND HALF
         else if (lastStatus === "HT" && currentStatus === "2H") {
             alertMsg = `▶️ *SECOND HALF STARTED* \n\n${hName} *${hScore} - ${aScore}* ${aName}\n\n📺 Stream: https://vortexlive.online/match/${doc.id}`;
         }
-        // 5. FULL TIME
         else if (lastStatus !== "FT" && currentStatus === "FT") {
             alertMsg = `🏁 *FULL TIME* \n\n${hName} *${hScore} - ${aScore}* ${aName}\n\nThanks for watching on Vortex!`;
         }
 
         if (alertMsg) {
             await sendTelegram(alertMsg);
-            await matchRef.update({ lastStatus: currentStatus });
+            batch.update(matchRef, { lastStatus: currentStatus });
+            hasUpdates = true;
         }
     }
+    
+    if (hasUpdates) await batch.commit();
 });
 
-/**
- * 🔔 MATCH ANNOUNCER: Alerts 5-10 minutes before kickoff.
- */
 exports.matchAnnouncer = onSchedule({
     schedule: "every 5 minutes",
     timeZone: "Africa/Lagos",
@@ -146,6 +144,7 @@ exports.matchAnnouncer = onSchedule({
 
     for (const doc of snap.docs) {
         const match = doc.data();
+        if(!match.kickoff) continue;
         const kickoff = new Date(match.kickoff);
 
         if (kickoff <= tenMinsLater) {
@@ -159,9 +158,6 @@ exports.matchAnnouncer = onSchedule({
     }
 });
 
-/**
- * Morning Cleanup (Wipes everything at 6:45am)
- */
 exports.morningCleanup = onSchedule({ 
     schedule: "45 6 * * *", 
     timeZone: "Africa/Lagos" 
