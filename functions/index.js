@@ -9,9 +9,9 @@ const db = admin.firestore();
 const TELEGRAM_TOKEN = "8126112394:AAH7-da80z0C7tLco-ZBoZryH_6hhZBKfhE";
 const CHAT_ID = "@LivefootballVortex";
 
-// Helper to map numeric API codes to readable statuses
+// Explicitly mapping '1' to 'NS' as requested.
 const STATUS_MAP = {
-    '1': 'NS', '2': '1H', '3': 'HT', '4': '2H', '24': 'LIVE', 'FT': 'FT'
+    '1': 'NS', '2': '1H', '3': 'HT', '4': '2H', 'FT': 'FT'
 };
 
 const sendTelegram = async (msg) => {
@@ -58,10 +58,17 @@ exports.vortexLiveScraper = onSchedule({
 
                 if (doc.exists) {
                     const rawStatus = String(event.Eps);
+                    let finalStatus = STATUS_MAP[rawStatus] || rawStatus;
+                    
+                    // Logic: If it's a number (minute) and NOT '1', treat as LIVE
+                    if (/^\d+$/.test(rawStatus) && rawStatus !== '1') {
+                        finalStatus = 'LIVE';
+                    }
+
                     batch.update(matchRef, {
                         "home.score": parseInt(event.Tr1 || 0),
                         "away.score": parseInt(event.Tr2 || 0),
-                        "status": STATUS_MAP[rawStatus] || rawStatus, 
+                        "status": finalStatus, 
                         "minute": parseInt(event.Epi || 0),
                         "lastUpdated": admin.firestore.FieldValue.serverTimestamp()
                     });
@@ -98,15 +105,13 @@ exports.vortexLiveMonitor = onSchedule({
 
         let alertMsg = "";
 
-        // Goal Alert logic
         if (hScore > lastAlertScore.h || aScore > lastAlertScore.a) {
             alertMsg = `⚽ *GOAL!* \n\n${hName} *${hScore} - ${aScore}* ${aName}\n\n📺 Watch: https://vortexlive.online/match/${doc.id}`;
             batch.update(matchRef, { lastAlertScore: { h: hScore, a: aScore } });
             hasUpdates = true;
         } 
         
-        // Status Transition Alerts
-        if (lastStatus === "NS" && (currentStatus === "1H" || currentStatus === "LIVE")) {
+        if ((lastStatus === "NS" || lastStatus === "1") && (currentStatus === "1H" || currentStatus === "LIVE")) {
             alertMsg = `▶️ *KICK OFF!* \n\n${hName} *${hScore} - ${aScore}* ${aName}\n\n📺 Stream: https://vortexlive.online/match/${doc.id}`;
         }
         else if (lastStatus !== "HT" && currentStatus === "HT") {
@@ -138,7 +143,7 @@ exports.matchAnnouncer = onSchedule({
     const tenMinsLater = new Date(now.getTime() + 10 * 60000);
 
     const snap = await db.collection("matches")
-        .where("status", "==", "NS")
+        .where("status", "in", ["NS", "1"])
         .where("announced", "==", false)
         .get();
 

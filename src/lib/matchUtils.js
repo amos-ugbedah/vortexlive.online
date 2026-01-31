@@ -1,10 +1,10 @@
 /* eslint-disable */
 const STATUS_MAP = {
-  'TBD': 'NS', 'NS': 'NS', '1H': '1H', '2H': '2H', 'HT': 'HT', 'ET': 'ET',
+  'TBD': 'NS', 'NS': 'NS', '1': 'NS', '1H': '1H', '2H': '2H', 'HT': 'HT', 'ET': 'ET',
   'BT': 'BT', 'P': 'P', 'SUSP': 'SUSP', 'INT': 'SUSP', 'FT': 'FT', 'AET': 'FT',
   'PEN': 'FT', 'PST': 'PST', 'CANC': 'CANC', 'ABD': 'ABD', 'AWD': 'AWD', 'WO': 'AWD',
   'LIVE': 'LIVE', 'IN_PLAY': 'LIVE', 'PAUSED': 'HT', 'FINISHED': 'FT', 'SCHEDULED': 'NS', 'TIMED': 'NS',
-  '1': 'NS', '2': '1H', '3': 'HT', '4': '2H', '24': 'LIVE'
+  '2': '1H', '3': 'HT', '4': '2H'
 };
 
 const ELITE_LEAGUES = [
@@ -18,6 +18,8 @@ export const normalizeMatch = (data, id) => {
   const normalizeStatus = (status) => {
     if (!status) return 'NS';
     const statusStr = String(status).toUpperCase().trim();
+    // Check if it is a number (minute) and NOT '1'
+    if (/^\d+$/.test(statusStr) && statusStr !== '1') return 'LIVE';
     return STATUS_MAP[statusStr] || statusStr;
   };
 
@@ -68,8 +70,10 @@ export const normalizeMatch = (data, id) => {
 export const isMatchLive = (match) => {
   if (!match) return false;
   const status = String(match.status).toUpperCase();
-  const liveStatuses = ['1H', 'HT', '2H', 'ET', 'BT', 'P', 'LIVE', 'IN_PLAY', '24'];
-  return liveStatuses.includes(status) && !isMatchFinished(match);
+  const liveStatuses = ['1H', 'HT', '2H', 'ET', 'BT', 'P', 'LIVE', 'IN_PLAY'];
+  // If status is a minute (number other than 1), it is live
+  const isMinuteNumeric = /^\d+$/.test(status) && status !== '1';
+  return (liveStatuses.includes(status) || isMinuteNumeric) && !isMatchFinished(match);
 };
 
 export const isMatchUpcoming = (match) => {
