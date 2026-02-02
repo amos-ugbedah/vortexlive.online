@@ -9,7 +9,6 @@ const db = admin.firestore();
 const TELEGRAM_TOKEN = "8126112394:AAH7-da80z0C7tLco-ZBoZryH_6hhZBKfhE";
 const CHAT_ID = "@LivefootballVortex";
 
-// Explicitly mapping '1' to 'NS' as requested.
 const STATUS_MAP = {
     '1': 'NS', '2': '1H', '3': 'HT', '4': '2H', 'FT': 'FT'
 };
@@ -26,6 +25,7 @@ const sendTelegram = async (msg) => {
     }
 };
 
+// --- SCRAPER (Kept your logic, just ensured stability) ---
 exports.vortexLiveScraper = onSchedule({
     schedule: "every 2 minutes",
     timeZone: "Africa/Lagos",
@@ -49,21 +49,14 @@ exports.vortexLiveScraper = onSchedule({
 
         for (const stage of stages) {
             for (const event of stage.Events) {
-                const homeName = event.T1[0].Nm;
-                const awayName = event.T2[0].Nm;
-                const matchId = `${jsSlugify(homeName)}-vs-${jsSlugify(awayName)}-${todayDate}`;
-
+                const matchId = `${jsSlugify(event.T1[0].Nm)}-vs-${jsSlugify(event.T2[0].Nm)}-${todayDate}`;
                 const matchRef = db.collection("matches").doc(matchId);
                 const doc = await matchRef.get();
 
                 if (doc.exists) {
                     const rawStatus = String(event.Eps);
                     let finalStatus = STATUS_MAP[rawStatus] || rawStatus;
-                    
-                    // Logic: If it's a number (minute) and NOT '1', treat as LIVE
-                    if (/^\d+$/.test(rawStatus) && rawStatus !== '1') {
-                        finalStatus = 'LIVE';
-                    }
+                    if (/^\d+$/.test(rawStatus) && rawStatus !== '1') finalStatus = 'LIVE';
 
                     batch.update(matchRef, {
                         "home.score": parseInt(event.Tr1 || 0),
@@ -74,6 +67,8 @@ exports.vortexLiveScraper = onSchedule({
                     });
                     updateCount++;
                 }
+                // Batch limit safety
+                if (updateCount >= 450) break; 
             }
         }
         if (updateCount > 0) await batch.commit();
@@ -82,6 +77,7 @@ exports.vortexLiveScraper = onSchedule({
     }
 });
 
+// --- MONITOR (Goal Alerts & Status Changes) ---
 exports.vortexLiveMonitor = onSchedule({ 
     schedule: "every 2 minutes", 
     timeZone: "Africa/Lagos", 
@@ -94,9 +90,6 @@ exports.vortexLiveMonitor = onSchedule({
     for (const doc of snap.docs) {
         const current = doc.data();
         const matchRef = doc.ref;
-        
-        const hName = current.home.name;
-        const aName = current.away.name;
         const hScore = Number(current.home?.score || 0);
         const aScore = Number(current.away?.score || 0);
         const lastAlertScore = current.lastAlertScore || { h: 0, a: 0 };
@@ -106,22 +99,17 @@ exports.vortexLiveMonitor = onSchedule({
         let alertMsg = "";
 
         if (hScore > lastAlertScore.h || aScore > lastAlertScore.a) {
-            alertMsg = `⚽ *GOAL!* \n\n${hName} *${hScore} - ${aScore}* ${aName}\n\n📺 Watch: https://vortexlive.online/match/${doc.id}`;
+            alertMsg = `⚽ *GOAL!* \n\n${current.home.name} *${hScore} - ${aScore}* ${current.away.name}\n\n📺 Watch: https://vortexlive.online/match/${doc.id}`;
             batch.update(matchRef, { lastAlertScore: { h: hScore, a: aScore } });
             hasUpdates = true;
         } 
         
         if ((lastStatus === "NS" || lastStatus === "1") && (currentStatus === "1H" || currentStatus === "LIVE")) {
-            alertMsg = `▶️ *KICK OFF!* \n\n${hName} *${hScore} - ${aScore}* ${aName}\n\n📺 Stream: https://vortexlive.online/match/${doc.id}`;
-        }
-        else if (lastStatus !== "HT" && currentStatus === "HT") {
-            alertMsg = `⏸ *HALF TIME* \n\n${hName} *${hScore} - ${aScore}* ${aName}\n\nPlayers are taking a break. Stay tuned!`;
-        }
-        else if (lastStatus === "HT" && currentStatus === "2H") {
-            alertMsg = `▶️ *SECOND HALF STARTED* \n\n${hName} *${hScore} - ${aScore}* ${aName}\n\n📺 Stream: https://vortexlive.online/match/${doc.id}`;
-        }
-        else if (lastStatus !== "FT" && currentStatus === "FT") {
-            alertMsg = `🏁 *FULL TIME* \n\n${hName} *${hScore} - ${aScore}* ${aName}\n\nThanks for watching on Vortex!`;
+            alertMsg = `▶️ *KICK OFF!* \n\n${current.home.name} vs ${current.away.name}\n\n📺 Stream: https://vortexlive.online/match/${doc.id}`;
+        } else if (lastStatus !== "HT" && currentStatus === "HT") {
+            alertMsg = `⏸ *HALF TIME* \n\n${current.home.name} *${hScore} - ${aScore}* ${current.away.name}`;
+        } else if (lastStatus !== "FT" && currentStatus === "FT") {
+            alertMsg = `🏁 *FULL TIME* \n\n${current.home.name} *${hScore} - ${aScore}* ${current.away.name}`;
         }
 
         if (alertMsg) {
@@ -130,10 +118,10 @@ exports.vortexLiveMonitor = onSchedule({
             hasUpdates = true;
         }
     }
-    
     if (hasUpdates) await batch.commit();
 });
 
+// --- ANNOUNCER (Upcoming Matches) ---
 exports.matchAnnouncer = onSchedule({
     schedule: "every 5 minutes",
     timeZone: "Africa/Lagos",
@@ -156,19 +144,35 @@ exports.matchAnnouncer = onSchedule({
             const timeStr = kickoff.toLocaleTimeString('en-GB', { 
                 hour: '2-digit', minute: '2-digit', timeZone: 'Africa/Lagos' 
             });
-            const msg = `🔔 *UPCOMING MATCH ALERT*\n\n⚽ ${match.home.name} vs ${match.away.name}\n⏰ Kickoff: ${timeStr} (Lagos)\n\n📺 Stream: https://vortexlive.online/match/${doc.id}`;
+            const msg = `🔔 *UPCOMING MATCH ALERT*\n\n⚽ ${match.home.name} vs ${match.away.name}\n⏰ Kickoff: ${timeStr}\n\n📺 Stream: https://vortexlive.online/match/${doc.id}`;
             await sendTelegram(msg);
             await doc.ref.update({ announced: true });
         }
     }
 });
 
+// --- UPDATED CLEANUP (Safe for 500+ matches) ---
 exports.morningCleanup = onSchedule({ 
     schedule: "45 6 * * *", 
-    timeZone: "Africa/Lagos" 
+    timeZone: "Africa/Lagos",
+    region: "europe-west1"
 }, async () => {
     const snap = await db.collection("matches").get();
-    const batch = db.batch();
-    snap.docs.forEach(doc => batch.delete(doc.ref));
-    await batch.commit();
+    const size = snap.size;
+    
+    if (size === 0) return;
+
+    // Split deletes into chunks of 400 to stay under the 500 limit
+    const chunks = [];
+    for (let i = 0; i < snap.docs.length; i += 400) {
+        chunks.push(snap.docs.slice(i, i + 400));
+    }
+
+    for (const chunk of chunks) {
+        const batch = db.batch();
+        chunk.forEach(doc => batch.delete(doc.ref));
+        await batch.commit();
+    }
+
+    await sendTelegram(`🧹 *Vortex Cleanup:* Database purged. Removed ${size} stale matches for a fresh start.`);
 });

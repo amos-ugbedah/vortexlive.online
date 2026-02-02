@@ -17,7 +17,7 @@ const MatchCard = memo(({ match: m }) => {
     const isUpcoming = utils.isMatchUpcoming(m);
     const statusText = utils.getMatchStatusText(m);
 
-    // FIX: Ensure we detect streams even if they are empty strings or null
+    // Stream Check
     const hasStream1 = m.streamUrl1 && m.streamUrl1.length > 5;
     const hasStream2 = m.streamUrl2 && m.streamUrl2.length > 5;
     const hasStream3 = m.streamUrl3 && m.streamUrl3.length > 5;
@@ -28,7 +28,6 @@ const MatchCard = memo(({ match: m }) => {
       isUpcoming,
       isElite: utils.isEliteMatch(m),
       streamCount: (hasStream1 ? 1 : 0) + (hasStream2 ? 1 : 0) + (hasStream3 ? 1 : 0),
-      // IMPORTANT: Use the document ID if the internal ID is missing
       safeId: String(m.id || ''),
       statusText
     };
@@ -37,6 +36,10 @@ const MatchCard = memo(({ match: m }) => {
   if (!matchData) return <div className="h-64 border rounded-2xl bg-gray-900/50 animate-pulse border-white/5" />;
 
   const { isLive, isFinished, isElite, streamCount, safeId, statusText } = matchData;
+
+  const handleImgError = (e) => {
+    e.target.src = utils.FALLBACK_LOGO;
+  };
 
   const getStatusStyle = () => {
     if (isLive) return 'bg-red-600 text-white shadow-lg shadow-red-900/40 animate-pulse';
@@ -52,6 +55,7 @@ const MatchCard = memo(({ match: m }) => {
         ${isLive ? 'border-red-500/30' : ''} 
         hover:border-red-500/40 hover:shadow-xl hover:shadow-red-500/5`}
     >
+      {/* Top Badges */}
       <div className="absolute z-10 flex items-start justify-between top-3 inset-x-3">
         <div className="flex gap-1.5">
           {isLive && (
@@ -59,7 +63,6 @@ const MatchCard = memo(({ match: m }) => {
               <span className="w-1 h-1 bg-white rounded-full animate-ping" /> <span>LIVE</span>
             </div>
           )}
-          {/* UPDATED: Only show badge if streams actually exist */}
           {streamCount > 0 && (
             <div className="flex items-center gap-1 px-2 py-1 bg-white/10 backdrop-blur-md border border-white/10 rounded-full text-[8px] font-black text-white">
               <Tv size={10} /> <span>{streamCount} STREAMS</span>
@@ -73,10 +76,20 @@ const MatchCard = memo(({ match: m }) => {
         )}
       </div>
 
+      {/* League & Status */}
       <div className="flex items-center justify-between p-5 pb-0 mt-6">
         <div className="flex items-center gap-2 overflow-hidden">
           <div className="flex-shrink-0 w-5 h-5 rounded bg-white/5 flex items-center justify-center p-0.5">
-            {m.leagueLogo ? <img src={m.leagueLogo} className="object-contain w-full h-full" alt="league" /> : <ShieldCheck size={12} className="text-white/20" />}
+            {m.leagueLogo ? (
+              <img 
+                src={m.leagueLogo} 
+                onError={handleImgError} 
+                className="object-contain w-full h-full filter brightness-110" 
+                alt="league" 
+              />
+            ) : (
+              <ShieldCheck size={12} className="text-white/20" />
+            )}
           </div>
           <span className="text-[9px] font-black uppercase tracking-widest text-white/40 truncate">{m.league || 'Vortex Pro'}</span>
         </div>
@@ -85,10 +98,16 @@ const MatchCard = memo(({ match: m }) => {
         </div>
       </div>
 
+      {/* Teams and Score */}
       <div className="flex items-center justify-between px-4 py-8">
         <div className="w-[32%] flex flex-col items-center gap-2">
           <div className="flex items-center justify-center w-12 h-12">
-            <img src={m.home?.logo} className="object-contain max-w-full max-h-full transition-transform group-hover:scale-110" alt={m.home?.name} />
+            <img 
+              src={m.home?.logo} 
+              onError={handleImgError} 
+              className="object-contain max-w-full max-h-full transition-transform group-hover:scale-110 filter drop-shadow-[0_0_8px_rgba(255,255,255,0.15)]" 
+              alt={m.home?.name} 
+            />
           </div>
           <span className="text-[10px] font-black text-white uppercase text-center line-clamp-2 h-7 leading-tight">{m.home?.name}</span>
         </div>
@@ -103,18 +122,24 @@ const MatchCard = memo(({ match: m }) => {
 
         <div className="w-[32%] flex flex-col items-center gap-2">
           <div className="flex items-center justify-center w-12 h-12">
-            <img src={m.away?.logo} className="object-contain max-w-full max-h-full transition-transform group-hover:scale-110" alt={m.away?.name} />
+            <img 
+              src={m.away?.logo} 
+              onError={handleImgError} 
+              className="object-contain max-w-full max-h-full transition-transform group-hover:scale-110 filter drop-shadow-[0_0_8px_rgba(255,255,255,0.15)]" 
+              alt={m.away?.name} 
+            />
           </div>
           <span className="text-[10px] font-black text-white uppercase text-center line-clamp-2 h-7 leading-tight">{m.away?.name}</span>
         </div>
       </div>
 
+      {/* AI Prediction Strip */}
       <div className="mx-4 mb-4 p-2.5 rounded-xl bg-white/5 border border-white/5 flex items-center gap-2">
         <BrainCircuit size={12} className={isLive ? "text-red-500" : "text-white/30"} />
-        {/* FIXED: Improved readability for AI Pick */}
         <p className="text-[9px] font-bold text-white/60 line-clamp-1 italic">{m.aiPick && m.aiPick.length > 5 ? m.aiPick : "Vortex AI: Analyzing match patterns..."}</p>
       </div>
 
+      {/* Action Button */}
       <div className="px-4 pb-5 mt-auto">
         <button className={`w-full py-3 rounded-xl flex items-center justify-center gap-2 text-[10px] font-black tracking-[0.15em] transition-all
           ${isLive ? 'bg-red-600 hover:bg-red-700 text-white shadow-lg shadow-red-900/30' : 'bg-white/5 hover:bg-white/10 text-white/60'}`}>
@@ -126,4 +151,5 @@ const MatchCard = memo(({ match: m }) => {
   );
 });
 
+MatchCard.displayName = 'MatchCard';
 export default MatchCard;

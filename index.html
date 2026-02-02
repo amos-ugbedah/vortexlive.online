@@ -25,9 +25,32 @@
       aspect-ratio: 16 / 9;
       background-color: #000;
     }
+
+    /* Styles for your PureVPN Banner */
+    .vpn-banner-container {
+      width: 100%;
+      display: flex;
+      justify-content: center;
+      padding: 10px 0;
+      background-color: #0a0a0c;
+    }
+
+    .vpn-banner-container img {
+      max-width: 100%;
+      height: auto; /* Ensures the 980x120 banner scales on mobile */
+      border: 1px solid #333;
+      border-radius: 4px;
+    }
   </style>
 </head>
 <body class="bg-[#0a0a0c]">
+
+  <div class="vpn-banner-container">
+    <a href="https://www.purevpn.com/order-now.php?aff=49387356&amp;a_bid=5db33662" target="_blank" rel="noopener">
+      <img src="https://affiliates.purevpn.com/accounts/default1/6hb82wqa2l/5db33662.png" alt="Get PureVPN" title="Unlock Streams with PureVPN" width="980" height="120" />
+    </a>
+  </div>
+
   <div id="root"></div>
   
   <noscript>

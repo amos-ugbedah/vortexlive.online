@@ -12,7 +12,7 @@ import UltraPlayer from '../components/UltraPlayer';
 import { 
   normalizeMatch, isMatchLive, isMatchUpcoming, 
   isMatchFinished, getMatchStatusText, formatAIPick,
-  getDecodedStreamUrl, isAutoDetected, calculateEstimatedMinute
+  getDecodedStreamUrl, isAutoDetected, calculateEstimatedMinute, FALLBACK_LOGO
 } from '../lib/matchUtils';
 
 const MatchDetails = () => {
@@ -97,7 +97,6 @@ const MatchDetails = () => {
 
         <div className="grid grid-cols-1 gap-8 lg:grid-cols-12">
           <div className="space-y-6 lg:col-span-8">
-            {/* VORTEX PLAYER BOX: Reduced border-radius slightly to stop edge flickering */}
             <div className="relative overflow-hidden bg-black border shadow-2xl aspect-video rounded-2xl border-white/10">
               {stream && !isFinished ? (
                 <div key={`${refreshKey}-${activeServer}`} className="w-full h-full">
@@ -197,7 +196,6 @@ const MatchDetails = () => {
   );
 };
 
-// Sub-components (LoadingScreen, TeamUI, StatBar) remain unchanged below...
 const LoadingScreen = ({ id }) => (
   <div className="flex flex-col items-center justify-center min-h-screen bg-[#020202]">
     <div className="w-16 h-16 mb-6 border-4 border-red-600 rounded-full border-t-transparent animate-spin" />
@@ -205,14 +203,17 @@ const LoadingScreen = ({ id }) => (
   </div>
 );
 
-const TeamUI = ({ logo, name }) => (
-  <div className="flex flex-col items-center w-24 gap-3">
-    <div className="flex items-center justify-center w-20 h-20 p-4 border bg-white/5 rounded-3xl border-white/5">
-      <img src={logo} alt={name} className="object-contain max-w-full max-h-full" />
+const TeamUI = ({ logo, name }) => {
+  const handleImgError = (e) => { e.target.src = FALLBACK_LOGO; };
+  return (
+    <div className="flex flex-col items-center w-24 gap-3">
+      <div className="flex items-center justify-center w-20 h-20 p-4 border bg-white/5 rounded-3xl border-white/5">
+        <img src={logo} alt={name} onError={handleImgError} className="object-contain max-w-full max-h-full" />
+      </div>
+      <span className="text-[10px] font-black uppercase text-center leading-tight tracking-tighter">{name}</span>
     </div>
-    <span className="text-[10px] font-black uppercase text-center leading-tight tracking-tighter">{name}</span>
-  </div>
-);
+  );
+};
 
 const StatBar = ({ label, home, away, suffix = "" }) => (
     <div className="space-y-3">
