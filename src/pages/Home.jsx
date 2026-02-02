@@ -202,29 +202,30 @@ const Home = memo(() => {
 
   return (
     <div className="flex flex-col lg:flex-row w-full min-h-screen bg-gradient-to-br from-[#050505] via-black to-[#0a0a0a] text-white">
-      {/* MOBILE HEADER */}
-      <div className="sticky top-0 z-50 w-full px-4 py-3 border-b lg:hidden bg-black/95 backdrop-blur-2xl border-white/5">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <div className="p-2 bg-gradient-to-br from-red-600 to-red-700 rounded-xl">
-              <Radio size={20} className="text-white animate-pulse" />
+      {/* LEFT COLUMN: MAIN CONTENT */}
+      <div className="flex flex-col flex-1 min-w-0">
+        {/* MOBILE HEADER */}
+        <div className="sticky top-0 z-50 w-full px-4 py-3 border-b lg:hidden bg-black/95 backdrop-blur-2xl border-white/5">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <div className="p-2 bg-gradient-to-br from-red-600 to-red-700 rounded-xl">
+                <Radio size={20} className="text-white animate-pulse" />
+              </div>
+              <div>
+                <h1 className="text-lg font-black tracking-tight uppercase">VORTEX<span className="text-red-600">PRO</span></h1>
+              </div>
             </div>
-            <div>
-              <h1 className="text-lg font-black tracking-tight uppercase">VORTEX<span className="text-red-600">PRO</span></h1>
-            </div>
+            <button 
+              onClick={() => setShowSidebar(!showSidebar)}
+              className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-colors ${
+                showSidebar ? 'bg-red-600 text-white' : 'bg-white/5 text-white/60'
+              }`}
+            >
+              {showSidebar ? 'Close Stats' : 'Show Stats'}
+            </button>
           </div>
-          <button 
-            onClick={() => setShowSidebar(!showSidebar)}
-            className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-colors ${
-              showSidebar ? 'bg-red-600 text-white' : 'bg-white/5 text-white/60'
-            }`}
-          >
-            {showSidebar ? 'Close Stats' : 'Show Stats'}
-          </button>
         </div>
-      </div>
 
-      <div className="flex-1 pb-20">
         {/* DESKTOP HEADER */}
         <header className="sticky top-0 z-40 hidden w-full px-6 py-5 border-b lg:block bg-black/95 backdrop-blur-2xl border-white/5">
           <div className="max-w-[1400px] mx-auto flex items-center justify-between">
@@ -261,7 +262,7 @@ const Home = memo(() => {
           </div>
         </div>
 
-        <main className="p-4 lg:p-6">
+        <main className="flex-1 p-4 lg:p-6">
           {totalMatches === 0 ? (
             <div className="flex flex-col items-center justify-center py-32 opacity-40">
               <Trees size={80} className="text-white/20" />
@@ -310,57 +311,59 @@ const Home = memo(() => {
 
       {/* RIGHT SIDEBAR */}
       <aside className={`
-        ${showSidebar ? 'fixed inset-0 z-[60] overflow-y-auto' : 'hidden'} 
-        lg:block lg:relative lg:z-10 lg:w-[380px] 
-        bg-black border-l border-white/5
+        ${showSidebar ? 'fixed inset-0 z-[60] lg:static lg:block' : 'hidden'} 
+        lg:w-[380px] border-l border-white/5 bg-black
       `}>
-        <div className="min-h-screen p-5 pb-32 space-y-6 lg:sticky lg:top-0 scrollbar-hide">
-          <div className="flex items-center justify-between mb-2 lg:hidden">
-            <h3 className="text-lg font-black tracking-tight uppercase">Stats & Tables</h3>
-            <button onClick={() => setShowSidebar(false)} className="p-2 text-white/40 hover:text-white">✕</button>
-          </div>
-
-          {/* ADS / PROMO */}
-          <div className="p-1 shadow-lg rounded-2xl bg-gradient-to-r from-blue-600 to-purple-600">
-            <a href="https://www.purevpn.com/order-now.php?aff=49387356&amp;a_bid=5db33662" target="_blank" rel="noopener noreferrer">
-               <img src="https://affiliates.purevpn.com/accounts/default1/6hb82wqa2l/5db33662.png" alt="PureVPN" className="w-full rounded-xl" />
-            </a>
-          </div>
-
-          <div className="p-4 text-center border rounded-2xl bg-gradient-to-br from-yellow-900/40 to-black border-yellow-600/30">
-            <h4 className="mb-2 text-xl font-black">500% <span className="text-yellow-400">BONUS</span></h4>
-            <div className="p-2 mb-3 border-2 bg-black/40 border-yellow-600/30 rounded-xl">
-              <p className="text-2xl font-black tracking-widest text-yellow-400">VORTEX</p>
+        {/* Sidebar Content Wrapper with Sticky logic */}
+        <div className="h-full lg:min-h-screen">
+          <div className="sticky top-0 p-5 pb-32 space-y-6 overflow-y-auto lg:h-screen scrollbar-hide">
+            <div className="flex items-center justify-between mb-2 lg:hidden">
+              <h3 className="text-lg font-black tracking-tight uppercase">Stats & Tables</h3>
+              <button onClick={() => setShowSidebar(false)} className="p-2 text-white/40 hover:text-white">✕</button>
             </div>
-            <button className="w-full py-2.5 bg-yellow-600 text-white font-black rounded-xl shadow-lg shadow-yellow-600/30">DEPOSIT NOW</button>
-          </div>
 
-          {/* Dynamic Standings */}
-          {leagueStandings.map((league, idx) => (
-            <div key={idx} className="p-4 border bg-white/5 border-white/5 rounded-xl">
-              <h5 className="mb-3 text-xs font-bold uppercase text-white/40">{league.name}</h5>
-              {league.topTeams.map((team, index) => (
-                <div key={index} className="flex items-center justify-between p-2 mb-1 rounded bg-black/20">
-                  <span className="text-xs">{index + 1}. {team.name}</span>
-                  <span className="text-xs font-bold">{team.points} PTS</span>
-                </div>
-              ))}
+            {/* ADS / PROMO */}
+            <div className="p-1 shadow-lg rounded-2xl bg-gradient-to-r from-blue-600 to-purple-600">
+              <a href="https://www.purevpn.com/order-now.php?aff=49387356&amp;a_bid=5db33662" target="_blank" rel="noopener noreferrer">
+                 <img src="https://affiliates.purevpn.com/accounts/default1/6hb82wqa2l/5db33662.png" alt="PureVPN" className="w-full rounded-xl" />
+              </a>
             </div>
-          ))}
 
-          {/* AI Picks Sidebar */}
-          <div className="space-y-4">
-            <h4 className="text-sm font-black uppercase text-white/80">AI Predictions</h4>
-            {aiPicks.length > 0 ? aiPicks.map((match) => (
-              <div key={match.id} className="p-4 border bg-white/5 border-white/5 rounded-xl">
-                <p className="text-xs italic text-white/70">"{match.aiPick}"</p>
-                <div className="flex justify-between mt-2 text-[10px] font-bold text-red-500 uppercase">
-                  <span>{match.home.name} vs {match.away.name}</span>
-                </div>
+            <div className="p-4 text-center border rounded-2xl bg-gradient-to-br from-yellow-900/40 to-black border-yellow-600/30">
+              <h4 className="mb-2 text-xl font-black">500% <span className="text-yellow-400">BONUS</span></h4>
+              <div className="p-2 mb-3 border-2 bg-black/40 border-yellow-600/30 rounded-xl">
+                <p className="text-2xl font-black tracking-widest text-yellow-400">VORTEX</p>
               </div>
-            )) : (
-              <p className="text-xs italic text-white/20">Awaiting AI analysis...</p>
-            )}
+              <button className="w-full py-2.5 bg-yellow-600 text-white font-black rounded-xl shadow-lg shadow-yellow-600/30">DEPOSIT NOW</button>
+            </div>
+
+            {/* Dynamic Standings */}
+            {leagueStandings.map((league, idx) => (
+              <div key={idx} className="p-4 border bg-white/5 border-white/5 rounded-xl">
+                <h5 className="mb-3 text-xs font-bold uppercase text-white/40">{league.name}</h5>
+                {league.topTeams.map((team, index) => (
+                  <div key={index} className="flex items-center justify-between p-2 mb-1 rounded bg-black/20">
+                    <span className="text-xs">{index + 1}. {team.name}</span>
+                    <span className="text-xs font-bold">{team.points} PTS</span>
+                  </div>
+                ))}
+              </div>
+            ))}
+
+            {/* AI Picks Sidebar */}
+            <div className="space-y-4">
+              <h4 className="text-sm font-black uppercase text-white/80">AI Predictions</h4>
+              {aiPicks.length > 0 ? aiPicks.map((match) => (
+                <div key={match.id} className="p-4 border bg-white/5 border-white/5 rounded-xl">
+                  <p className="text-xs italic text-white/70">"{match.aiPick}"</p>
+                  <div className="flex justify-between mt-2 text-[10px] font-bold text-red-500 uppercase">
+                    <span>{match.home.name} vs {match.away.name}</span>
+                  </div>
+                </div>
+              )) : (
+                <p className="text-xs italic text-white/20">Awaiting AI analysis...</p>
+              )}
+            </div>
           </div>
         </div>
       </aside>
