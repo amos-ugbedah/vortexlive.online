@@ -50,7 +50,12 @@ const MatchDetails = () => {
   const isM3U8 = stream?.toLowerCase().includes('m3u8') || stream?.toLowerCase().includes('.ts');
   const estMinute = calculateEstimatedMinute(match);
 
-  const handleShare = useCallback(() => {
+  // SAFE ACTIONS (Bypass Smartlink)
+  const safeRefresh = (e) => { e.stopPropagation(); setRefreshKey(k => k + 1); };
+  const safeServerChange = (e, srv) => { e.stopPropagation(); setActiveServer(srv); };
+
+  const handleShare = useCallback((e) => {
+    e.stopPropagation();
     if (!match) return;
     const shareText = `Watching ${match.home.name} vs ${match.away.name} LIVE on Vortex! \nLink: ${window.location.href}`;
     if (navigator.share) {
@@ -73,7 +78,7 @@ const MatchDetails = () => {
 
       <div className="max-w-[1500px] mx-auto p-4 md:p-8">
         <header className="flex flex-col items-start justify-between gap-4 mb-8 md:flex-row md:items-center">
-          <Link to="/" className="flex items-center gap-4 group">
+          <Link to="/" onClick={(e) => e.stopPropagation()} className="flex items-center gap-4 group">
             <div className="p-3 transition-all border bg-white/5 border-white/10 rounded-2xl group-hover:bg-red-600">
               <ChevronLeft size={20} />
             </div>
@@ -84,7 +89,7 @@ const MatchDetails = () => {
           </Link>
 
           <div className="flex w-full gap-3 md:w-auto">
-            <button onClick={() => setRefreshKey(k => k + 1)} className="flex items-center justify-center flex-1 gap-2 px-6 py-3 border md:flex-none bg-zinc-900 border-white/10 rounded-xl hover:bg-zinc-800">
+            <button onClick={safeRefresh} className="flex items-center justify-center flex-1 gap-2 px-6 py-3 border md:flex-none bg-zinc-900 border-white/10 rounded-xl hover:bg-zinc-800">
               <RefreshCcw size={18} className="text-red-600" />
               <span className="text-[10px] font-black uppercase">Refresh</span>
             </button>
@@ -109,9 +114,7 @@ const MatchDetails = () => {
                     {isFinished ? 'Broadcast Finished' : 'Signal Lost'}
                   </h2>
                   <p className="max-w-md mt-2 text-sm text-center text-white/40">
-                    {isFinished 
-                      ? 'The live event has concluded.' 
-                      : 'No active uplink detected for this match yet.'}
+                    {isFinished ? 'The live event has concluded.' : 'No active uplink detected for this match yet.'}
                   </p>
                 </div>
               )}
@@ -122,7 +125,7 @@ const MatchDetails = () => {
                 {[1, 2, 3].map((srv) => match[`streamUrl${srv}`] && (
                   <button 
                     key={srv}
-                    onClick={() => setActiveServer(srv)}
+                    onClick={(e) => safeServerChange(e, srv)}
                     className={`px-6 py-3 rounded-xl flex items-center gap-3 border transition-all ${activeServer === srv ? 'bg-red-600 border-red-500' : 'bg-white/5 border-white/10 hover:bg-white/10'}`}
                   >
                     <Tv size={16} />
@@ -196,6 +199,7 @@ const MatchDetails = () => {
   );
 };
 
+// ... (LoadingScreen, TeamUI, StatBar components stay exactly the same)
 const LoadingScreen = ({ id }) => (
   <div className="flex flex-col items-center justify-center min-h-screen bg-[#020202]">
     <div className="w-16 h-16 mb-6 border-4 border-red-600 rounded-full border-t-transparent animate-spin" />

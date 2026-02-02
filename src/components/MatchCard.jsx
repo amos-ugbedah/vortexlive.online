@@ -17,7 +17,6 @@ const MatchCard = memo(({ match: m }) => {
     const isUpcoming = utils.isMatchUpcoming(m);
     const statusText = utils.getMatchStatusText(m);
 
-    // Stream Check
     const hasStream1 = m.streamUrl1 && m.streamUrl1.length > 5;
     const hasStream2 = m.streamUrl2 && m.streamUrl2.length > 5;
     const hasStream3 = m.streamUrl3 && m.streamUrl3.length > 5;
@@ -41,6 +40,12 @@ const MatchCard = memo(({ match: m }) => {
     e.target.src = utils.FALLBACK_LOGO;
   };
 
+  // NAVIGATION WITHOUT POP-UNDER
+  const handleNavigate = (e) => {
+    e.stopPropagation(); // Prevents Monetag from seeing the click
+    if (safeId) navigate(`/match/${safeId}`);
+  };
+
   const getStatusStyle = () => {
     if (isLive) return 'bg-red-600 text-white shadow-lg shadow-red-900/40 animate-pulse';
     if (isFinished) return 'bg-gray-800 text-gray-400';
@@ -49,13 +54,12 @@ const MatchCard = memo(({ match: m }) => {
 
   return (
     <div 
-      onClick={() => safeId && navigate(`/match/${safeId}`)}
+      onClick={handleNavigate}
       className={`group relative flex flex-col overflow-hidden rounded-2xl border transition-all duration-300 cursor-pointer active:scale-[0.98] h-full
         ${isElite ? 'border-yellow-500/30 bg-gradient-to-br from-yellow-950/20 to-black' : 'border-white/5 bg-gray-900/40'}
         ${isLive ? 'border-red-500/30' : ''} 
         hover:border-red-500/40 hover:shadow-xl hover:shadow-red-500/5`}
     >
-      {/* Top Badges */}
       <div className="absolute z-10 flex items-start justify-between top-3 inset-x-3">
         <div className="flex gap-1.5">
           {isLive && (
@@ -76,17 +80,11 @@ const MatchCard = memo(({ match: m }) => {
         )}
       </div>
 
-      {/* League & Status */}
       <div className="flex items-center justify-between p-5 pb-0 mt-6">
         <div className="flex items-center gap-2 overflow-hidden">
           <div className="flex-shrink-0 w-5 h-5 rounded bg-white/5 flex items-center justify-center p-0.5">
             {m.leagueLogo ? (
-              <img 
-                src={m.leagueLogo} 
-                onError={handleImgError} 
-                className="object-contain w-full h-full filter brightness-110" 
-                alt="league" 
-              />
+              <img src={m.leagueLogo} onError={handleImgError} className="object-contain w-full h-full filter brightness-110" alt="league" />
             ) : (
               <ShieldCheck size={12} className="text-white/20" />
             )}
@@ -98,16 +96,10 @@ const MatchCard = memo(({ match: m }) => {
         </div>
       </div>
 
-      {/* Teams and Score */}
       <div className="flex items-center justify-between px-4 py-8">
         <div className="w-[32%] flex flex-col items-center gap-2">
           <div className="flex items-center justify-center w-12 h-12">
-            <img 
-              src={m.home?.logo} 
-              onError={handleImgError} 
-              className="object-contain max-w-full max-h-full transition-transform group-hover:scale-110 filter drop-shadow-[0_0_8px_rgba(255,255,255,0.15)]" 
-              alt={m.home?.name} 
-            />
+            <img src={m.home?.logo} onError={handleImgError} className="object-contain max-w-full max-h-full transition-transform group-hover:scale-110 filter drop-shadow-[0_0_8px_rgba(255,255,255,0.15)]" alt={m.home?.name} />
           </div>
           <span className="text-[10px] font-black text-white uppercase text-center line-clamp-2 h-7 leading-tight">{m.home?.name}</span>
         </div>
@@ -122,26 +114,21 @@ const MatchCard = memo(({ match: m }) => {
 
         <div className="w-[32%] flex flex-col items-center gap-2">
           <div className="flex items-center justify-center w-12 h-12">
-            <img 
-              src={m.away?.logo} 
-              onError={handleImgError} 
-              className="object-contain max-w-full max-h-full transition-transform group-hover:scale-110 filter drop-shadow-[0_0_8px_rgba(255,255,255,0.15)]" 
-              alt={m.away?.name} 
-            />
+            <img src={m.away?.logo} onError={handleImgError} className="object-contain max-w-full max-h-full transition-transform group-hover:scale-110 filter drop-shadow-[0_0_8px_rgba(255,255,255,0.15)]" alt={m.away?.name} />
           </div>
           <span className="text-[10px] font-black text-white uppercase text-center line-clamp-2 h-7 leading-tight">{m.away?.name}</span>
         </div>
       </div>
 
-      {/* AI Prediction Strip */}
       <div className="mx-4 mb-4 p-2.5 rounded-xl bg-white/5 border border-white/5 flex items-center gap-2">
         <BrainCircuit size={12} className={isLive ? "text-red-500" : "text-white/30"} />
         <p className="text-[9px] font-bold text-white/60 line-clamp-1 italic">{m.aiPick && m.aiPick.length > 5 ? m.aiPick : "Vortex AI: Analyzing match patterns..."}</p>
       </div>
 
-      {/* Action Button */}
       <div className="px-4 pb-5 mt-auto">
-        <button className={`w-full py-3 rounded-xl flex items-center justify-center gap-2 text-[10px] font-black tracking-[0.15em] transition-all
+        <button 
+          onClick={handleNavigate}
+          className={`w-full py-3 rounded-xl flex items-center justify-center gap-2 text-[10px] font-black tracking-[0.15em] transition-all
           ${isLive ? 'bg-red-600 hover:bg-red-700 text-white shadow-lg shadow-red-900/30' : 'bg-white/5 hover:bg-white/10 text-white/60'}`}>
           {isLive ? <Play size={12} fill="currentColor" /> : <Clock size={12} />}
           {isLive ? 'WATCH LIVE' : (isFinished ? 'MATCH ENDED' : 'PREVIEW')}
