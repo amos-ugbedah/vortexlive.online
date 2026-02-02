@@ -60,36 +60,36 @@ const Footer = memo(() => {
   return (
     <footer className="w-full bg-gradient-to-b from-black via-[#050505] to-[#0a0a0a] border-t border-white/5 mt-16">
       {/* FOOTER STATS BAR */}
-      <div className="bg-gradient-to-r from-red-900/5 via-red-800/10 to-red-900/5 border-b border-white/5 py-3">
-        <div className="max-w-7xl mx-auto px-4">
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+      <div className="py-3 border-b bg-gradient-to-r from-red-900/5 via-red-800/10 to-red-900/5 border-white/5">
+        <div className="px-4 mx-auto max-w-7xl">
+          <div className="grid grid-cols-2 gap-4 md:grid-cols-4">
             <div className="flex items-center justify-center gap-2">
-              <div className="w-2 h-2 bg-gradient-to-r from-red-500 to-orange-500 rounded-full animate-pulse"></div>
+              <div className="w-2 h-2 rounded-full bg-gradient-to-r from-red-500 to-orange-500 animate-pulse"></div>
               <span className="text-xs font-bold text-white/60">LIVE MATCHES</span>
-              <span className="text-xs font-black text-white ml-1">12</span>
+              <span className="ml-1 text-xs font-black text-white">12</span>
             </div>
             <div className="flex items-center justify-center gap-2">
-              <div className="w-2 h-2 bg-gradient-to-r from-blue-500 to-cyan-500 rounded-full"></div>
+              <div className="w-2 h-2 rounded-full bg-gradient-to-r from-blue-500 to-cyan-500"></div>
               <span className="text-xs font-bold text-white/60">ELITE LEAGUES</span>
-              <span className="text-xs font-black text-white ml-1">8</span>
+              <span className="ml-1 text-xs font-black text-white">8</span>
             </div>
             <div className="flex items-center justify-center gap-2">
-              <div className="w-2 h-2 bg-gradient-to-r from-green-500 to-emerald-500 rounded-full"></div>
+              <div className="w-2 h-2 rounded-full bg-gradient-to-r from-green-500 to-emerald-500"></div>
               <span className="text-xs font-bold text-white/60">ONLINE USERS</span>
-              <span className="text-xs font-black text-white ml-1">2.4K</span>
+              <span className="ml-1 text-xs font-black text-white">2.4K</span>
             </div>
             <div className="flex items-center justify-center gap-2">
-              <div className="w-2 h-2 bg-gradient-to-r from-purple-500 to-pink-500 rounded-full"></div>
+              <div className="w-2 h-2 rounded-full bg-gradient-to-r from-purple-500 to-pink-500"></div>
               <span className="text-xs font-bold text-white/60">AI ACCURACY</span>
-              <span className="text-xs font-black text-white ml-1">87%</span>
+              <span className="ml-1 text-xs font-black text-white">87%</span>
             </div>
           </div>
         </div>
       </div>
 
       {/* MAIN FOOTER CONTENT - 3 COLUMNS */}
-      <div className="max-w-7xl mx-auto px-4 py-12">
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 mb-8">
+      <div className="px-4 py-12 mx-auto max-w-7xl">
+        <div className="grid grid-cols-1 gap-8 mb-8 lg:grid-cols-3">
           
           {/* LEFT COLUMN - VORTEX BRANDING */}
           <div className="space-y-6">
@@ -98,7 +98,7 @@ const Footer = memo(() => {
                 <Radio size={20} className="text-white" />
               </div>
               <div>
-                <h3 className="text-2xl italic font-black uppercase leading-none">
+                <h3 className="text-2xl italic font-black leading-none uppercase">
                   VORTEX<span className="text-red-600">ULTRA</span>
                 </h3>
                 <p className="text-[10px] font-black text-white/20 uppercase tracking-[0.4em] mt-1">
@@ -107,7 +107,7 @@ const Footer = memo(() => {
               </div>
             </div>
 
-            <p className="text-sm text-white/50 leading-relaxed">
+            <p className="text-sm leading-relaxed text-white/50">
               The world's most advanced sports tracking platform. 
               Powered by AI, enhanced by passion, trusted by millions.
             </p>
@@ -154,35 +154,35 @@ const Footer = memo(() => {
               <div className="p-1.5 bg-gradient-to-br from-yellow-600/20 to-yellow-500/10 rounded-lg">
                 <Zap size={16} className="text-yellow-400" />
               </div>
-              <h4 className="text-sm font-black uppercase tracking-wider text-white/80">QUICK NAVIGATION</h4>
+              <h4 className="text-sm font-black tracking-wider uppercase text-white/80">QUICK NAVIGATION</h4>
             </div>
 
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-3">
                 <Link 
                   to="/live" 
-                  className="flex items-center gap-2 text-xs text-white/60 hover:text-red-400 transition-colors group"
+                  className="flex items-center gap-2 text-xs transition-colors text-white/60 hover:text-red-400 group"
                 >
                   <ChevronRight size={10} className="text-red-500/50 group-hover:text-red-500" />
                   <span>Live Matches</span>
                 </Link>
                 <Link 
                   to="/elite" 
-                  className="flex items-center gap-2 text-xs text-white/60 hover:text-yellow-400 transition-colors group"
+                  className="flex items-center gap-2 text-xs transition-colors text-white/60 hover:text-yellow-400 group"
                 >
                   <ChevronRight size={10} className="text-yellow-500/50 group-hover:text-yellow-500" />
                   <span>Elite Leagues</span>
                 </Link>
                 <Link 
                   to="/upcoming" 
-                  className="flex items-center gap-2 text-xs text-white/60 hover:text-blue-400 transition-colors group"
+                  className="flex items-center gap-2 text-xs transition-colors text-white/60 hover:text-blue-400 group"
                 >
                   <ChevronRight size={10} className="text-blue-500/50 group-hover:text-blue-500" />
                   <span>Upcoming</span>
                 </Link>
                 <Link 
                   to="/finished" 
-                  className="flex items-center gap-2 text-xs text-white/60 hover:text-gray-400 transition-colors group"
+                  className="flex items-center gap-2 text-xs transition-colors text-white/60 hover:text-gray-400 group"
                 >
                   <ChevronRight size={10} className="text-gray-500/50 group-hover:text-gray-500" />
                   <span>Results</span>
@@ -191,28 +191,28 @@ const Footer = memo(() => {
               <div className="space-y-3">
                 <Link 
                   to="/ai-predictions" 
-                  className="flex items-center gap-2 text-xs text-white/60 hover:text-purple-400 transition-colors group"
+                  className="flex items-center gap-2 text-xs transition-colors text-white/60 hover:text-purple-400 group"
                 >
                   <ChevronRight size={10} className="text-purple-500/50 group-hover:text-purple-500" />
                   <span>AI Predictions</span>
                 </Link>
                 <Link 
                   to="/stats" 
-                  className="flex items-center gap-2 text-xs text-white/60 hover:text-green-400 transition-colors group"
+                  className="flex items-center gap-2 text-xs transition-colors text-white/60 hover:text-green-400 group"
                 >
                   <ChevronRight size={10} className="text-green-500/50 group-hover:text-green-500" />
                   <span>Statistics</span>
                 </Link>
                 <Link 
                   to="/admin" 
-                  className="flex items-center gap-2 text-xs text-white/60 hover:text-orange-400 transition-colors group"
+                  className="flex items-center gap-2 text-xs transition-colors text-white/60 hover:text-orange-400 group"
                 >
                   <ChevronRight size={10} className="text-orange-500/50 group-hover:text-orange-500" />
                   <span>Admin Panel</span>
                 </Link>
                 <Link 
                   to="/api-docs" 
-                  className="flex items-center gap-2 text-xs text-white/60 hover:text-cyan-400 transition-colors group"
+                  className="flex items-center gap-2 text-xs transition-colors text-white/60 hover:text-cyan-400 group"
                 >
                   <ChevronRight size={10} className="text-cyan-500/50 group-hover:text-cyan-500" />
                   <span>API Docs</span>
@@ -226,18 +226,21 @@ const Footer = memo(() => {
                 <div className="p-1.5 bg-gradient-to-br from-green-600/20 to-green-500/10 rounded-lg">
                   <Award size={14} className="text-green-400" />
                 </div>
-                <h5 className="text-xs font-bold uppercase tracking-wider text-white/70">TRUSTED PARTNERS</h5>
+                <h5 className="text-xs font-bold tracking-wider uppercase text-white/70">TRUSTED PARTNERS</h5>
               </div>
-              <div className="grid grid-cols-3 gap-2">
-                <div className="bg-gradient-to-br from-red-900/10 to-red-800/5 rounded-lg p-2 border border-red-500/10 text-center">
-                  <span className="text-[10px] font-black text-red-400">Stake</span>
-                </div>
-                <div className="bg-gradient-to-br from-green-900/10 to-green-800/5 rounded-lg p-2 border border-green-500/10 text-center">
-                  <span className="text-[10px] font-black text-green-400">1xBet</span>
-                </div>
-                <div className="bg-gradient-to-br from-blue-900/10 to-blue-800/5 rounded-lg p-2 border border-blue-500/10 text-center">
-                  <span className="text-[10px] font-black text-blue-400">Propeller</span>
-                </div>
+              <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
+                <a href="https://stake.com" target="_blank" rel="noopener noreferrer" className="p-2 text-center transition-all border rounded-lg bg-gradient-to-br from-red-900/10 to-red-800/5 border-red-500/10 hover:border-red-500/30">
+                  <span className="text-[10px] font-black text-red-400 uppercase">Stake</span>
+                </a>
+                <a href="https://1xbet.com" target="_blank" rel="noopener noreferrer" className="p-2 text-center transition-all border rounded-lg bg-gradient-to-br from-green-900/10 to-green-800/5 border-green-500/10 hover:border-green-500/30">
+                  <span className="text-[10px] font-black text-green-400 uppercase">1xBet</span>
+                </a>
+                <a href="https://propellerads.com" target="_blank" rel="noopener noreferrer" className="p-2 text-center transition-all border rounded-lg bg-gradient-to-br from-blue-900/10 to-blue-800/5 border-blue-500/10 hover:border-blue-500/30">
+                  <span className="text-[10px] font-black text-blue-400 uppercase">Propeller</span>
+                </a>
+                <a href="https://www.purevpn.com/order-now.php?aff=49387356" target="_blank" rel="noopener noreferrer" className="p-2 text-center transition-all border rounded-lg bg-gradient-to-br from-purple-900/10 to-purple-800/5 border-purple-500/10 hover:border-purple-500/30">
+                  <span className="text-[10px] font-black text-purple-400 uppercase">PureVPN</span>
+                </a>
               </div>
             </div>
           </div>
@@ -248,15 +251,15 @@ const Footer = memo(() => {
               <div className="p-1.5 bg-gradient-to-br from-purple-600/20 to-purple-500/10 rounded-lg">
                 <Users size={16} className="text-purple-400" />
               </div>
-              <h4 className="text-sm font-black uppercase tracking-wider text-white/80">GET IN TOUCH</h4>
+              <h4 className="text-sm font-black tracking-wider uppercase text-white/80">GET IN TOUCH</h4>
             </div>
 
             <div className="space-y-4">
               <a 
                 href="mailto:support@vortexlive.pro"
-                className="flex items-center gap-3 p-3 bg-gradient-to-r from-white/5 to-white/10 rounded-xl border border-white/5 hover:border-red-500/20 transition-all group"
+                className="flex items-center gap-3 p-3 transition-all border bg-gradient-to-r from-white/5 to-white/10 rounded-xl border-white/5 hover:border-red-500/20 group"
               >
-                <div className="p-2 bg-gradient-to-br from-red-600 to-red-700 rounded-lg">
+                <div className="p-2 rounded-lg bg-gradient-to-br from-red-600 to-red-700">
                   <Mail size={14} className="text-white" />
                 </div>
                 <div>
@@ -267,9 +270,9 @@ const Footer = memo(() => {
 
               <Link 
                 to="/privacy"
-                className="flex items-center gap-3 p-3 bg-gradient-to-r from-white/5 to-white/10 rounded-xl border border-white/5 hover:border-blue-500/20 transition-all group"
+                className="flex items-center gap-3 p-3 transition-all border bg-gradient-to-r from-white/5 to-white/10 rounded-xl border-white/5 hover:border-blue-500/20 group"
               >
-                <div className="p-2 bg-gradient-to-br from-blue-600 to-blue-700 rounded-lg">
+                <div className="p-2 rounded-lg bg-gradient-to-br from-blue-600 to-blue-700">
                   <ShieldCheck size={14} className="text-white" />
                 </div>
                 <div>
@@ -283,7 +286,7 @@ const Footer = memo(() => {
                 href="https://monetag.com/?ref_id=zpdh" 
                 target="_blank" 
                 rel="noreferrer noopener"
-                className="block p-4 bg-gradient-to-br from-green-900/20 via-green-800/10 to-black border border-green-600/30 rounded-xl hover:border-green-500/50 transition-all group hover:shadow-lg hover:shadow-green-600/10"
+                className="block p-4 transition-all border bg-gradient-to-br from-green-900/20 via-green-800/10 to-black border-green-600/30 rounded-xl hover:border-green-500/50 group hover:shadow-lg hover:shadow-green-600/10"
               >
                 <div className="flex items-center justify-between mb-3">
                   <div className="flex items-center gap-2">
@@ -294,7 +297,7 @@ const Footer = memo(() => {
                   </div>
                   <ExternalLink size={12} className="text-green-400/50 group-hover:text-green-400" />
                 </div>
-                <p className="text-xs text-white/60 mb-3">
+                <p className="mb-3 text-xs text-white/60">
                   Join Monetag today and start earning with premium ads.
                 </p>
                 <div className="flex items-center justify-between">
@@ -330,13 +333,13 @@ const Footer = memo(() => {
 
         {/* BOTTOM BAR - COPYRIGHT & LINKS */}
         <div className="pt-8 border-t border-white/5">
-          <div className="flex flex-col md:flex-row items-center justify-between gap-4">
+          <div className="flex flex-col items-center justify-between gap-4 md:flex-row">
             {/* COPYRIGHT */}
             <div className="flex items-center gap-4">
               <p className="text-[10px] text-white/30 font-bold uppercase tracking-widest">
                 © {currentYear} VORTEXLIVE • PREMIUM SPORTS NETWORK
               </p>
-              <div className="hidden md:flex items-center gap-3">
+              <div className="items-center hidden gap-3 md:flex">
                 <span className="text-xs text-white/10">|</span>
                 <span className="text-[10px] text-white/40 flex items-center gap-1">
                   <Heart size={8} className="text-red-500/50" />
@@ -377,7 +380,7 @@ const Footer = memo(() => {
           </div>
 
           {/* DISCLAIMER */}
-          <div className="text-center mt-6">
+          <div className="mt-6 text-center">
             <p className="text-[9px] text-white/20 max-w-3xl mx-auto leading-relaxed">
               ⚠️ Disclaimer: VortexLive is an independent sports data aggregator. 
               We are not affiliated with any sports leagues, teams, or broadcasters. 
@@ -390,25 +393,25 @@ const Footer = memo(() => {
       </div>
 
       {/* FLOATING CHAT BOTTOM RIGHT */}
-      <div className="fixed bottom-6 right-6 z-40">
+      <div className="fixed z-40 bottom-6 right-6">
         <button 
-          className="group relative"
+          className="relative group"
           onClick={() => window.open('https://monetag.com/?ref_id=zpdh', '_blank')}
         >
-          <div className="absolute inset-0 bg-gradient-to-r from-green-600 to-emerald-600 rounded-full blur-md opacity-30 group-hover:opacity-50 transition-opacity"></div>
-          <div className="relative p-3 bg-gradient-to-br from-green-700 to-emerald-700 rounded-full shadow-2xl shadow-green-600/30 hover:shadow-green-600/50 transition-all group-hover:scale-110">
+          <div className="absolute inset-0 transition-opacity rounded-full bg-gradient-to-r from-green-600 to-emerald-600 blur-md opacity-30 group-hover:opacity-50"></div>
+          <div className="relative p-3 transition-all rounded-full shadow-2xl bg-gradient-to-br from-green-700 to-emerald-700 shadow-green-600/30 hover:shadow-green-600/50 group-hover:scale-110">
             <div className="flex items-center justify-center w-8 h-8">
               <BarChart size={18} className="text-white" />
             </div>
-            <div className="absolute -top-1 -right-1 w-4 h-4 bg-red-500 rounded-full border-2 border-black animate-pulse">
-              <div className="w-full h-full flex items-center justify-center">
+            <div className="absolute w-4 h-4 bg-red-500 border-2 border-black rounded-full -top-1 -right-1 animate-pulse">
+              <div className="flex items-center justify-center w-full h-full">
                 <Star size={6} className="text-white" />
               </div>
             </div>
           </div>
           <div className="absolute -top-10 right-0 bg-black/90 backdrop-blur-sm px-3 py-1.5 rounded-lg border border-green-500/30 opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none whitespace-nowrap">
             <span className="text-xs font-bold text-green-400">Earn with Monetag</span>
-            <div className="absolute -bottom-1 right-3 w-2 h-2 bg-black/90 rotate-45 border-r border-b border-green-500/30"></div>
+            <div className="absolute w-2 h-2 rotate-45 border-b border-r -bottom-1 right-3 bg-black/90 border-green-500/30"></div>
           </div>
         </button>
       </div>
@@ -416,7 +419,6 @@ const Footer = memo(() => {
   );
 });
 
-// Add display name for debugging
 Footer.displayName = 'Footer';
 
 export default Footer;
