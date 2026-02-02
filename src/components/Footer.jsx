@@ -159,61 +159,37 @@ const Footer = memo(() => {
 
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-3">
-                <Link 
-                  to="/live" 
-                  className="flex items-center gap-2 text-xs transition-colors text-white/60 hover:text-red-400 group"
-                >
+                <Link to="/live" className="flex items-center gap-2 text-xs transition-colors text-white/60 hover:text-red-400 group">
                   <ChevronRight size={10} className="text-red-500/50 group-hover:text-red-500" />
                   <span>Live Matches</span>
                 </Link>
-                <Link 
-                  to="/elite" 
-                  className="flex items-center gap-2 text-xs transition-colors text-white/60 hover:text-yellow-400 group"
-                >
+                <Link to="/elite" className="flex items-center gap-2 text-xs transition-colors text-white/60 hover:text-yellow-400 group">
                   <ChevronRight size={10} className="text-yellow-500/50 group-hover:text-yellow-500" />
                   <span>Elite Leagues</span>
                 </Link>
-                <Link 
-                  to="/upcoming" 
-                  className="flex items-center gap-2 text-xs transition-colors text-white/60 hover:text-blue-400 group"
-                >
+                <Link to="/upcoming" className="flex items-center gap-2 text-xs transition-colors text-white/60 hover:text-blue-400 group">
                   <ChevronRight size={10} className="text-blue-500/50 group-hover:text-blue-500" />
                   <span>Upcoming</span>
                 </Link>
-                <Link 
-                  to="/finished" 
-                  className="flex items-center gap-2 text-xs transition-colors text-white/60 hover:text-gray-400 group"
-                >
+                <Link to="/finished" className="flex items-center gap-2 text-xs transition-colors text-white/60 hover:text-gray-400 group">
                   <ChevronRight size={10} className="text-gray-500/50 group-hover:text-gray-500" />
                   <span>Results</span>
                 </Link>
               </div>
               <div className="space-y-3">
-                <Link 
-                  to="/ai-predictions" 
-                  className="flex items-center gap-2 text-xs transition-colors text-white/60 hover:text-purple-400 group"
-                >
+                <Link to="/ai-predictions" className="flex items-center gap-2 text-xs transition-colors text-white/60 hover:text-purple-400 group">
                   <ChevronRight size={10} className="text-purple-500/50 group-hover:text-purple-500" />
                   <span>AI Predictions</span>
                 </Link>
-                <Link 
-                  to="/stats" 
-                  className="flex items-center gap-2 text-xs transition-colors text-white/60 hover:text-green-400 group"
-                >
+                <Link to="/stats" className="flex items-center gap-2 text-xs transition-colors text-white/60 hover:text-green-400 group">
                   <ChevronRight size={10} className="text-green-500/50 group-hover:text-green-500" />
                   <span>Statistics</span>
                 </Link>
-                <Link 
-                  to="/admin" 
-                  className="flex items-center gap-2 text-xs transition-colors text-white/60 hover:text-orange-400 group"
-                >
+                <Link to="/admin" className="flex items-center gap-2 text-xs transition-colors text-white/60 hover:text-orange-400 group">
                   <ChevronRight size={10} className="text-orange-500/50 group-hover:text-orange-500" />
                   <span>Admin Panel</span>
                 </Link>
-                <Link 
-                  to="/api-docs" 
-                  className="flex items-center gap-2 text-xs transition-colors text-white/60 hover:text-cyan-400 group"
-                >
+                <Link to="/api-docs" className="flex items-center gap-2 text-xs transition-colors text-white/60 hover:text-cyan-400 group">
                   <ChevronRight size={10} className="text-cyan-500/50 group-hover:text-cyan-500" />
                   <span>API Docs</span>
                 </Link>
@@ -255,10 +231,7 @@ const Footer = memo(() => {
             </div>
 
             <div className="space-y-4">
-              <a 
-                href="mailto:support@vortexlive.pro"
-                className="flex items-center gap-3 p-3 transition-all border bg-gradient-to-r from-white/5 to-white/10 rounded-xl border-white/5 hover:border-red-500/20 group"
-              >
+              <a href="mailto:support@vortexlive.pro" className="flex items-center gap-3 p-3 transition-all border bg-gradient-to-r from-white/5 to-white/10 rounded-xl border-white/5 hover:border-red-500/20 group">
                 <div className="p-2 rounded-lg bg-gradient-to-br from-red-600 to-red-700">
                   <Mail size={14} className="text-white" />
                 </div>
@@ -268,10 +241,7 @@ const Footer = memo(() => {
                 </div>
               </a>
 
-              <Link 
-                to="/privacy"
-                className="flex items-center gap-3 p-3 transition-all border bg-gradient-to-r from-white/5 to-white/10 rounded-xl border-white/5 hover:border-blue-500/20 group"
-              >
+              <Link to="/privacy" className="flex items-center gap-3 p-3 transition-all border bg-gradient-to-r from-white/5 to-white/10 rounded-xl border-white/5 hover:border-blue-500/20 group">
                 <div className="p-2 rounded-lg bg-gradient-to-br from-blue-600 to-blue-700">
                   <ShieldCheck size={14} className="text-white" />
                 </div>
@@ -281,13 +251,8 @@ const Footer = memo(() => {
                 </div>
               </Link>
 
-              {/* MONETAG REFERRAL - PROMINENT */}
-              <a 
-                href="https://monetag.com/?ref_id=zpdh" 
-                target="_blank" 
-                rel="noreferrer noopener"
-                className="block p-4 transition-all border bg-gradient-to-br from-green-900/20 via-green-800/10 to-black border-green-600/30 rounded-xl hover:border-green-500/50 group hover:shadow-lg hover:shadow-green-600/10"
-              >
+              {/* MONETAG REFERRAL */}
+              <a href="https://monetag.com/?ref_id=zpdh" target="_blank" rel="noreferrer noopener" className="block p-4 transition-all border bg-gradient-to-br from-green-900/20 via-green-800/10 to-black border-green-600/30 rounded-xl hover:border-green-500/50 group hover:shadow-lg hover:shadow-green-600/10">
                 <div className="flex items-center justify-between mb-3">
                   <div className="flex items-center gap-2">
                     <div className="p-1.5 bg-gradient-to-br from-green-600 to-emerald-600 rounded-lg">
@@ -297,9 +262,7 @@ const Footer = memo(() => {
                   </div>
                   <ExternalLink size={12} className="text-green-400/50 group-hover:text-green-400" />
                 </div>
-                <p className="mb-3 text-xs text-white/60">
-                  Join Monetag today and start earning with premium ads.
-                </p>
+                <p className="mb-3 text-xs text-white/60">Join Monetag today and start earning with premium ads.</p>
                 <div className="flex items-center justify-between">
                   <span className="text-[10px] text-green-400/70 font-bold">REF: ZPDH</span>
                   <span className="text-[10px] text-white/30">Verified Partner</span>
@@ -314,27 +277,18 @@ const Footer = memo(() => {
                 <span className="text-xs font-bold text-white/50">POWERED BY</span>
               </div>
               <div className="flex flex-wrap gap-2">
-                <span className="text-[10px] px-2 py-1 bg-gradient-to-r from-red-900/10 to-red-800/5 rounded border border-red-500/10 text-red-400">
-                  React 18
-                </span>
-                <span className="text-[10px] px-2 py-1 bg-gradient-to-r from-blue-900/10 to-blue-800/5 rounded border border-blue-500/10 text-blue-400">
-                  Firebase
-                </span>
-                <span className="text-[10px] px-2 py-1 bg-gradient-to-r from-purple-900/10 to-purple-800/5 rounded border border-purple-500/10 text-purple-400">
-                  AI/ML
-                </span>
-                <span className="text-[10px] px-2 py-1 bg-gradient-to-r from-green-900/10 to-green-800/5 rounded border border-green-500/10 text-green-400">
-                  Node.js
-                </span>
+                <span className="text-[10px] px-2 py-1 bg-gradient-to-r from-red-900/10 to-red-800/5 rounded border border-red-500/10 text-red-400">React 18</span>
+                <span className="text-[10px] px-2 py-1 bg-gradient-to-r from-blue-900/10 to-blue-800/5 rounded border border-blue-500/10 text-blue-400">Firebase</span>
+                <span className="text-[10px] px-2 py-1 bg-gradient-to-r from-purple-900/10 to-purple-800/5 rounded border border-purple-500/10 text-purple-400">AI/ML</span>
+                <span className="text-[10px] px-2 py-1 bg-gradient-to-r from-green-900/10 to-green-800/5 rounded border border-green-500/10 text-green-400">Node.js</span>
               </div>
             </div>
           </div>
         </div>
 
-        {/* BOTTOM BAR - COPYRIGHT & LINKS */}
+        {/* BOTTOM BAR */}
         <div className="pt-8 border-t border-white/5">
           <div className="flex flex-col items-center justify-between gap-4 md:flex-row">
-            {/* COPYRIGHT */}
             <div className="flex items-center gap-4">
               <p className="text-[10px] text-white/30 font-bold uppercase tracking-widest">
                 © {currentYear} VORTEXLIVE • PREMIUM SPORTS NETWORK
@@ -348,29 +302,15 @@ const Footer = memo(() => {
               </div>
             </div>
 
-            {/* LEGAL LINKS */}
             <div className="flex items-center gap-6">
-              <Link to="/terms" className="text-[10px] text-white/40 hover:text-white transition-colors">
-                Terms of Service
-              </Link>
-              <Link to="/privacy" className="text-[10px] text-white/40 hover:text-white transition-colors">
-                Privacy Policy
-              </Link>
-              <Link to="/cookies" className="text-[10px] text-white/40 hover:text-white transition-colors">
-                Cookie Policy
-              </Link>
-              <a 
-                href="https://status.vortexlive.pro" 
-                target="_blank" 
-                rel="noreferrer noopener"
-                className="text-[10px] text-white/40 hover:text-green-400 transition-colors flex items-center gap-1"
-              >
-                <Wifi size={8} />
-                Status
+              <Link to="/terms" className="text-[10px] text-white/40 hover:text-white">Terms</Link>
+              <Link to="/privacy" className="text-[10px] text-white/40 hover:text-white">Privacy</Link>
+              <Link to="/cookies" className="text-[10px] text-white/40 hover:text-white">Cookies</Link>
+              <a href="https://status.vortexlive.pro" target="_blank" className="text-[10px] text-white/40 hover:text-green-400 flex items-center gap-1">
+                <Wifi size={8} /> Status
               </a>
             </div>
 
-            {/* VERSION */}
             <div className="flex items-center gap-2">
               <div className="w-1 h-1 bg-green-500 rounded-full animate-pulse"></div>
               <span className="text-[10px] text-white/30 font-mono">v2.6.1</span>
@@ -379,39 +319,27 @@ const Footer = memo(() => {
             </div>
           </div>
 
-          {/* DISCLAIMER */}
           <div className="mt-6 text-center">
             <p className="text-[9px] text-white/20 max-w-3xl mx-auto leading-relaxed">
               ⚠️ Disclaimer: VortexLive is an independent sports data aggregator. 
-              We are not affiliated with any sports leagues, teams, or broadcasters. 
-              All trademarks and copyrights belong to their respective owners. 
-              Betting and gambling are subject to legal restrictions. Please gamble responsibly.
-              <span className="block mt-1 text-white/10">18+ | Terms apply | Gamble responsibly</span>
+              Betting is subject to legal restrictions. Please gamble responsibly.
+              <span className="block mt-1 text-white/10">18+ | Terms apply</span>
             </p>
           </div>
         </div>
       </div>
 
-      {/* FLOATING CHAT BOTTOM RIGHT */}
+      {/* FLOATING CHAT / MONETAG BUTTON */}
       <div className="fixed z-40 bottom-6 right-6">
-        <button 
-          className="relative group"
-          onClick={() => window.open('https://monetag.com/?ref_id=zpdh', '_blank')}
-        >
+        <button className="relative group" onClick={() => window.open('https://monetag.com/?ref_id=zpdh', '_blank')}>
           <div className="absolute inset-0 transition-opacity rounded-full bg-gradient-to-r from-green-600 to-emerald-600 blur-md opacity-30 group-hover:opacity-50"></div>
-          <div className="relative p-3 transition-all rounded-full shadow-2xl bg-gradient-to-br from-green-700 to-emerald-700 shadow-green-600/30 hover:shadow-green-600/50 group-hover:scale-110">
+          <div className="relative p-3 transition-all rounded-full shadow-2xl bg-gradient-to-br from-green-700 to-emerald-700">
             <div className="flex items-center justify-center w-8 h-8">
               <BarChart size={18} className="text-white" />
             </div>
             <div className="absolute w-4 h-4 bg-red-500 border-2 border-black rounded-full -top-1 -right-1 animate-pulse">
-              <div className="flex items-center justify-center w-full h-full">
-                <Star size={6} className="text-white" />
-              </div>
+              <Star size={6} className="text-white" />
             </div>
-          </div>
-          <div className="absolute -top-10 right-0 bg-black/90 backdrop-blur-sm px-3 py-1.5 rounded-lg border border-green-500/30 opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none whitespace-nowrap">
-            <span className="text-xs font-bold text-green-400">Earn with Monetag</span>
-            <div className="absolute w-2 h-2 rotate-45 border-b border-r -bottom-1 right-3 bg-black/90 border-green-500/30"></div>
           </div>
         </button>
       </div>
@@ -420,5 +348,4 @@ const Footer = memo(() => {
 });
 
 Footer.displayName = 'Footer';
-
 export default Footer;

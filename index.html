@@ -10,7 +10,6 @@
   <meta name="description" content="Watch free live football streams in HD.">
 
   <meta name="referrer" content="no-referrer" />
-
   <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate" />
   <meta http-equiv="Pragma" content="no-cache" />
   <meta http-equiv="Expires" content="0" />
@@ -18,15 +17,12 @@
   <script src="https://cdn.onesignal.com/sdks/web/v16/OneSignalSDK.page.js" defer></script>
   
   <style>
-    /* Ensures the video player fills the container correctly */
     .vortex-player-wrapper iframe {
       width: 100%;
       height: 100%;
       aspect-ratio: 16 / 9;
       background-color: #000;
     }
-
-    /* Styles for your PureVPN Banner */
     .vpn-banner-container {
       width: 100%;
       display: flex;
@@ -34,10 +30,9 @@
       padding: 10px 0;
       background-color: #0a0a0c;
     }
-
     .vpn-banner-container img {
       max-width: 100%;
-      height: auto; /* Ensures the 980x120 banner scales on mobile */
+      height: auto;
       border: 1px solid #333;
       border-radius: 4px;
     }
@@ -47,16 +42,16 @@
 
   <div class="vpn-banner-container">
     <a href="https://www.purevpn.com/order-now.php?aff=49387356&amp;a_bid=5db33662" target="_blank" rel="noopener">
-      <img src="https://affiliates.purevpn.com/accounts/default1/6hb82wqa2l/5db33662.png" alt="Get PureVPN" title="Unlock Streams with PureVPN" width="980" height="120" />
+      <img src="https://affiliates.purevpn.com/accounts/default1/6hb82wqa2l/5db33662.png" alt="Get PureVPN" width="980" height="120" />
     </a>
   </div>
 
   <div id="root"></div>
   
   <noscript>
-    <div style="position:fixed;top:0;left:0;right:0;bottom:0;background:#0a0a0c;color:white;display:flex;align-items:center;justify-content:center;font-family:sans-serif;z-index:9999;">
-      <div style="text-align:center;padding:20px;">
-        <h1 style="color:#dc2626;font-size:2rem;margin-bottom:1rem;">JavaScript Required</h1>
+    <div style="position:fixed;top:0;left:0;right:0;bottom:0;background:#0a0a0c;color:white;display:flex;align-items:center;justify-content:center;z-index:9999;">
+      <div style="text-align:center;">
+        <h1 style="color:#dc2626;font-size:2rem;">JavaScript Required</h1>
         <p>Please enable JavaScript to use Vortex Live Streams.</p>
       </div>
     </div>
@@ -67,25 +62,16 @@
   <script src="https://quge5.com/88/tag.min.js" data-zone="199008" async data-cfasync="false"></script>
 
   <script>
-    /**
-     * Use this function inside your React components to load a stream.
-     * It ensures the iframe is created with the strict security bypass.
-     */
     window.mountVortexStream = function(containerId, streamUrl) {
       const container = document.getElementById(containerId);
       if (!container) return;
-
-      // Create a fresh iframe to avoid cache/lock issues
       const ifr = document.createElement('iframe');
       ifr.src = streamUrl;
       ifr.setAttribute('allowfullscreen', 'true');
       ifr.setAttribute('frameborder', '0');
       ifr.setAttribute('referrerpolicy', 'no-referrer');
-      
-      // Sandbox prevents the streaming site from redirecting your whole page to ads
       ifr.setAttribute('sandbox', 'allow-scripts allow-same-origin allow-presentation allow-forms');
-
-      container.innerHTML = ''; // Clear previous player
+      container.innerHTML = ''; 
       container.appendChild(ifr);
     };
   </script>
