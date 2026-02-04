@@ -40,9 +40,9 @@ const MatchCard = memo(({ match: m }) => {
     e.target.src = utils.FALLBACK_LOGO;
   };
 
-  // NAVIGATION WITHOUT POP-UNDER
+  // NAVIGATION WITHOUT POP-UNDER (Preserving your exact logic)
   const handleNavigate = (e) => {
-    e.stopPropagation(); // Prevents Monetag from seeing the click
+    e.stopPropagation(); 
     if (safeId) navigate(`/match/${safeId}`);
   };
 

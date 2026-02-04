@@ -309,14 +309,14 @@ const Home = memo(() => {
         </main>
       </div>
 
-      {/* RIGHT SIDEBAR */}
+      {/* RIGHT SIDEBAR - FIXED POSITION LOGIC */}
       <aside className={`
-        ${showSidebar ? 'fixed inset-0 z-[60] lg:static lg:block' : 'hidden'} 
+        ${showSidebar ? 'fixed inset-0 z-[60] lg:relative lg:block' : 'hidden'} 
         lg:w-[380px] border-l border-white/5 bg-black
       `}>
-        {/* Sidebar Content Wrapper with Sticky logic */}
-        <div className="h-full lg:min-h-screen">
-          <div className="sticky top-0 p-5 pb-32 space-y-6 overflow-y-auto lg:h-screen scrollbar-hide">
+        {/* This container stays sticky to the top of the viewport */}
+        <div className="flex flex-col lg:sticky lg:top-0 lg:h-screen">
+          <div className="flex-1 p-5 pb-32 space-y-6 overflow-y-auto scrollbar-hide">
             <div className="flex items-center justify-between mb-2 lg:hidden">
               <h3 className="text-lg font-black tracking-tight uppercase">Stats & Tables</h3>
               <button onClick={() => setShowSidebar(false)} className="p-2 text-white/40 hover:text-white">✕</button>

@@ -9,23 +9,16 @@ const db = admin.firestore();
 const TELEGRAM_TOKEN = "8126112394:AAH7-da80z0C7tLco-ZBoZryH_6hhZBKfhE";
 const CHAT_ID = "@LivefootballVortex";
 
-const STATUS_MAP = {
-    '1': 'NS', '2': '1H', '3': 'HT', '4': '2H', 'FT': 'FT'
-};
+const STATUS_MAP = { '1': 'NS', '2': '1H', '3': 'HT', '4': '2H', 'FT': 'FT' };
 
 const sendTelegram = async (msg) => {
     try {
         await axios.post(`https://api.telegram.org/bot${TELEGRAM_TOKEN}/sendMessage`, {
-            chat_id: CHAT_ID, 
-            text: msg, 
-            parse_mode: 'Markdown'
+            chat_id: CHAT_ID, text: msg, parse_mode: 'Markdown'
         });
-    } catch (error) {
-        console.error("Telegram Post Error:", error.message);
-    }
+    } catch (e) { console.error("Telegram Post Error:", e.message); }
 };
 
-// --- SCRAPER (Kept your logic, just ensured stability) ---
 exports.vortexLiveScraper = onSchedule({
     schedule: "every 2 minutes",
     timeZone: "Africa/Lagos",
@@ -37,14 +30,7 @@ exports.vortexLiveScraper = onSchedule({
         const batch = db.batch();
         let updateCount = 0;
 
-        const jsSlugify = (text) => {
-            return text.toString().toLowerCase()
-                .replace(/[^\w\s-]/g, '')
-                .replace(/[-\s]+/g, '-')
-                .trim()
-                .replace(/^-+|-+$/g, '');
-        };
-
+        const jsSlugify = (text) => text.toString().toLowerCase().replace(/[^\w\s-]/g, '').replace(/[-\s]+/g, '-').trim().replace(/^-+|-+$/g, '');
         const todayDate = new Date().toLocaleDateString('en-CA', {timeZone: 'Africa/Lagos'}); 
 
         for (const stage of stages) {
@@ -67,21 +53,16 @@ exports.vortexLiveScraper = onSchedule({
                     });
                     updateCount++;
                 }
-                // Batch limit safety
                 if (updateCount >= 450) break; 
             }
         }
         if (updateCount > 0) await batch.commit();
-    } catch (error) {
-        console.error("Scraper Error:", error.message);
-    }
+    } catch (e) { console.error("Scraper Error:", e.message); }
 });
 
-// --- MONITOR (Goal Alerts & Status Changes) ---
 exports.vortexLiveMonitor = onSchedule({ 
     schedule: "every 2 minutes", 
-    timeZone: "Africa/Lagos", 
-    region: "europe-west1" 
+    timeZone: "Africa/Lagos", region: "europe-west1" 
 }, async () => {
     const snap = await db.collection("matches").get();
     const batch = db.batch();
@@ -89,18 +70,16 @@ exports.vortexLiveMonitor = onSchedule({
     
     for (const doc of snap.docs) {
         const current = doc.data();
-        const matchRef = doc.ref;
         const hScore = Number(current.home?.score || 0);
         const aScore = Number(current.away?.score || 0);
         const lastAlertScore = current.lastAlertScore || { h: 0, a: 0 };
         const lastStatus = current.lastStatus || "NS";
         const currentStatus = current.status;
-
         let alertMsg = "";
 
         if (hScore > lastAlertScore.h || aScore > lastAlertScore.a) {
             alertMsg = `⚽ *GOAL!* \n\n${current.home.name} *${hScore} - ${aScore}* ${current.away.name}\n\n📺 Watch: https://vortexlive.online/match/${doc.id}`;
-            batch.update(matchRef, { lastAlertScore: { h: hScore, a: aScore } });
+            batch.update(doc.ref, { lastAlertScore: { h: hScore, a: aScore } });
             hasUpdates = true;
         } 
         
@@ -114,65 +93,46 @@ exports.vortexLiveMonitor = onSchedule({
 
         if (alertMsg) {
             await sendTelegram(alertMsg);
-            batch.update(matchRef, { lastStatus: currentStatus });
+            batch.update(doc.ref, { lastStatus: currentStatus });
             hasUpdates = true;
         }
     }
     if (hasUpdates) await batch.commit();
 });
 
-// --- ANNOUNCER (Upcoming Matches) ---
 exports.matchAnnouncer = onSchedule({
     schedule: "every 5 minutes",
-    timeZone: "Africa/Lagos",
-    region: "europe-west1"
+    timeZone: "Africa/Lagos", region: "europe-west1"
 }, async () => {
     const now = new Date();
     const tenMinsLater = new Date(now.getTime() + 10 * 60000);
-
-    const snap = await db.collection("matches")
-        .where("status", "in", ["NS", "1"])
-        .where("announced", "==", false)
-        .get();
+    const snap = await db.collection("matches").where("status", "in", ["NS", "1"]).where("announced", "==", false).get();
 
     for (const doc of snap.docs) {
         const match = doc.data();
         if(!match.kickoff) continue;
         const kickoff = new Date(match.kickoff);
-
         if (kickoff <= tenMinsLater) {
-            const timeStr = kickoff.toLocaleTimeString('en-GB', { 
-                hour: '2-digit', minute: '2-digit', timeZone: 'Africa/Lagos' 
-            });
-            const msg = `🔔 *UPCOMING MATCH ALERT*\n\n⚽ ${match.home.name} vs ${match.away.name}\n⏰ Kickoff: ${timeStr}\n\n📺 Stream: https://vortexlive.online/match/${doc.id}`;
-            await sendTelegram(msg);
+            const timeStr = kickoff.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit', timeZone: 'Africa/Lagos' });
+            await sendTelegram(`🔔 *UPCOMING MATCH ALERT*\n\n⚽ ${match.home.name} vs ${match.away.name}\n⏰ Kickoff: ${timeStr}\n\n📺 Stream: https://vortexlive.online/match/${doc.id}`);
             await doc.ref.update({ announced: true });
         }
     }
 });
 
-// --- UPDATED CLEANUP (Safe for 500+ matches) ---
 exports.morningCleanup = onSchedule({ 
     schedule: "45 6 * * *", 
-    timeZone: "Africa/Lagos",
-    region: "europe-west1"
+    timeZone: "Africa/Lagos", region: "europe-west1"
 }, async () => {
     const snap = await db.collection("matches").get();
     const size = snap.size;
-    
     if (size === 0) return;
 
-    // Split deletes into chunks of 400 to stay under the 500 limit
-    const chunks = [];
     for (let i = 0; i < snap.docs.length; i += 400) {
-        chunks.push(snap.docs.slice(i, i + 400));
-    }
-
-    for (const chunk of chunks) {
+        const chunk = snap.docs.slice(i, i + 400);
         const batch = db.batch();
         chunk.forEach(doc => batch.delete(doc.ref));
         await batch.commit();
     }
-
-    await sendTelegram(`🧹 *Vortex Cleanup:* Database purged. Removed ${size} stale matches for a fresh start.`);
+    await sendTelegram(`🧹 *Vortex Cleanup:* Database purged. Removed ${size} stale matches.`);
 });

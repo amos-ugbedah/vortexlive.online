@@ -3,15 +3,14 @@ const STATUS_MAP = {
   'TBD': 'NS', 'NS': 'NS', '1': 'NS', '1H': '1H', '2H': '2H', 'HT': 'HT', 'ET': 'ET',
   'BT': 'BT', 'P': 'P', 'SUSP': 'SUSP', 'INT': 'SUSP', 'FT': 'FT', 'AET': 'FT',
   'PEN': 'FT', 'PST': 'PST', 'CANC': 'CANC', 'ABD': 'ABD', 'AWD': 'AWD', 'WO': 'AWD',
-  'LIVE': 'LIVE', 'IN_PLAY': 'LIVE', 'PAUSED': 'HT', 'FINISHED': 'FT', 'SCHEDULED': 'NS', 'TIMED': 'NS',
-  '2': '1H', '3': 'HT', '4': '2H'
+  'LIVE': 'LIVE', 'IN_PLAY': 'LIVE', 'INPLAY': 'LIVE', 'PAUSED': 'HT', 'FINISHED': 'FT', 
+  'SCHEDULED': 'NS', 'TIMED': 'NS', '2': '1H', '3': 'HT', '4': '2H'
 };
 
 const ELITE_LEAGUES = [
   1, 2, 3, 4, 5, 7, 10, 11, 12, 13, 29, 30, 31, 34, 39, 45, 48, 61, 66, 78, 81, 88, 94, 135, 137, 140, 143, 227, 848
 ];
 
-// Fallback icon for broken or missing logos
 export const FALLBACK_LOGO = "https://cdn-icons-png.flaticon.com/512/33/33736.png";
 
 export const getDecodedStreamUrl = (url) => {
@@ -70,7 +69,6 @@ export const normalizeMatch = (data, id) => {
     league: data.league || 'Unknown League',
     leagueId: Number(data.leagueId || 0),
     leagueLogo: data.leagueLogo || FALLBACK_LOGO,
-    // Elite if: Priority flag is set OR league ID is in elite list
     isElite: !!(data.isPriority || data.isElite || ELITE_LEAGUES.includes(Number(data.leagueId))),
     isPriority: !!data.isPriority,
     kickoff: kickoffDate,
@@ -88,7 +86,8 @@ export const normalizeMatch = (data, id) => {
 export const isMatchLive = (match) => {
   if (!match) return false;
   const status = String(match.status).toUpperCase();
-  const liveStatuses = ['1H', 'HT', '2H', 'ET', 'BT', 'P', 'LIVE', 'IN_PLAY'];
+  // Expanded logic to include "INPLAY" and "LIVE" strings
+  const liveStatuses = ['1H', 'HT', '2H', 'ET', 'BT', 'P', 'LIVE', 'IN_PLAY', 'INPLAY'];
   const isMinuteNumeric = /^\d+$/.test(status) && status !== '1';
   return (liveStatuses.includes(status) || isMinuteNumeric) && !isMatchFinished(match);
 };
