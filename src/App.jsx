@@ -11,6 +11,7 @@ import { ShieldAlert, Loader2 } from 'lucide-react';
 const Home = lazy(() => import('./pages/Home'));
 const Admin = lazy(() => import('./pages/Admin'));
 const MatchDetails = lazy(() => import('./pages/MatchDetails'));
+const HighlightPage = lazy(() => import('./pages/HighlightPage'));
 
 // Error Boundary Component
 class ErrorBoundary extends React.Component {
@@ -33,19 +34,19 @@ class ErrorBoundary extends React.Component {
         <div className="flex items-center justify-center min-h-screen text-white bg-black">
           <div className="text-center p-10 border border-red-600/20 bg-red-600/10 rounded-[2.5rem] max-w-md">
             <ShieldAlert size={48} className="mx-auto mb-4 text-red-600" />
-            <h1 className="text-2xl font-black uppercase mb-2">App Error</h1>
-            <p className="text-white/70 mb-4">Something went wrong. Please refresh the page.</p>
+            <h1 className="mb-2 text-2xl font-black uppercase">App Error</h1>
+            <p className="mb-4 text-white/70">Something went wrong. Please refresh the page.</p>
             <button
               onClick={() => {
                 this.setState({ hasError: false });
                 window.location.reload();
               }}
-              className="px-6 py-2 bg-red-600 rounded-lg text-sm font-bold hover:bg-red-700"
+              className="px-6 py-2 text-sm font-bold bg-red-600 rounded-lg hover:bg-red-700"
             >
               Refresh App
             </button>
             {process.env.NODE_ENV === 'development' && (
-              <pre className="mt-4 text-xs text-left text-white/40 overflow-auto max-h-40 p-2 bg-black/50 rounded">
+              <pre className="p-2 mt-4 overflow-auto text-xs text-left rounded text-white/40 max-h-40 bg-black/50">
                 {this.state.error?.toString()}
               </pre>
             )}
@@ -62,10 +63,10 @@ class ErrorBoundary extends React.Component {
 const LoadingFallback = () => (
   <div className="flex flex-col items-center justify-center min-h-screen bg-[#050505]">
     <div className="relative mb-6">
-      <div className="w-16 h-16 border-4 border-red-600/20 rounded-full"></div>
+      <div className="w-16 h-16 border-4 rounded-full border-red-600/20"></div>
       <div className="absolute top-0 left-0 w-16 h-16 border-4 border-red-600 rounded-full border-t-transparent animate-spin"></div>
     </div>
-    <p className="text-sm font-bold uppercase tracking-wider text-white/40">LOADING VORTEX STREAMS</p>
+    <p className="text-sm font-bold tracking-wider uppercase text-white/40">LOADING VORTEX STREAMS</p>
   </div>
 );
 
@@ -74,14 +75,14 @@ const AppLayout = ({ children, isLandscapeMode, partners, isOnline, appReady }) 
   <>
     {/* Network Status Indicator */}
     {!isOnline && (
-      <div className="px-4 py-2 bg-yellow-600/90 text-center text-sm font-bold sticky top-0 z-50">
+      <div className="sticky top-0 z-50 px-4 py-2 text-sm font-bold text-center bg-yellow-600/90">
         ⚠️ You are offline. Some features may be limited.
       </div>
     )}
     
     {/* Debug Banner for Development */}
     {process.env.NODE_ENV === 'development' && (
-      <div className="px-4 py-2 bg-blue-600/90 text-center text-sm font-bold flex items-center justify-center gap-2 sticky top-0 z-50">
+      <div className="sticky top-0 z-50 flex items-center justify-center gap-2 px-4 py-2 text-sm font-bold text-center bg-blue-600/90">
         <div className="w-2 h-2 bg-green-400 rounded-full animate-pulse"></div>
         DEVELOPMENT MODE - Local Build
       </div>
@@ -98,8 +99,8 @@ const AppLayout = ({ children, isLandscapeMode, partners, isOnline, appReady }) 
     
     {/* App Status Footer */}
     {appReady && (
-      <div className="fixed bottom-4 right-4 z-50">
-        <div className="flex items-center gap-2 px-3 py-1 bg-black/80 backdrop-blur-sm rounded-full text-xs text-white/60 border border-white/10">
+      <div className="fixed z-50 bottom-4 right-4">
+        <div className="flex items-center gap-2 px-3 py-1 text-xs border rounded-full bg-black/80 backdrop-blur-sm text-white/60 border-white/10">
           <div className={`w-2 h-2 rounded-full ${isOnline ? 'bg-green-500 animate-pulse' : 'bg-red-500'}`}></div>
           <span>Vortex Live</span>
           <span className="text-white/40">•</span>
@@ -215,9 +216,9 @@ function App() {
       <div className="flex items-center justify-center min-h-screen text-white bg-black">
         <div className="text-center p-10 border border-red-600/20 bg-red-600/10 rounded-[2.5rem] max-w-md">
           <ShieldAlert size={48} className="mx-auto mb-4 text-red-600" />
-          <h1 className="text-2xl font-black uppercase mb-2">Access Restricted</h1>
-          <p className="text-white/70 mb-4">This device has been restricted from accessing Vortex Live.</p>
-          <div className="text-xs text-white/40 mt-4">
+          <h1 className="mb-2 text-2xl font-black uppercase">Access Restricted</h1>
+          <p className="mb-4 text-white/70">This device has been restricted from accessing Vortex Live.</p>
+          <div className="mt-4 text-xs text-white/40">
             ID: {localStorage.getItem('vortex_utk')?.substring(0, 10)}...
           </div>
         </div>
@@ -265,6 +266,48 @@ function App() {
               >
                 <Suspense fallback={<LoadingFallback />}>
                   <Admin />
+                </Suspense>
+              </AppLayout>
+            } />
+            
+            {/* New Highlight Page Route */}
+            <Route path="/highlights" element={
+              <AppLayout 
+                isLandscapeMode={isLandscapeMode}
+                partners={defaultPartners}
+                isOnline={isOnline}
+                appReady={appReady}
+              >
+                <Suspense fallback={<LoadingFallback />}>
+                  <HighlightPage />
+                </Suspense>
+              </AppLayout>
+            } />
+            
+            {/* Match-specific Highlights */}
+            <Route path="/match/:id/highlights" element={
+              <AppLayout 
+                isLandscapeMode={isLandscapeMode}
+                partners={defaultPartners}
+                isOnline={isOnline}
+                appReady={appReady}
+              >
+                <Suspense fallback={<LoadingFallback />}>
+                  <HighlightPage />
+                </Suspense>
+              </AppLayout>
+            } />
+            
+            {/* Highlight Generator Route */}
+            <Route path="/highlights/generate/:matchId" element={
+              <AppLayout 
+                isLandscapeMode={isLandscapeMode}
+                partners={defaultPartners}
+                isOnline={isOnline}
+                appReady={appReady}
+              >
+                <Suspense fallback={<LoadingFallback />}>
+                  <HighlightPage mode="generate" />
                 </Suspense>
               </AppLayout>
             } />

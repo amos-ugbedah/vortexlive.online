@@ -5,7 +5,8 @@ import { db } from '../lib/firebase';
 import { doc, onSnapshot } from 'firebase/firestore';
 import { 
   ChevronLeft, RefreshCcw, BarChart3, Radio, Share2, 
-  CheckCircle2, Shield, BrainCircuit, Tv, Wifi, Zap
+  CheckCircle2, Shield, BrainCircuit, Tv, Wifi, Zap,
+  Download, Video, Clock, Globe, Sparkles
 } from 'lucide-react';
 import IPTVPlayer from '../components/IPTVPlayer';
 import UltraPlayer from '../components/UltraPlayer';
@@ -135,6 +136,9 @@ const MatchDetails = () => {
               </div>
             )}
             
+            {/* HIGHLIGHT DOWNLOADER COMPONENT - ADDED HERE */}
+            <HighlightDownloader match={match} />
+            
             <div className="bg-zinc-900/40 backdrop-blur-3xl p-8 rounded-[2.5rem] border border-white/5">
                 <div className="flex items-center gap-3 mb-8">
                     <BarChart3 className="text-red-600" />
@@ -199,7 +203,237 @@ const MatchDetails = () => {
   );
 };
 
-// ... (LoadingScreen, TeamUI, StatBar components stay exactly the same)
+// HIGHLIGHT DOWNLOADER COMPONENT
+const HighlightDownloader = ({ match }) => {
+  const [selectedLength, setSelectedLength] = useState(60); // seconds
+  const [isProcessing, setIsProcessing] = useState(false);
+  const [downloadLink, setDownloadLink] = useState(null);
+  const [highlightMode, setHighlightMode] = useState('auto');
+  const [availableMoments, setAvailableMoments] = useState([]);
+  
+  // Highlight duration options (in seconds)
+  const durationOptions = [
+    { label: '1 min', value: 60 },
+    { label: '2 mins', value: 120 },
+    { label: '3 mins', value: 180 },
+    { label: '5 mins', value: 300 }
+  ];
+  
+  useEffect(() => {
+    if (match?.status === 'LIVE' || match?.status === '1H' || match?.status === '2H') {
+      const currentMinute = match.minute || 0;
+      const moments = [];
+      
+      // Generate fake highlight moments (in real app, get from API)
+      for (let i = 10; i <= currentMinute; i += 15) {
+        if (i > 0) {
+          moments.push({
+            minute: i,
+            type: i % 30 === 0 ? 'GOAL' : i % 20 === 0 ? 'SAVE' : 'CHANCE',
+            description: i % 30 === 0 ? `Goal at ${i}'` : `Key moment at ${i}'`
+          });
+        }
+      }
+      setAvailableMoments(moments);
+    }
+  }, [match]);
+
+  const generateWatermarkedHighlight = async () => {
+    if (!match) return;
+    
+    setIsProcessing(true);
+    
+    try {
+      // In production, call your Firebase Function here
+      // const response = await fetch('https://your-region-projectid.cloudfunctions.net/generateHighlight', {
+      //   method: 'POST',
+      //   headers: { 'Content-Type': 'application/json' },
+      //   body: JSON.stringify({
+      //     matchId: match.id,
+      //     duration: selectedLength,
+      //     homeTeam: match.home.name,
+      //     awayTeam: match.away.name
+      //   })
+      // });
+      
+      // Simulating API call
+      setTimeout(() => {
+        const mockVideoUrl = `https://storage.googleapis.com/vortex-highlights/${match.id || 'demo'}_${selectedLength}s_watermarked.mp4`;
+        
+        setDownloadLink({
+          url: mockVideoUrl,
+          filename: `${match.home.name}_vs_${match.away.name}_highlight_${Date.now()}.mp4`,
+          size: '15-25 MB'
+        });
+        setIsProcessing(false);
+      }, 2000);
+      
+    } catch (error) {
+      console.error('Error generating highlight:', error);
+      setIsProcessing(false);
+    }
+  };
+
+  const handleDownload = () => {
+    if (downloadLink) {
+      const link = document.createElement('a');
+      link.href = downloadLink.url;
+      link.download = downloadLink.filename;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+    }
+  };
+
+  // Only show for live and finished matches
+  if (!match || (match.status !== 'LIVE' && match.status !== '1H' && match.status !== '2H' && match.status !== 'FT')) {
+    return null;
+  }
+
+  return (
+    <div className="bg-gradient-to-br from-zinc-900/50 to-zinc-800/30 border border-white/10 rounded-[2rem] p-6 backdrop-blur-sm">
+      <div className="flex items-center gap-3 mb-6">
+        <Video className="text-red-500" size={24} />
+        <h3 className="text-sm font-black tracking-widest uppercase">Vortex Highlights</h3>
+        <span className="px-2 py-1 text-[10px] font-black uppercase bg-red-600/20 border border-red-600/30 rounded-full">
+          BETA
+        </span>
+      </div>
+      
+      <div className="grid grid-cols-1 gap-6 mb-8 md:grid-cols-3">
+        {/* Mode Selection */}
+        <div className="space-y-3">
+          <div className="flex items-center gap-2">
+            <Sparkles size={16} className="text-red-500" />
+            <span className="text-[11px] font-black uppercase tracking-wider">Highlight Mode</span>
+          </div>
+          <div className="flex flex-wrap gap-2">
+            {['auto', 'manual', 'best_moments'].map((mode) => (
+              <button
+                key={mode}
+                onClick={() => setHighlightMode(mode)}
+                className={`px-4 py-2 rounded-xl text-[10px] font-black uppercase border transition-all ${
+                  highlightMode === mode 
+                    ? 'bg-red-600 border-red-500' 
+                    : 'bg-white/5 border-white/10 hover:bg-white/10'
+                }`}
+              >
+                {mode.replace('_', ' ')}
+              </button>
+            ))}
+          </div>
+        </div>
+        
+        {/* Duration Selection */}
+        <div className="space-y-3">
+          <div className="flex items-center gap-2">
+            <Clock size={16} className="text-red-500" />
+            <span className="text-[11px] font-black uppercase tracking-wider">Duration</span>
+          </div>
+          <div className="flex flex-wrap gap-2">
+            {durationOptions.map((option) => (
+              <button
+                key={option.value}
+                onClick={() => setSelectedLength(option.value)}
+                className={`px-4 py-2 rounded-xl text-[10px] font-black uppercase border transition-all ${
+                  selectedLength === option.value 
+                    ? 'bg-red-600 border-red-500' 
+                    : 'bg-white/5 border-white/10 hover:bg-white/10'
+                }`}
+              >
+                {option.label}
+              </button>
+            ))}
+          </div>
+        </div>
+        
+        {/* Watermark Preview */}
+        <div className="space-y-3">
+          <div className="flex items-center gap-2">
+            <Shield size={16} className="text-red-500" />
+            <span className="text-[11px] font-black uppercase tracking-wider">Watermark</span>
+          </div>
+          <div className="p-3 border border-white/10 rounded-xl bg-black/30">
+            <div className="flex items-center gap-3">
+              <div className="flex items-center justify-center w-8 h-8 rounded-lg bg-gradient-to-br from-red-600 to-red-700">
+                <span className="text-xs font-black">V</span>
+              </div>
+              <div>
+                <div className="text-[10px] font-black uppercase">vortexlive.online</div>
+                <div className="text-[8px] opacity-50">© {new Date().getFullYear()} Vortex Live</div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+      
+      {/* Available Moments (for live matches) */}
+      {availableMoments.length > 0 && highlightMode === 'manual' && (
+        <div className="mb-6">
+          <div className="text-[11px] font-black uppercase tracking-wider mb-3">Select Key Moments</div>
+          <div className="flex flex-wrap gap-2">
+            {availableMoments.map((moment, idx) => (
+              <button
+                key={idx}
+                className="px-3 py-2 border border-white/10 rounded-xl text-[10px] font-black uppercase bg-white/5 hover:bg-white/10 transition-all"
+              >
+                {moment.description}
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
+      
+      {/* Generate/Download Button */}
+      <div className="flex items-center justify-between pt-6 border-t border-white/10">
+        <div className="text-[11px] font-black uppercase tracking-wider flex items-center gap-2">
+          <Globe size={14} className="text-red-500" />
+          <span>Share your highlight with Vortex watermark</span>
+        </div>
+        
+        {!downloadLink ? (
+          <button
+            onClick={generateWatermarkedHighlight}
+            disabled={isProcessing}
+            className="flex items-center gap-3 px-8 py-3 transition-all bg-gradient-to-r from-red-600 to-red-700 rounded-xl hover:from-red-700 hover:to-red-800 disabled:opacity-50 group"
+          >
+            {isProcessing ? (
+              <>
+                <div className="w-4 h-4 border-2 rounded-full border-white/30 border-t-white animate-spin" />
+                <span className="text-[11px] font-black uppercase tracking-wider">Processing...</span>
+              </>
+            ) : (
+              <>
+                <Download size={18} />
+                <span className="text-[11px] font-black uppercase tracking-wider">Generate Highlight</span>
+              </>
+            )}
+          </button>
+        ) : (
+          <button
+            onClick={handleDownload}
+            className="flex items-center gap-3 px-8 py-3 transition-all bg-gradient-to-r from-green-600 to-green-700 rounded-xl hover:from-green-700 hover:to-green-800 group"
+          >
+            <Download size={18} />
+            <div className="text-left">
+              <div className="text-[11px] font-black uppercase tracking-wider">Download Ready</div>
+              <div className="text-[9px] opacity-80">{downloadLink.size} • MP4</div>
+            </div>
+          </button>
+        )}
+      </div>
+      
+      {/* Info Note */}
+      <div className="p-4 mt-6 border border-white/5 rounded-xl bg-black/20">
+        <p className="text-[10px] text-white/60 leading-relaxed">
+          💡 <strong>Note:</strong> Highlights include Vortex Live watermark with link to vortexlive.online. 
+          Generated videos are for personal use. Commercial use requires permission.
+        </p>
+      </div>
+    </div>
+  );
+};
+
 const LoadingScreen = ({ id }) => (
   <div className="flex flex-col items-center justify-center min-h-screen bg-[#020202]">
     <div className="w-16 h-16 mb-6 border-4 border-red-600 rounded-full border-t-transparent animate-spin" />
