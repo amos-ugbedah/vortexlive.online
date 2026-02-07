@@ -5,7 +5,15 @@ import { collection, onSnapshot, query } from 'firebase/firestore';
 import { Volume2, Radio, Trees, Sparkles, Zap, Clock, Trophy, Target, TrendingUp, Award, Shield, Users, BarChart, Crown, Star } from 'lucide-react';
 import SearchBar from '../components/SearchBar';
 import MatchCard from '../components/MatchCard';
-import { normalizeMatch, isMatchLive, isMatchUpcoming, isMatchFinished } from '../lib/matchUtils';
+import { 
+  normalizeMatch, 
+  isMatchLive, 
+  isMatchUpcoming, 
+  isMatchFinished,
+  isEliteMatch,
+  containsTopTeam,
+  sortMatchesByPriority 
+} from '../lib/matchUtils';
 
 const Home = memo(() => {
   const [matches, setMatches] = useState([]);
@@ -65,12 +73,8 @@ const Home = memo(() => {
         return data;
       }).filter(Boolean);
 
-      // Sort by kickoff time
-      const sorted = processedMatches.sort((a, b) => {
-        const timeA = a.kickoff || "";
-        const timeB = b.kickoff || "";
-        return timeA.localeCompare(timeB);
-      });
+      // Sort by priority (top teams first) then by kickoff time
+      const sorted = sortMatchesByPriority(processedMatches);
 
       setMatches(sorted);
       setIsLoading(false);
@@ -82,8 +86,8 @@ const Home = memo(() => {
     return () => unsubscribe();
   }, [playGoalAlert]);
 
-  // Categorize and filter matches
-  const { categorized, filteredMatches, aiPicks } = useMemo(() => {
+  // Categorize and filter matches with TOP TEAMS recognition
+  const { categorized, filteredMatches, aiPicks, topTeamsMatches } = useMemo(() => {
     const term = searchTerm.toLowerCase().trim();
     
     const searchFiltered = matches.filter(m => {
@@ -99,20 +103,27 @@ const Home = memo(() => {
       filtered = searchFiltered.filter(m => isMatchUpcoming(m));
     } else if (activeFilter === 'finished') {
       filtered = searchFiltered.filter(m => isMatchFinished(m));
+    } else if (activeFilter === 'top') {
+      // New filter for top teams only
+      filtered = searchFiltered.filter(m => containsTopTeam(m));
     }
 
     const aiPicksList = matches
       .filter(m => m.aiPick && m.aiPick.trim() !== '')
       .slice(0, 5);
 
+    // Get matches with top teams
+    const topTeamsMatches = filtered.filter(m => containsTopTeam(m));
+
     const categorized = {
-      eliteLive: filtered.filter(m => m.isElite && isMatchLive(m)),
-      regularLive: filtered.filter(m => !m.isElite && isMatchLive(m)),
+      topTeamsLive: filtered.filter(m => containsTopTeam(m) && isMatchLive(m)),
+      eliteLive: filtered.filter(m => isEliteMatch(m) && isMatchLive(m) && !containsTopTeam(m)),
+      regularLive: filtered.filter(m => !isEliteMatch(m) && isMatchLive(m)),
       upcoming: filtered.filter(m => isMatchUpcoming(m)),
       finished: filtered.filter(m => isMatchFinished(m))
     };
 
-    return { categorized, filteredMatches: filtered, aiPicks: aiPicksList };
+    return { categorized, filteredMatches: filtered, aiPicks: aiPicksList, topTeamsMatches };
   }, [matches, searchTerm, activeFilter]);
 
   const totalMatches = filteredMatches.length;
@@ -252,11 +263,12 @@ const Home = memo(() => {
           </div>
         </header>
 
-        {/* QUICK FILTERS */}
+        {/* QUICK FILTERS - ADDED TOP TEAMS FILTER */}
         <div className="px-4 py-4 border-b lg:px-6 border-white/5 bg-gradient-to-r from-black/50 to-transparent">
           <div className="max-w-[1400px] mx-auto flex flex-wrap items-center gap-2 lg:gap-3">
             <button onClick={() => setActiveFilter('all')} className={`px-4 py-2.5 rounded-xl text-xs font-black uppercase transition-all ${activeFilter === 'all' ? 'bg-red-600 text-white shadow-lg' : 'bg-white/5 text-white/40'}`}>All ({matches.length})</button>
-            <button onClick={() => setActiveFilter('live')} className={`px-4 py-2.5 rounded-xl text-xs font-black uppercase transition-all flex items-center gap-2 ${activeFilter === 'live' ? 'bg-red-600 text-white shadow-lg' : 'bg-white/5 text-white/40'}`}><Zap size={14} /> Live ({categorized.eliteLive.length + categorized.regularLive.length})</button>
+            <button onClick={() => setActiveFilter('top')} className={`px-4 py-2.5 rounded-xl text-xs font-black uppercase transition-all flex items-center gap-2 ${activeFilter === 'top' ? 'bg-yellow-600 text-white shadow-lg' : 'bg-white/5 text-white/40'}`}><Crown size={14} /> Top Teams ({topTeamsMatches.length})</button>
+            <button onClick={() => setActiveFilter('live')} className={`px-4 py-2.5 rounded-xl text-xs font-black uppercase transition-all flex items-center gap-2 ${activeFilter === 'live' ? 'bg-red-600 text-white shadow-lg' : 'bg-white/5 text-white/40'}`}><Zap size={14} /> Live ({categorized.topTeamsLive.length + categorized.eliteLive.length + categorized.regularLive.length})</button>
             <button onClick={() => setActiveFilter('upcoming')} className={`px-4 py-2.5 rounded-xl text-xs font-black uppercase transition-all flex items-center gap-2 ${activeFilter === 'upcoming' ? 'bg-blue-600 text-white shadow-lg' : 'bg-white/5 text-white/40'}`}><Clock size={14} /> Upcoming ({categorized.upcoming.length})</button>
             <button onClick={() => setActiveFilter('finished')} className={`px-4 py-2.5 rounded-xl text-xs font-black uppercase transition-all flex items-center gap-2 ${activeFilter === 'finished' ? 'bg-gray-600 text-white shadow-lg' : 'bg-white/5 text-white/40'}`}><Trophy size={14} /> Results ({categorized.finished.length})</button>
           </div>
@@ -270,35 +282,66 @@ const Home = memo(() => {
             </div>
           ) : (
             <div className="max-w-[1400px] mx-auto space-y-8 lg:space-y-12">
+              {/* TOP TEAMS LIVE SECTION */}
+              {categorized.topTeamsLive.length > 0 && (
+                <section>
+                  <h2 className="flex items-center gap-2 mb-6 text-2xl font-black uppercase">
+                    <Crown size={24} className="text-yellow-500" /> TOP TEAMS LIVE
+                  </h2>
+                  <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 lg:gap-6">
+                    {categorized.topTeamsLive.map(m => <MatchCard key={m.id} match={m} />)}
+                  </div>
+                </section>
+              )}
+              
+              {/* TOP TEAMS UPCOMING (if in top filter mode) */}
+              {activeFilter === 'top' && categorized.upcoming.filter(m => containsTopTeam(m)).length > 0 && (
+                <section>
+                  <h2 className="flex items-center gap-2 mb-6 text-2xl font-black uppercase">
+                    <Crown size={24} className="text-yellow-500" /> TOP TEAMS UPCOMING
+                  </h2>
+                  <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 lg:gap-6">
+                    {categorized.upcoming.filter(m => containsTopTeam(m)).map(m => <MatchCard key={m.id} match={m} />)}
+                  </div>
+                </section>
+              )}
+
+              {/* ELITE LIVE SECTION */}
               {categorized.eliteLive.length > 0 && (
                 <section>
-                  <h2 className="flex items-center gap-2 mb-6 text-xl italic font-black uppercase">
-                    <Crown size={20} className="text-yellow-500" /> Elite Live
+                  <h2 className="flex items-center gap-2 mb-6 text-xl font-black uppercase">
+                    <Sparkles size={20} className="text-red-500" /> Elite Live
                   </h2>
                   <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 lg:gap-6">
                     {categorized.eliteLive.map(m => <MatchCard key={m.id} match={m} />)}
                   </div>
                 </section>
               )}
+              
+              {/* REGULAR LIVE SECTION */}
               {categorized.regularLive.length > 0 && (
                 <section>
-                  <h2 className="mb-6 text-xl italic font-black uppercase">Live Now</h2>
+                  <h2 className="mb-6 text-xl font-black uppercase">Live Now</h2>
                   <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 lg:gap-6">
                     {categorized.regularLive.map(m => <MatchCard key={m.id} match={m} />)}
                   </div>
                 </section>
               )}
+              
+              {/* UPCOMING SECTION */}
               {categorized.upcoming.length > 0 && (
                 <section>
-                  <h2 className="mb-6 text-xl italic font-black uppercase">Upcoming</h2>
+                  <h2 className="mb-6 text-xl font-black uppercase">Upcoming</h2>
                   <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 lg:gap-6">
                     {categorized.upcoming.map(m => <MatchCard key={m.id} match={m} />)}
                   </div>
                 </section>
               )}
+              
+              {/* FINISHED SECTION */}
               {categorized.finished.length > 0 && (
                 <section>
-                  <h2 className="mb-6 text-xl italic font-black uppercase">Results</h2>
+                  <h2 className="mb-6 text-xl font-black uppercase">Results</h2>
                   <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 lg:gap-6 opacity-80">
                     {categorized.finished.map(m => <MatchCard key={m.id} match={m} />)}
                   </div>
@@ -336,6 +379,28 @@ const Home = memo(() => {
               </div>
               <button className="w-full py-2.5 bg-yellow-600 text-white font-black rounded-xl shadow-lg shadow-yellow-600/30">DEPOSIT NOW</button>
             </div>
+
+            {/* TOP TEAMS STATS */}
+            {topTeamsMatches.length > 0 && (
+              <div className="p-4 border bg-gradient-to-br from-yellow-900/20 to-black border-yellow-600/20 rounded-xl">
+                <h5 className="flex items-center gap-2 mb-3 text-sm font-black text-yellow-400 uppercase">
+                  <Crown size={16} /> TOP TEAMS LIVE
+                </h5>
+                {topTeamsMatches.slice(0, 3).map((match, index) => (
+                  <div key={index} className="flex items-center justify-between p-2 mb-1 rounded bg-black/30">
+                    <div className="text-xs">
+                      <div className="font-bold">{match.home.name}</div>
+                      <div className="text-white/60">vs</div>
+                      <div className="font-bold">{match.away.name}</div>
+                    </div>
+                    <div className="text-right">
+                      <div className="text-xs font-bold">{match.home.score} - {match.away.score}</div>
+                      <div className="text-[10px] text-red-500 uppercase">{isMatchLive(match) ? 'LIVE' : match.status}</div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
 
             {/* Dynamic Standings */}
             {leagueStandings.map((league, idx) => (
