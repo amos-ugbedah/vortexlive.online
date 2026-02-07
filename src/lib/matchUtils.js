@@ -33,11 +33,12 @@ export const formatAIPick = (pick) => {
 
 export const normalizeMatch = (data, id) => {
   if (!data) return null;
-  const safeId = id || data.id || Math.random().toString(36).substr(2, 9);
+  const safeId = id || data.id;
   
   const normalizeStatus = (status) => {
     if (!status) return 'NS';
     const statusStr = String(status).toUpperCase().trim();
+    // If it's a number like "45", it's LIVE
     if (/^\d+$/.test(statusStr) && statusStr !== '1') return 'LIVE';
     return STATUS_MAP[statusStr] || statusStr;
   };
@@ -86,8 +87,8 @@ export const normalizeMatch = (data, id) => {
 export const isMatchLive = (match) => {
   if (!match) return false;
   const status = String(match.status).toUpperCase();
-  // Expanded logic to include "INPLAY" and "LIVE" strings
-  const liveStatuses = ['1H', 'HT', '2H', 'ET', 'BT', 'P', 'LIVE', 'IN_PLAY', 'INPLAY'];
+  // Expanded logic to include all possible live indicators
+  const liveStatuses = ['1H', 'HT', '2H', 'ET', 'BT', 'P', 'LIVE', 'IN_PLAY', 'INPLAY', '2', '3', '4'];
   const isMinuteNumeric = /^\d+$/.test(status) && status !== '1';
   return (liveStatuses.includes(status) || isMinuteNumeric) && !isMatchFinished(match);
 };
@@ -95,9 +96,8 @@ export const isMatchLive = (match) => {
 export const isMatchUpcoming = (match) => {
   if (!match) return false;
   const status = String(match.status).toUpperCase();
-  const now = new Date();
-  const kickoff = new Date(match.kickoff);
-  return (status === 'NS' || status === '1') && now < kickoff;
+  // Upcoming is only NS or 1
+  return (status === 'NS' || status === '1') && !isMatchLive(match) && !isMatchFinished(match);
 };
 
 export const isMatchFinished = (match) => {
@@ -106,6 +106,7 @@ export const isMatchFinished = (match) => {
   return ['FT', 'FINISHED', 'AET', 'PEN', 'ABD', 'AWD', 'CANC'].includes(status);
 };
 
+// ... keep remaining export functions as is ...
 export const isEliteMatch = (match) => {
   if (!match) return false;
   return !!(match.isPriority || match.isElite || ELITE_LEAGUES.includes(Number(match.leagueId)));

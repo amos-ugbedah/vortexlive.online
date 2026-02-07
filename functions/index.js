@@ -19,6 +19,8 @@ const sendTelegram = async (msg) => {
     } catch (e) { console.error("Telegram Post Error:", e.message); }
 };
 
+const jsSlugify = (text) => text.toString().toLowerCase().replace(/[^\w\s-]/g, '').replace(/[-\s]+/g, '-').trim().replace(/^-+|-+$/g, '');
+
 exports.vortexLiveScraper = onSchedule({
     schedule: "every 2 minutes",
     timeZone: "Africa/Lagos",
@@ -30,16 +32,27 @@ exports.vortexLiveScraper = onSchedule({
         const batch = db.batch();
         let updateCount = 0;
 
-        const jsSlugify = (text) => text.toString().toLowerCase().replace(/[^\w\s-]/g, '').replace(/[-\s]+/g, '-').trim().replace(/^-+|-+$/g, '');
         const todayDate = new Date().toLocaleDateString('en-CA', {timeZone: 'Africa/Lagos'}); 
+        
+        // Fetch existing matches to handle fuzzy matching
+        const snapshot = await db.collection("matches").get();
+        const existingMatches = {};
+        snapshot.forEach(doc => {
+            const data = doc.data();
+            const slug = `${jsSlugify(data.home.name)}-vs-${jsSlugify(data.away.name)}`;
+            existingMatches[slug] = doc.ref;
+        });
 
         for (const stage of stages) {
             for (const event of stage.Events) {
-                const matchId = `${jsSlugify(event.T1[0].Nm)}-vs-${jsSlugify(event.T2[0].Nm)}-${todayDate}`;
-                const matchRef = db.collection("matches").doc(matchId);
-                const doc = await matchRef.get();
+                const homeName = event.T1[0].Nm;
+                const awayName = event.T2[0].Nm;
+                const incomingSlug = `${jsSlugify(homeName)}-vs-${jsSlugify(awayName)}`;
+                
+                // Use existing doc ref if slug matches (fixes the missing match issue)
+                const matchRef = existingMatches[incomingSlug];
 
-                if (doc.exists) {
+                if (matchRef) {
                     const rawStatus = String(event.Eps);
                     let finalStatus = STATUS_MAP[rawStatus] || rawStatus;
                     if (/^\d+$/.test(rawStatus) && rawStatus !== '1') finalStatus = 'LIVE';
@@ -60,6 +73,7 @@ exports.vortexLiveScraper = onSchedule({
     } catch (e) { console.error("Scraper Error:", e.message); }
 });
 
+// ... Keep vortexLiveMonitor and matchAnnouncer exactly as they are ...
 exports.vortexLiveMonitor = onSchedule({ 
     schedule: "every 2 minutes", 
     timeZone: "Africa/Lagos", region: "europe-west1" 
