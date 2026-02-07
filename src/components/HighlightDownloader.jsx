@@ -1,7 +1,6 @@
 /* eslint-disable */
 import React, { useState, useEffect } from 'react';
 import { Download, Video, Clock, Globe, Shield, Sparkles, Target, Zap } from 'lucide-react';
-import { generateHighlight, canGenerateHighlight, getDurationOptions, HIGHLIGHT_MODES } from '../lib/matchUtils';
 
 const HighlightDownloader = ({ match }) => {
   const [selectedLength, setSelectedLength] = useState(120); // seconds
@@ -12,10 +11,28 @@ const HighlightDownloader = ({ match }) => {
   const [downloadProgress, setDownloadProgress] = useState(0);
   
   // Highlight duration options
-  const durationOptions = getDurationOptions();
+  const durationOptions = [
+    { value: 60, label: '1 MIN', description: 'Quick highlights' },
+    { value: 120, label: '2 MIN', description: 'Standard highlights' },
+    { value: 180, label: '3 MIN', description: 'Extended highlights' },
+    { value: 240, label: '4 MIN', description: 'Full highlights' }
+  ];
+  
+  const HIGHLIGHT_MODES = [
+    { value: 'goals_only', label: 'GOALS', description: 'Goals only' },
+    { value: 'best_moments', label: 'BEST', description: 'Best moments (goals, saves, cards)' },
+    { value: 'extended', label: 'FULL', description: 'Full highlights with all key events' }
+  ];
   
   // For live matches, simulate available highlight times based on match events
   const [availableMoments, setAvailableMoments] = useState([]);
+  
+  // Check if highlight can be generated
+  const canGenerateHighlight = (matchData) => {
+    if (!matchData) return false;
+    const status = matchData.status || 'NS';
+    return ['LIVE', '1H', '2H', 'HT', 'ET', 'FT'].includes(status);
+  };
   
   // Generate realistic match moments based on actual match data
   useEffect(() => {
@@ -166,13 +183,26 @@ const HighlightDownloader = ({ match }) => {
     setIsProcessing(true);
     setError(null);
     setHighlightResult(null);
+    setDownloadProgress(0);
     
     try {
-      const result = await generateHighlight(match.id, {
-        duration: selectedLength,
-        mode: highlightMode,
-        watermark: true
-      });
+      // Call the actual Firebase function
+      const response = await fetch(
+        `https://us-central1-votexlive-3a8cb.cloudfunctions.net/generateHighlight`,
+        {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            matchId: match.id,
+            duration: selectedLength,
+            streamSource: 'streamUrl1'
+          })
+        }
+      );
+      
+      const result = await response.json();
       
       if (result.success) {
         setHighlightResult(result.data);
@@ -180,11 +210,11 @@ const HighlightDownloader = ({ match }) => {
         simulateDownload(result.data);
       } else {
         setError(result.message || 'Failed to generate highlight');
+        setIsProcessing(false);
       }
     } catch (err) {
       console.error('Error generating highlight:', err);
       setError('Failed to generate highlight. Please try again.');
-    } finally {
       setIsProcessing(false);
     }
   };
@@ -461,6 +491,7 @@ const HighlightDownloader = ({ match }) => {
     setTimeout(() => {
       setDownloadProgress(0);
       setHighlightResult(null);
+      setIsProcessing(false);
     }, 3000);
   };
 
@@ -634,16 +665,18 @@ const HighlightDownloader = ({ match }) => {
       <div className="flex items-center justify-between pt-6 border-t border-white/10">
         <div className="text-[11px] font-black uppercase tracking-wider flex items-center gap-2">
           <Globe size={14} className="text-red-500" />
-          <span>Share your highlight with Vortex watermark</span>
+          <span>Generate highlights from live stream</span>
         </div>
         
         <button
           onClick={generateWatermarkedHighlight}
           disabled={isProcessing || downloadProgress > 0}
           className={`flex items-center gap-3 px-8 py-3 rounded-xl transition-all group ${
-            downloadProgress === 100 
-              ? 'bg-gradient-to-r from-green-600 to-green-700' 
-              : 'bg-gradient-to-r from-red-600 to-red-700 hover:from-red-700 hover:to-red-800'
+            isProcessing
+              ? 'bg-gradient-to-r from-yellow-600 to-yellow-700'
+              : downloadProgress === 100 
+                ? 'bg-gradient-to-r from-green-600 to-green-700' 
+                : 'bg-gradient-to-r from-red-600 to-red-700 hover:from-red-700 hover:to-red-800'
           } disabled:opacity-50 disabled:cursor-not-allowed`}
         >
           {isProcessing ? (
@@ -672,9 +705,8 @@ const HighlightDownloader = ({ match }) => {
       {/* Info Note */}
       <div className="p-4 mt-6 border border-white/5 rounded-xl bg-black/20">
         <p className="text-[10px] text-white/60 leading-relaxed">
-          💡 <strong>Note:</strong> Highlights include key match moments (goals, cards, VAR checks, etc.) 
-          with Vortex Live watermark. Generated files are for personal use. 
-          For full matches visit <strong>vortexlive.online</strong>
+          💡 <strong>Note:</strong> Clicking "Generate Highlight" will call the Firebase function to process the live stream. 
+          This may take a few seconds. Generated files include Vortex Live watermark for personal use.
         </p>
       </div>
     </div>

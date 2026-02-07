@@ -6,7 +6,7 @@ import { doc, getDoc } from 'firebase/firestore';
 import { 
   ChevronLeft, Download, Video, Clock, Shield, 
   Target, Award, AlertTriangle, CheckCircle, Zap,
-  Play, Sparkles, Globe, Wifi, AlertCircle
+  Play, Sparkles, Globe, Wifi, AlertCircle, ExternalLink
 } from 'lucide-react';
 
 const HighlightPage = () => {
@@ -17,6 +17,7 @@ const HighlightPage = () => {
   const [loading, setLoading] = useState(true);
   const [streamSource, setStreamSource] = useState(null);
   const [downloading, setDownloading] = useState(false);
+  const [error, setError] = useState(null);
 
   // Extract stream source from URL if coming from match page
   useEffect(() => {
@@ -29,11 +30,12 @@ const HighlightPage = () => {
     const fetchData = async () => {
       try {
         setLoading(true);
+        setError(null);
         
         // First, get the match data to access stream URLs
         const matchDoc = await getDoc(doc(db, 'matches', id));
         if (matchDoc.exists()) {
-          const match = matchData || matchDoc.data();
+          const match = matchDoc.data();
           setMatchData(match);
           
           // Try to get highlight data
@@ -100,9 +102,12 @@ const HighlightPage = () => {
             
             setHighlight(generatedHighlight);
           }
+        } else {
+          setError('Match not found');
         }
       } catch (error) {
         console.error('Error fetching data:', error);
+        setError('Failed to load match data');
       } finally {
         setLoading(false);
       }
@@ -118,47 +123,67 @@ const HighlightPage = () => {
     const away = match.away?.name || 'Away';
     const homeScore = match.home?.score || 0;
     const awayScore = match.away?.score || 0;
+    const currentMinute = match.minute || 90;
     
     // Goals
-    for (let i = 1; i <= homeScore; i++) {
-      moments.push({
-        type: 'GOAL',
-        minute: Math.floor(Math.random() * 90) + 1,
-        team: home,
-        description: `${home} scores!`,
-        importance: 10 - i + 1
-      });
+    if (homeScore > 0) {
+      for (let i = 1; i <= homeScore; i++) {
+        const goalMinute = Math.max(1, Math.min(currentMinute, Math.floor((i / (homeScore + 1)) * currentMinute)));
+        moments.push({
+          type: 'GOAL',
+          minute: goalMinute,
+          team: home,
+          description: `${home} scores!`,
+          importance: 10 - i + 1
+        });
+      }
     }
     
-    for (let i = 1; i <= awayScore; i++) {
-      moments.push({
-        type: 'GOAL',
-        minute: Math.floor(Math.random() * 90) + 1,
-        team: away,
-        description: `${away} scores!`,
-        importance: 10 - i + 1
-      });
+    if (awayScore > 0) {
+      for (let i = 1; i <= awayScore; i++) {
+        const goalMinute = Math.max(1, Math.min(currentMinute, Math.floor((i / (awayScore + 1)) * currentMinute)));
+        moments.push({
+          type: 'GOAL',
+          minute: goalMinute,
+          team: away,
+          description: `${away} scores!`,
+          importance: 10 - i + 1
+        });
+      }
     }
+
+    // Additional key moments based on match intensity
+    const eventTypes = [
+      { type: 'YELLOW_CARD', weight: 0.3, description: 'Yellow card shown' },
+      { type: 'RED_CARD', weight: 0.1, description: 'Red card shown' },
+      { type: 'VAR_CHECK', weight: 0.2, description: 'VAR check' },
+      { type: 'PENALTY', weight: 0.15, description: 'Penalty awarded' },
+      { type: 'MISSED_CHANCE', weight: 0.4, description: 'Big chance missed' },
+      { type: 'HIT_POST', weight: 0.2, description: 'Shot hits the post' },
+      { type: 'SAVE', weight: 0.3, description: 'Great save by goalkeeper' },
+      { type: 'FREE_KICK', weight: 0.25, description: 'Dangerous free kick' },
+      { type: 'CORNER', weight: 0.2, description: 'Important corner' }
+    ];
+
+    const teams = [home, away];
     
-    // Yellow cards
-    if (homeScore + awayScore > 0) {
-      moments.push({
-        type: 'YELLOW_CARD',
-        minute: 35,
-        team: Math.random() > 0.5 ? home : away,
-        description: 'Yellow card shown',
-        importance: 4
-      });
-    }
+    // Generate key moments (more for longer/higher scoring matches)
+    const baseMoments = Math.floor((homeScore + awayScore + currentMinute / 30));
+    const numMoments = Math.min(baseMoments, 10);
     
-    // Key saves/moments
-    if (homeScore + awayScore >= 2) {
+    for (let i = 0; i < numMoments; i++) {
+      const minute = Math.max(1, Math.min(currentMinute, Math.floor(Math.random() * currentMinute) + 1));
+      const event = eventTypes[Math.floor(Math.random() * eventTypes.length)];
+      const team = teams[Math.floor(Math.random() * teams.length)];
+      
       moments.push({
-        type: 'SAVE',
-        minute: 68,
-        team: Math.random() > 0.5 ? home : away,
-        description: 'Incredible save by the goalkeeper!',
-        importance: 7
+        type: event.type,
+        minute: minute,
+        team: team,
+        description: `${team}: ${event.description}`,
+        importance: event.type === 'RED_CARD' ? 9 : 
+                    event.type === 'PENALTY' ? 8 : 
+                    event.type === 'VAR_CHECK' ? 7 : 5
       });
     }
     
@@ -182,8 +207,9 @@ const HighlightPage = () => {
   const downloadHighlight = async () => {
     try {
       setDownloading(true);
+      setError(null);
       
-      // Call the actual Firebase function
+      // Call the actual Firebase function - FIXED
       const response = await fetch(
         `https://us-central1-votexlive-3a8cb.cloudfunctions.net/generateHighlight`,
         {
@@ -194,8 +220,7 @@ const HighlightPage = () => {
           body: JSON.stringify({
             matchId: id,
             duration: highlight?.duration || 120,
-            mode: 'extended',
-            watermark: true
+            streamSource: streamSource || 'streamUrl1'
           })
         }
       );
@@ -203,8 +228,25 @@ const HighlightPage = () => {
       const data = await response.json();
       
       if (data.success) {
-        // Open the highlight URL
-        window.open(data.data?.watchUrl || data.data?.downloadUrl, '_blank');
+        // Open the watch URL directly (this is the stream URL from match)
+        if (data.data?.watchUrl) {
+          window.open(data.data.watchUrl, '_blank');
+        } else if (matchData) {
+          // Fallback: open the match stream
+          const currentStream = streamSource || 'streamUrl1';
+          const streamUrl = matchData[currentStream];
+          if (streamUrl) {
+            try {
+              if (streamUrl && !streamUrl.startsWith('http')) {
+                window.open(atob(streamUrl), '_blank');
+              } else {
+                window.open(streamUrl, '_blank');
+              }
+            } catch (e) {
+              window.open(`https://vortexlive.online/match/${id}`, '_blank');
+            }
+          }
+        }
         
         // Update local highlight data
         setHighlight(prev => ({
@@ -213,10 +255,12 @@ const HighlightPage = () => {
           generatedAt: new Date().toISOString()
         }));
       } else {
+        setError(data.message || 'Failed to generate highlight');
         alert(`Error: ${data.error || 'Failed to generate highlight'}`);
       }
     } catch (error) {
       console.error('Download error:', error);
+      setError('Failed to generate highlight. Please try again.');
       alert('Failed to generate highlight. Please try again.');
     } finally {
       setDownloading(false);
@@ -246,6 +290,12 @@ const HighlightPage = () => {
     }
   };
 
+  const canGenerateHighlight = () => {
+    if (!matchData) return false;
+    const status = matchData.status || 'NS';
+    return ['LIVE', '1H', '2H', 'HT', 'ET', 'FT'].includes(status);
+  };
+
   if (loading) {
     return (
       <div className="flex flex-col items-center justify-center min-h-screen bg-[#020202]">
@@ -256,6 +306,24 @@ const HighlightPage = () => {
         <p className="text-[10px] font-black uppercase tracking-[0.4em] text-white/20">
           LOADING HIGHLIGHTS
         </p>
+      </div>
+    );
+  }
+
+  if (error && !matchData) {
+    return (
+      <div className="flex flex-col items-center justify-center min-h-screen bg-[#020202]">
+        <div className="p-8 border border-red-600/30 rounded-2xl bg-red-600/10">
+          <AlertCircle className="mx-auto mb-4 text-red-500" size={48} />
+          <h2 className="mb-2 text-xl font-bold text-center text-red-400">Match Not Found</h2>
+          <p className="mb-6 text-center text-white/60">{error}</p>
+          <Link 
+            to="/"
+            className="block px-6 py-3 font-bold text-center bg-gradient-to-r from-red-600 to-red-700 rounded-xl hover:opacity-90"
+          >
+            Back to Home
+          </Link>
+        </div>
       </div>
     );
   }
@@ -303,6 +371,18 @@ const HighlightPage = () => {
           </div>
         </div>
 
+        {/* Error Display */}
+        {error && (
+          <div className="p-4 mb-6 border border-red-600/30 rounded-xl bg-red-600/10">
+            <div className="flex items-start gap-3">
+              <AlertCircle className="text-red-400 mt-0.5" size={18} />
+              <div>
+                <p className="text-red-300">{error}</p>
+              </div>
+            </div>
+          </div>
+        )}
+
         {/* Main Content */}
         <div className="grid gap-8 lg:grid-cols-3">
           {/* Left Column - Highlight Info */}
@@ -348,33 +428,44 @@ const HighlightPage = () => {
                     if (!url) return null;
                     
                     let decodedUrl = url;
+                    let canOpen = true;
                     try {
                       if (url && !url.startsWith('http')) {
                         decodedUrl = atob(url);
                       }
                     } catch (e) {
-                      // Keep original if not base64
+                      canOpen = false;
                     }
                     
                     return (
-                      <a
+                      <div
                         key={key}
-                        href={decodedUrl}
-                        target="_blank"
-                        rel="noopener noreferrer"
                         className="p-4 transition-all border border-white/10 rounded-xl bg-black/30 hover:border-red-600/50 group"
                       >
                         <div className="flex items-center justify-between mb-2">
                           <div className="text-sm font-bold">{label}</div>
-                          <Globe size={16} className="text-white/40 group-hover:text-red-500" />
+                          {canOpen ? (
+                            <a 
+                              href={decodedUrl} 
+                              target="_blank" 
+                              rel="noopener noreferrer"
+                              className="text-white/40 group-hover:text-red-500"
+                            >
+                              <Globe size={16} />
+                            </a>
+                          ) : (
+                            <AlertCircle size={16} className="text-yellow-500" />
+                          )}
                         </div>
-                        <div className="text-xs truncate text-white/60">{decodedUrl.substring(0, 40)}...</div>
+                        <div className="text-xs truncate text-white/60">
+                          {canOpen ? decodedUrl.substring(0, 40) + '...' : 'Invalid stream URL'}
+                        </div>
                         {key === (streamSource || 'streamUrl1') && (
                           <div className="inline-flex items-center gap-1 px-2 py-1 mt-2 text-xs font-bold text-red-500 rounded-full bg-red-600/20">
                             <Sparkles size={10} /> Current Source
                           </div>
                         )}
-                      </a>
+                      </div>
                     );
                   })}
                 </div>
@@ -422,26 +513,46 @@ const HighlightPage = () => {
                       <h3 className="text-lg font-black">Generate Highlights</h3>
                     </div>
                     <p className="max-w-md text-sm text-white/60">
-                      Create a custom highlight reel from this match. Our AI will extract key moments from the stream source.
+                      Create a custom highlight reel from this match. Our system will process the stream source to create highlights.
                     </p>
+                    {!canGenerateHighlight() && (
+                      <div className="flex items-center gap-2 mt-2 text-xs text-yellow-500">
+                        <AlertCircle size={12} />
+                        Highlights only available for live or finished matches
+                      </div>
+                    )}
                   </div>
                   
                   <button
                     onClick={downloadHighlight}
-                    disabled={downloading}
-                    className="px-8 py-4 bg-gradient-to-r from-green-600 to-green-700 rounded-xl font-bold flex items-center gap-3 hover:from-green-700 hover:to-green-800 disabled:opacity-50 transition-all group min-w-[220px] justify-center"
+                    disabled={downloading || !canGenerateHighlight()}
+                    className={`px-8 py-4 rounded-xl font-bold flex items-center gap-3 transition-all group min-w-[220px] justify-center ${
+                      !canGenerateHighlight() 
+                        ? 'bg-gray-600/50 cursor-not-allowed'
+                        : downloading
+                          ? 'bg-gradient-to-r from-yellow-600 to-yellow-700'
+                          : 'bg-gradient-to-r from-green-600 to-green-700 hover:from-green-700 hover:to-green-800'
+                    }`}
                   >
                     {downloading ? (
                       <>
                         <div className="w-5 h-5 border-2 rounded-full border-white/30 border-t-white animate-spin" />
                         <span className="text-sm font-bold">Processing...</span>
                       </>
+                    ) : !canGenerateHighlight() ? (
+                      <>
+                        <AlertCircle size={18} />
+                        <div className="text-left">
+                          <div className="text-sm font-bold">Not Available</div>
+                          <div className="text-xs opacity-80">Match not live/finished</div>
+                        </div>
+                      </>
                     ) : (
                       <>
                         <Sparkles size={18} />
                         <div className="text-left">
-                          <div className="text-sm font-bold">Generate AI Highlights</div>
-                          <div className="text-xs opacity-80">120 seconds • 720p HD</div>
+                          <div className="text-sm font-bold">Generate Highlights</div>
+                          <div className="text-xs opacity-80">120 seconds • Stream Source</div>
                         </div>
                       </>
                     )}
@@ -454,8 +565,9 @@ const HighlightPage = () => {
                     <div>
                       <div className="mb-1 text-sm font-bold">How it works</div>
                       <p className="text-sm text-white/60">
-                        Our system captures the stream you're watching and extracts key moments like goals, saves, and important plays. 
-                        The generated highlight will be available for 72 hours.
+                        Clicking "Generate Highlights" will call the Firebase function which processes the stream. 
+                        The system uses the stream URL from the match to create highlights. 
+                        Generated highlights are available for 72 hours.
                       </p>
                     </div>
                   </div>
@@ -502,7 +614,7 @@ const HighlightPage = () => {
               
               <div className="pt-6 mt-6 border-t border-white/10">
                 <div className="text-xs text-white/40">
-                  Highlight will be generated from: <span className="font-bold text-white/60">{streamSource || 'Primary Stream'}</span>
+                  Highlight source: <span className="font-bold text-white/60">{streamSource || 'Primary Stream'}</span>
                 </div>
               </div>
             </div>
@@ -536,6 +648,20 @@ const HighlightPage = () => {
                     <div className="text-xs text-white/60">Search on YouTube</div>
                   </div>
                 </button>
+
+                <button
+                  onClick={() => {
+                    const url = `https://us-central1-votexlive-3a8cb.cloudfunctions.net/getAvailableStreams?matchId=${id}`;
+                    window.open(url, '_blank');
+                  }}
+                  className="flex items-center w-full gap-3 p-3 transition-all border border-white/10 rounded-xl bg-black/30 hover:bg-black/50 hover:border-red-600/30"
+                >
+                  <ExternalLink size={18} className="text-red-500" />
+                  <div>
+                    <div className="text-sm font-bold">API: Available Streams</div>
+                    <div className="text-xs text-white/60">View raw stream data</div>
+                  </div>
+                </button>
               </div>
             </div>
 
@@ -544,7 +670,7 @@ const HighlightPage = () => {
               <div className="border border-white/10 rounded-[2rem] p-6 bg-gradient-to-br from-zinc-900/50 to-zinc-800/30">
                 <div className="flex items-center gap-2 mb-4">
                   <Sparkles size={18} className="text-yellow-500" />
-                  <h3 className="text-sm font-black tracking-wider uppercase">Generated Highlight</h3>
+                  <h3 className="text-sm font-black tracking-wider uppercase">Highlight Information</h3>
                 </div>
                 
                 <div className="space-y-3">
@@ -571,14 +697,23 @@ const HighlightPage = () => {
                       </span>
                     </div>
                   )}
+                  
+                  {highlight.expiresAt && (
+                    <div className="text-sm">
+                      <span className="text-white/60">Expires:</span>
+                      <span className="ml-2 font-bold">
+                        {new Date(highlight.expiresAt).toLocaleDateString()}
+                      </span>
+                    </div>
+                  )}
                 </div>
                 
                 {highlight.watchUrl && (
                   <button
                     onClick={() => window.open(highlight.watchUrl, '_blank')}
-                    className="w-full px-4 py-3 mt-6 text-sm font-bold transition-all bg-white/10 hover:bg-white/20 rounded-xl"
+                    className="w-full px-4 py-3 mt-6 text-sm font-bold transition-all bg-gradient-to-r from-red-600 to-red-700 hover:from-red-700 hover:to-red-800 rounded-xl"
                   >
-                    Watch Generated Highlight
+                    Watch Stream
                   </button>
                 )}
               </div>
@@ -589,8 +724,9 @@ const HighlightPage = () => {
         {/* Footer Note */}
         <div className="p-4 mt-8 border border-white/5 rounded-xl bg-black/20">
           <p className="text-xs leading-relaxed text-center text-white/60">
-            ⚡ <strong>Powered by Vortex Live AI</strong> • Highlights are generated from live streams in real-time • 
-            All streams are sourced from third-party providers • Quality may vary based on stream source
+            ⚡ <strong>Powered by Vortex Live AI</strong> • Highlights are generated from live streams • 
+            Streams sourced from third-party providers • Quality varies by source • 
+            <a href="https://vortexlive.online" className="mx-1 text-red-400 hover:underline">vortexlive.online</a>
           </p>
         </div>
       </div>
