@@ -40,19 +40,19 @@ const CONFIG = {
             SAVE: { color: 'blue', icon: '🧤', duration: 8 },
             HIGHLIGHT: { color: 'white', icon: '🎬', duration: 15 }
         },
-        // VIDEO DURATION CONFIG - MATCHING PYTHON CONFIG
+        // VIDEO DURATION CONFIG - UPDATED TO MATCH PYTHON (12 SECONDS/0.2 MINUTES)
         DURATION_CONFIG: {
-            defaultMinutes: 0.5,  // 30 seconds - minimal safe duration
+            defaultMinutes: 0.2,  // 12 seconds
             statusBasedAdjustment: {
-                NS: 0.5,   // Not started: minimal duration
-                '1H': 1.0, // First half: 1 minute
-                '2H': 1.5, // Second half: 1.5 minutes
-                HT: 0.5,   // Halftime: minimal duration
-                ET: 2.0,   // Extra time: 2 minutes
-                FT: 3.0,   // Finished: 3 minutes for highlights
-                LIVE: 1.0, // Live: 1 minute
-                P: 0.5,    // Penalty: minimal
-                SUSP: 0.5  // Suspended: minimal
+                NS: 0.2,   // Not started: 12 seconds
+                '1H': 0.2, // First half: 12 seconds
+                '2H': 0.2, // Second half: 12 seconds
+                HT: 0.2,   // Halftime: 12 seconds
+                ET: 0.2,   // Extra time: 12 seconds
+                FT: 0.2,   // Finished: 12 seconds
+                LIVE: 0.2, // Live: 12 seconds
+                P: 0.2,    // Penalty: 12 seconds
+                SUSP: 0.2  // Suspended: 12 seconds
             }
         }
     }
@@ -74,28 +74,15 @@ class Utils {
         if (!fs.existsSync(dirPath)) fs.mkdirSync(dirPath, { recursive: true });
     }
 
-    // VIDEO DURATION HELPER - MATCHES PYTHON LOGIC
+    // VIDEO DURATION HELPER - MATCHES PYTHON LOGIC (ALWAYS 12 SECONDS)
     static generateHighlightDuration(matchStatus = 'NS', isPriority = false) {
         try {
-            const config = CONFIG.VIDEO.DURATION_CONFIG;
-            
-            // Get base duration from status-based adjustment
-            let baseDuration = config.statusBasedAdjustment[matchStatus] || config.defaultMinutes;
-            
-            // For priority matches, add slight boost but keep minimal
-            if (isPriority) {
-                baseDuration = Math.min(baseDuration + 0.3, 5.0);  // Cap at 5 minutes
-            }
-            
-            // Ensure duration is at least the minimum safe duration
-            const duration = Math.max(baseDuration, config.defaultMinutes);
-            
-            // Round to 1 decimal place for cleaner display
-            return Math.round(duration * 10) / 10;
+            // ALWAYS RETURN 12 SECONDS (0.2 MINUTES) AS REQUESTED
+            return 0.2;
             
         } catch (error) {
             console.warn("Error generating duration, using default:", error);
-            return CONFIG.VIDEO.DURATION_CONFIG.defaultMinutes;
+            return 0.2; // Always 12 seconds
         }
     }
 }
@@ -127,7 +114,7 @@ class VideoProcessor {
                 '-reconnect_delay_max 5',
                 '-ss', timestamp,
                 '-i', `"${streamUrl}"`,
-                '-t', duration,
+                '-t', duration.toString(),
                 '-c:v libx264',
                 '-preset veryfast',
                 `-b:v ${CONFIG.VIDEO.BITRATE}`,
@@ -142,11 +129,12 @@ class VideoProcessor {
                 `"${outputPath}"`
             ].join(' ');
 
-            exec(cmd, { timeout: 180000 }, (error, stdout, stderr) => {
+            exec(cmd, { timeout: 150000 }, (error, stdout, stderr) => {
                 if (error) {
                     console.error("FFmpeg Download Error:", stderr);
                     reject(new Error(`Stream Capture Failed: ${error.message}`));
                 } else {
+                    console.log("FFmpeg download completed successfully");
                     resolve(outputPath);
                 }
             });
@@ -155,38 +143,52 @@ class VideoProcessor {
 
     async addMatchOverlay(inputPath, outputPath, metadata) {
         const { home, away, score, league, minute } = metadata;
-        const cleanHome = home.replace(/'/g, "");
-        const cleanAway = away.replace(/'/g, "");
+        const cleanHome = home.replace(/'/g, "").substring(0, 20);
+        const cleanAway = away.replace(/'/g, "").substring(0, 20);
 
         const filters = [
             `drawtext=text='${cleanHome}  ${score}  ${cleanAway}':fontsize=32:fontcolor=white:x=(w-text_w)/2:y=30:box=1:boxcolor=black@0.7:boxborderw=8`,
-            `drawtext=text='${league} | ${minute}':fontsize=18:fontcolor=yellow:x=(w-text_w)/2:y=75:box=1:boxcolor=black@0.5:boxborderw=5`,
+            `drawtext=text='${league.substring(0, 30)} | ${minute}':fontsize=18:fontcolor=yellow:x=(w-text_w)/2:y=75:box=1:boxcolor=black@0.5:boxborderw=5`,
             `drawtext=text='VORTEX LIVE':fontsize=16:fontcolor=white@0.4:x=w-text_w-15:y=h-text_h-15`
         ];
 
         return new Promise((resolve, reject) => {
             ffmpeg(inputPath)
                 .videoFilter(filters.join(','))
-                .on('end', () => resolve(outputPath))
-                .on('error', (err) => reject(err))
+                .on('end', () => {
+                    console.log("Overlay added successfully");
+                    resolve(outputPath);
+                })
+                .on('error', (err) => {
+                    console.error("FFmpeg overlay error:", err);
+                    reject(err);
+                })
                 .save(outputPath);
         });
     }
 
     async uploadToStorage(filePath, destination) {
-        await bucket.upload(filePath, { 
-            destination: `highlights/${destination}`, 
-            resumable: false,
-            metadata: { 
-                contentType: 'video/mp4',
-                cacheControl: 'public, max-age=31536000'
-            } 
-        });
-        
-        const file = bucket.file(`highlights/${destination}`);
-        await file.makePublic();
-        
-        return `https://storage.googleapis.com/${bucketName}/highlights/${destination}`;
+        try {
+            console.log(`Uploading to storage: ${destination}`);
+            await bucket.upload(filePath, { 
+                destination: `highlights/${destination}`, 
+                resumable: false,
+                metadata: { 
+                    contentType: 'video/mp4',
+                    cacheControl: 'public, max-age=31536000'
+                } 
+            });
+            
+            const file = bucket.file(`highlights/${destination}`);
+            await file.makePublic();
+            
+            const publicUrl = `https://storage.googleapis.com/${bucketName}/highlights/${destination}`;
+            console.log(`Upload complete: ${publicUrl}`);
+            return publicUrl;
+        } catch (error) {
+            console.error("Storage upload error:", error);
+            throw error;
+        }
     }
 
     async sendVideoToTelegram(videoUrl, metadata, eventType) {
@@ -204,22 +206,33 @@ class VideoProcessor {
             console.log("Highlight sent to Telegram successfully.");
         } catch (err) {
             console.error("Failed to send highlight to Telegram:", err.message);
+            // Don't throw - Telegram failure shouldn't break the process
         }
     }
 
     cleanupFiles(...files) {
-        files.forEach(f => { if (f && fs.existsSync(f)) fs.unlinkSync(f); });
+        files.forEach(f => { 
+            if (f && fs.existsSync(f)) {
+                try {
+                    fs.unlinkSync(f);
+                    console.log(`Cleaned up file: ${f}`);
+                } catch (err) {
+                    console.error(`Error cleaning up file ${f}:`, err);
+                }
+            }
+        });
     }
 }
 
 // ============================================================
-// MAIN HANDLER - UPDATED WITH VIDEO DURATION LOGIC
+// CORS HELPER FUNCTION
 // ============================================================
 
 const handleCors = (req, res) => {
     res.set('Access-Control-Allow-Origin', '*');
-    res.set('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
-    res.set('Access-Control-Allow-Headers', 'Content-Type');
+    res.set('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
+    res.set('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-Requested-With');
+    
     if (req.method === 'OPTIONS') {
         res.status(204).send('');
         return true;
@@ -227,12 +240,49 @@ const handleCors = (req, res) => {
     return false;
 };
 
+// ============================================================
+// STREAM VALIDATION HELPER
+// ============================================================
+
+const getValidStreamUrl = (matchData) => {
+    if (!matchData) return null;
+    
+    // Check all stream URLs for valid .m3u8 links
+    const streamUrls = [
+        matchData.streamUrl1,
+        matchData.streamUrl2,
+        matchData.streamUrl3
+    ];
+    
+    for (const streamUrl of streamUrls) {
+        if (streamUrl) {
+            try {
+                const decodedUrl = Utils.decode64(streamUrl);
+                if (decodedUrl.includes('.m3u8')) {
+                    console.log(`Found valid .m3u8 stream: ${decodedUrl.substring(0, 50)}...`);
+                    return decodedUrl;
+                }
+            } catch (error) {
+                console.warn(`Error decoding stream URL: ${error.message}`);
+            }
+        }
+    }
+    
+    return null;
+};
+
+// ============================================================
+// MAIN HANDLER - UPDATED WITH VIDEO DURATION LOGIC
+// ============================================================
+
 exports.generateHighlight = functions.runWith({ 
-    timeoutSeconds: 300, 
+    timeoutSeconds: 180,  // Reduced from 300 to 180 seconds
     memory: '2GB' 
 }).https.onRequest(async (req, res) => {
     if (handleCors(req, res)) return;
 
+    console.log("Highlight generation request received:", req.body);
+    
     const rawVideo = path.join(os.tmpdir(), `raw_${uuidv4()}.mp4`);
     const finalVideo = path.join(os.tmpdir(), `final_${uuidv4()}.mp4`);
     const processor = new VideoProcessor();
@@ -240,24 +290,52 @@ exports.generateHighlight = functions.runWith({
     try {
         const { matchId, eventType = 'goal', timestamp = '00:00:00' } = req.body;
         
-        if (!matchId) return res.status(400).json({ success: false, error: 'Missing matchId' });
+        if (!matchId) {
+            return res.status(400).json({ 
+                success: false, 
+                error: 'Missing matchId parameter' 
+            });
+        }
 
         const matchDoc = await db.collection("matches").doc(matchId).get();
-        if (!matchDoc.exists) throw new Error('Match not found in database');
+        if (!matchDoc.exists) {
+            return res.status(404).json({ 
+                success: false, 
+                error: 'Match not found in database' 
+            });
+        }
 
         const matchData = matchDoc.data();
         
-        // USE VIDEO DURATION FROM DATABASE OR CALCULATE IT
-        let duration = matchData.videoDuration || 12; // Default to 12 seconds if not set
+        // USE VIDEO DURATION FROM DATABASE OR USE 12 SECONDS
+        let duration = 12; // Default to 12 seconds as requested
         
-        // Use automated streams for recording
-        let streamUrl = Utils.decode64(matchData.streamUrl1 || matchData.streamUrl2 || matchData.streamUrl3);
+        // Try to get video duration from database, but cap at 12 seconds
+        if (matchData.videoDuration) {
+            duration = Math.min(matchData.videoDuration, 12);
+        }
+        
+        // Convert minutes to seconds if needed
+        if (duration < 5) { // Assuming it's in minutes if < 5
+            duration = duration * 60; // Convert minutes to seconds
+        }
+        
+        // Ensure duration is between 1 and 12 seconds
+        duration = Math.max(1, Math.min(duration, 12));
+        
+        console.log(`Using duration: ${duration} seconds for match ${matchId}`);
 
-        if (!streamUrl || !streamUrl.includes('.m3u8')) {
-            throw new Error('Highlight Capture requires a direct .m3u8 stream. Manual iframes cannot be recorded.');
+        // Get valid stream URL
+        const streamUrl = getValidStreamUrl(matchData);
+
+        if (!streamUrl) {
+            return res.status(400).json({ 
+                success: false, 
+                error: 'No valid .m3u8 stream URL found for this match. Please ensure the match has working stream links.' 
+            });
         }
 
-        console.log(`Starting highlight for ${matchData.home?.name} vs ${matchData.away?.name}, duration: ${duration} minutes`);
+        console.log(`Starting highlight for ${matchData.home?.name} vs ${matchData.away?.name}, duration: ${duration} seconds`);
 
         const meta = {
             home: matchData.home?.name || 'Home',
@@ -267,46 +345,247 @@ exports.generateHighlight = functions.runWith({
             minute: matchData.minute || "LIVE"
         };
 
+        console.log("Step 1: Downloading clip...");
         await processor.downloadClip(streamUrl, timestamp, duration, rawVideo);
 
+        console.log("Step 2: Adding overlay...");
         await processor.addMatchOverlay(rawVideo, finalVideo, meta);
 
+        console.log("Step 3: Uploading to storage...");
         const videoUrl = await processor.uploadToStorage(finalVideo, `${matchId}_${Date.now()}.mp4`);
         
+        console.log("Step 4: Saving to database...");
         // Update database with highlight entry
         const highlightId = `hl_${uuidv4().substring(0,8)}`;
         await db.collection("videoHighlights").doc(highlightId).set({
             matchId,
             videoUrl,
             eventType,
-            duration: duration, // Store the duration used
+            duration: duration,
             generatedAt: admin.firestore.FieldValue.serverTimestamp(),
             metadata: { 
                 home: matchData.home?.name, 
                 away: matchData.away?.name,
                 status: matchData.status,
-                isPriority: matchData.isPriority
+                isPriority: matchData.isPriority,
+                league: matchData.league
             }
         });
 
-        // SEND TO TELEGRAM CHANNEL
-        await processor.sendVideoToTelegram(videoUrl, meta, eventType);
+        console.log("Step 5: Sending to Telegram...");
+        // SEND TO TELEGRAM CHANNEL (non-blocking)
+        processor.sendVideoToTelegram(videoUrl, meta, eventType).catch(err => {
+            console.error("Telegram sending failed (non-critical):", err.message);
+        });
 
-        return res.status(200).json({ success: true, videoUrl, highlightId, duration });
+        console.log("Highlight generation completed successfully");
+        return res.status(200).json({ 
+            success: true, 
+            videoUrl, 
+            highlightId, 
+            duration,
+            message: `Highlight generated successfully (${duration} seconds)` 
+        });
 
     } catch (error) {
         console.error("Highlight Process Failed:", error);
-        return res.status(500).json({ success: false, error: error.message });
+        return res.status(500).json({ 
+            success: false, 
+            error: error.message,
+            details: 'Please ensure: 1) Match has valid .m3u8 stream links, 2) Stream is currently live, 3) Firebase Storage is properly configured'
+        });
     } finally {
         processor.cleanupFiles(rawVideo, finalVideo);
     }
 });
 
+// ============================================================
+// BACKWARD COMPATIBILITY - OLD ENDPOINT NAME
+// ============================================================
+
+exports.generateVideoHighlight = exports.generateHighlight;
+
+// ============================================================
+// GET MATCH HIGHLIGHTS FUNCTION
+// ============================================================
+
 exports.getMatchHighlights = functions.https.onRequest(async (req, res) => {
-    handleCors(req, res);
-    const { matchId } = req.query;
-    const snap = await db.collection("videoHighlights").where("matchId", "==", matchId).orderBy("generatedAt", "desc").get();
-    res.json({ success: true, highlights: snap.docs.map(d => d.data()) });
+    if (handleCors(req, res)) return;
+    
+    try {
+        const { matchId } = req.query;
+        
+        if (!matchId) {
+            return res.status(400).json({ 
+                success: false, 
+                error: 'Missing matchId parameter' 
+            });
+        }
+        
+        const snap = await db.collection("videoHighlights")
+            .where("matchId", "==", matchId)
+            .orderBy("generatedAt", "desc")
+            .get();
+            
+        const highlights = snap.docs.map(doc => ({
+            id: doc.id,
+            ...doc.data()
+        }));
+        
+        return res.status(200).json({ 
+            success: true, 
+            highlights: highlights 
+        });
+        
+    } catch (error) {
+        console.error("Error getting match highlights:", error);
+        return res.status(500).json({ 
+            success: false, 
+            error: error.message 
+        });
+    }
+});
+
+// ============================================================
+// GET ALL HIGHLIGHTS FUNCTION
+// ============================================================
+
+exports.getAllVideoHighlights = functions.https.onRequest(async (req, res) => {
+    if (handleCors(req, res)) return;
+    
+    try {
+        const limit = parseInt(req.query.limit) || 20;
+        
+        const snap = await db.collection("videoHighlights")
+            .orderBy("generatedAt", "desc")
+            .limit(limit)
+            .get();
+            
+        const highlights = snap.docs.map(doc => ({
+            id: doc.id,
+            ...doc.data()
+        }));
+        
+        return res.status(200).json({ 
+            success: true, 
+            highlights: highlights 
+        });
+        
+    } catch (error) {
+        console.error("Error getting all highlights:", error);
+        return res.status(500).json({ 
+            success: false, 
+            error: error.message 
+        });
+    }
+});
+
+// ============================================================
+// GET HIGHLIGHT BY ID FUNCTION
+// ============================================================
+
+exports.getVideoHighlightById = functions.https.onRequest(async (req, res) => {
+    if (handleCors(req, res)) return;
+    
+    try {
+        const { highlightId } = req.query;
+        
+        if (!highlightId) {
+            return res.status(400).json({ 
+                success: false, 
+                error: 'Missing highlightId parameter' 
+            });
+        }
+        
+        const doc = await db.collection("videoHighlights").doc(highlightId).get();
+        
+        if (!doc.exists) {
+            return res.status(404).json({ 
+                success: false, 
+                error: 'Highlight not found' 
+            });
+        }
+        
+        return res.status(200).json({ 
+            success: true, 
+            highlight: {
+                id: doc.id,
+                ...doc.data()
+            }
+        });
+        
+    } catch (error) {
+        console.error("Error getting highlight by ID:", error);
+        return res.status(500).json({ 
+            success: false, 
+            error: error.message 
+        });
+    }
+});
+
+// ============================================================
+// DELETE HIGHLIGHT FUNCTION
+// ============================================================
+
+exports.deleteVideoHighlight = functions.https.onRequest(async (req, res) => {
+    if (handleCors(req, res)) return;
+    
+    try {
+        const { highlightId } = req.body;
+        
+        if (!highlightId) {
+            return res.status(400).json({ 
+                success: false, 
+                error: 'Missing highlightId parameter' 
+            });
+        }
+        
+        await db.collection("videoHighlights").doc(highlightId).delete();
+        
+        return res.status(200).json({ 
+            success: true, 
+            message: 'Highlight deleted successfully' 
+        });
+        
+    } catch (error) {
+        console.error("Error deleting highlight:", error);
+        return res.status(500).json({ 
+            success: false, 
+            error: error.message 
+        });
+    }
+});
+
+// ============================================================
+// GET VIDEO HIGHLIGHT STATS FUNCTION
+// ============================================================
+
+exports.getVideoHighlightStats = functions.https.onRequest(async (req, res) => {
+    if (handleCors(req, res)) return;
+    
+    try {
+        const highlightsSnap = await db.collection("videoHighlights").get();
+        const matchesSnap = await db.collection("matches").get();
+        
+        const stats = {
+            totalHighlights: highlightsSnap.size,
+            totalMatches: matchesSnap.size,
+            recentHighlights: highlightsSnap.size,
+            defaultDuration: 12 // 12 seconds as requested
+        };
+        
+        return res.status(200).json({ 
+            success: true, 
+            stats: stats 
+        });
+        
+    } catch (error) {
+        console.error("Error getting highlight stats:", error);
+        return res.status(500).json({ 
+            success: false, 
+            error: error.message 
+        });
+    }
 });
 
 // ============================================================
@@ -326,8 +605,8 @@ exports.updateMatchDurations = functions.https.onRequest(async (req, res) => {
             const status = matchData.status || 'NS';
             const isPriority = matchData.isPriority || false;
             
-            // Generate video duration using the same logic
-            const videoDuration = Utils.generateHighlightDuration(status, isPriority);
+            // Generate video duration using the same logic (always 12 seconds)
+            const videoDuration = 0.2; // Always 12 seconds
             
             // Only update if different
             if (matchData.videoDuration !== videoDuration) {
@@ -352,5 +631,44 @@ exports.updateMatchDurations = functions.https.onRequest(async (req, res) => {
     } catch (error) {
         console.error("Error updating match durations:", error);
         return res.status(500).json({ success: false, error: error.message });
+    }
+});
+
+// ============================================================
+// HEALTH CHECK ENDPOINT
+// ============================================================
+
+exports.healthCheck = functions.https.onRequest(async (req, res) => {
+    if (handleCors(req, res)) return;
+    
+    try {
+        // Check Firebase connection
+        const testDoc = await db.collection("system").doc("health_check").get();
+        
+        // Check Storage connection
+        const [files] = await bucket.getFiles({ maxResults: 1 });
+        
+        return res.status(200).json({
+            success: true,
+            status: "healthy",
+            timestamp: new Date().toISOString(),
+            services: {
+                firestore: "connected",
+                storage: "connected",
+                ffmpeg: "available"
+            },
+            config: {
+                defaultDuration: 12,
+                timeoutSeconds: 180
+            }
+        });
+        
+    } catch (error) {
+        console.error("Health check failed:", error);
+        return res.status(500).json({
+            success: false,
+            status: "unhealthy",
+            error: error.message
+        });
     }
 });
