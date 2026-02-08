@@ -1,7 +1,7 @@
 {
   "name": "vortex-live",
   "private": true,
-  "version": "2.6.4",
+  "version": "3.0.0",
   "type": "module",
   "config": {
     "strict-peer-dependencies": false
@@ -15,7 +15,9 @@
     "preview": "vite preview --port 3001 --host",
     "predeploy": "npm run build:clean",
     "deploy": "npm run build:clean && firebase deploy --only hosting",
-    "deploy:functions": "firebase deploy --only functions",
+    "deploy:functions": "cd functions && npm install && firebase deploy --only functions",
+    "deploy:video-functions": "cd functions && npm install @google-cloud/storage canvas && firebase deploy --only functions:generateVideoHighlight,getMatchVideoHighlights,getAllVideoHighlights,getVideoHighlightById,deleteVideoHighlight,getVideoHighlightStats",
+    "deploy:all-functions": "npm run deploy:functions && echo '✅ All functions deployed'",
     "deploy:rules": "firebase deploy --only firestore:rules",
     "deploy:all": "firebase deploy",
     "deploy:force": "npm run build:clean && firebase deploy --only hosting --force",
@@ -32,12 +34,13 @@
     "serve:prod": "npm run build:clean && npm run serve",
     "test:build": "npm run build:clean && echo ✅ Build successful || echo ❌ Build failed",
     "test:serve": "npm run build:clean && npm run serve",
-    "postinstall": "echo 'Vortex Live v2.6.4 - Dependencies installed'",
-    "postbuild": "echo 'Build completed for v2.6.4'",
-    "version": "echo Vortex Live v2.6.4",
+    "postinstall": "echo 'Vortex Live v3.0.0 - Video Highlights Ready'",
+    "postbuild": "echo 'Build completed for v3.0.0 with video highlights'",
+    "version": "echo Vortex Live v3.0.0",
     "update:cache": "firebase deploy --only hosting --force && echo ⚡ Cache busted!",
     "health": "curl -s https://us-central1-votexlive-3a8cb.cloudfunctions.net/healthCheck || echo ❌ Health check failed",
     "logs": "firebase functions:log",
+    "logs:video": "firebase functions:log --only generateVideoHighlight,getMatchVideoHighlights",
     "logs:bot": "firebase functions:log --only vortexLiveBot",
     "logs:auto": "firebase functions:log --only autoLiveDetector",
     "purge:cdn": "echo ⚡ Manually clear browser cache with Ctrl+Shift+R",
@@ -45,7 +48,11 @@
     "vercel-build": "npm run build",
     "vercel-dev": "npm run dev",
     "vercel-install": "npm install --legacy-peer-deps",
-    "deploy:firebase-now": "npm run build:clean && firebase deploy --only hosting --force && echo ✅ Firebase deployed! Open: https://votexlive-3a8cb.web.app"
+    "deploy:firebase-now": "npm run build:clean && firebase deploy --only hosting --force && echo ✅ Firebase deployed! Open: https://votexlive-3a8cb.web.app",
+    "generate-watermark": "cd functions && npm run generate-watermark",
+    "install:functions": "cd functions && npm install",
+    "update:functions": "cd functions && npm update",
+    "deploy:highlights": "npm run deploy:video-functions && echo '✅ Video highlight functions deployed'"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.89.0",
