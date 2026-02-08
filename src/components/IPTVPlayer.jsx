@@ -2,7 +2,7 @@
 import React, { useEffect, useRef, useState } from 'react';
 import Hls from 'hls.js';
 import { AlertTriangle, Loader2 } from 'lucide-react';
-import UltraPlayer from './UltraPlayer'; // Ensure this path is correct
+import UltraPlayer from './UltraPlayer';
 
 const IPTVPlayer = ({ url }) => {
   const videoRef = useRef(null);
@@ -11,7 +11,6 @@ const IPTVPlayer = ({ url }) => {
   useEffect(() => {
     if (!url) return;
 
-    // Detect if the URL is a direct stream file or a website player
     const isStreamFile = url.toLowerCase().includes('.m3u8') || 
                          url.toLowerCase().includes('.mp4') || 
                          url.toLowerCase().includes('.ts');
@@ -44,7 +43,7 @@ const IPTVPlayer = ({ url }) => {
     return (
       <div className="flex flex-col items-center justify-center w-full h-full gap-4 text-red-500 bg-zinc-950">
         <AlertTriangle size={48} />
-        <p className="text-xs font-black uppercase tracking-widest">Stream Source Offline</p>
+        <p className="text-xs font-black tracking-widest uppercase">Stream Source Offline</p>
       </div>
     );
   }

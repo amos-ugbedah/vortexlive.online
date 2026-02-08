@@ -20,7 +20,7 @@ const bucketName = 'vortex-live-3a8cb.appspot.com';
 const bucket = storage.bucket(bucketName);
 
 // ============================================================
-// CONFIGURATION
+// CONFIGURATION - UPDATED FOR 480P BANDWIDTH OPTIMIZATION
 // ============================================================
 
 const CONFIG = {
@@ -31,8 +31,10 @@ const CONFIG = {
     VIDEO: {
         TEMP_DIR: path.join(os.tmpdir(), 'vortex_videos'),
         RESOLUTIONS: { '360p': '640x360', '480p': '854x480', '720p': '1280x720', '1080p': '1920x1080' },
-        DEFAULT_RESOLUTION: '720p',
-        FPS: 30,
+        DEFAULT_RESOLUTION: '480p', // STRICT 480P ENABLED
+        BITRATE: '800k',            // LOW BITRATE FOR BANDWIDTH SAVINGS
+        AUDIO_BITRATE: '64k',       // OPTIMIZED AUDIO
+        FPS: 25,                    // SLIGHTLY REDUCED FPS FOR SMOOTH COMPRESSION
         EVENT_TYPES: {
             GOAL: { color: 'red', icon: '⚽', duration: 12 },
             SAVE: { color: 'blue', icon: '🧤', duration: 8 },
@@ -59,7 +61,7 @@ class Utils {
 }
 
 // ============================================================
-// IMPROVED VIDEO PROCESSOR (Kept your structure)
+// IMPROVED VIDEO PROCESSOR - WITH 480P ENFORCEMENT
 // ============================================================
 
 class VideoProcessor {
@@ -73,8 +75,10 @@ class VideoProcessor {
             const userAgent = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/121.0.0.0 Safari/537.36";
             const urlObj = new URL(streamUrl);
             const referer = `${urlObj.protocol}//${urlObj.hostname}/`;
+            
+            // Apply strict resolution and bitrate parameters to the command
+            const res = CONFIG.VIDEO.RESOLUTIONS[CONFIG.VIDEO.DEFAULT_RESOLUTION];
 
-            // OPTIMIZATION: Keep your exact workflow but added reconnection flags and faststart
             const cmd = [
                 'ffmpeg',
                 '-headers', `"${['User-Agent: ' + userAgent, 'Referer: ' + referer].join('\r\n')}"`,
@@ -86,11 +90,13 @@ class VideoProcessor {
                 '-i', `"${streamUrl}"`,
                 '-t', duration,
                 '-c:v libx264',
-                '-preset veryfast', // Faster for Cloud Functions
-                '-crf 24', // Balanced quality
+                '-preset veryfast',
+                `-b:v ${CONFIG.VIDEO.BITRATE}`, // Bitrate limit
+                '-crf 26',                      // Optimized for lower file size
                 '-c:a aac',
-                '-b:a 128k',
-                '-vf "scale=1280:720:force_original_aspect_ratio=decrease,pad=1280:720:(ow-iw)/2:(oh-ih)/2"',
+                `-b:a ${CONFIG.VIDEO.AUDIO_BITRATE}`, // Audio limit
+                `-vf "scale=${res}:force_original_aspect_ratio=decrease,pad=${res}:(ow-iw)/2:(oh-ih)/2"`, // Force 480p
+                `-r ${CONFIG.VIDEO.FPS}`,
                 '-movflags +faststart',
                 '-f mp4',
                 '-y',
@@ -113,11 +119,11 @@ class VideoProcessor {
         const cleanHome = home.replace(/'/g, "");
         const cleanAway = away.replace(/'/g, "");
 
-        // Filters preserved exactly as you designed
+        // Adjusted font sizes for 480p resolution
         const filters = [
-            `drawtext=text='${cleanHome}  ${score}  ${cleanAway}':fontsize=48:fontcolor=white:x=(w-text_w)/2:y=40:box=1:boxcolor=black@0.7:boxborderw=10`,
-            `drawtext=text='${league} | ${minute}':fontsize=24:fontcolor=yellow:x=(w-text_w)/2:y=100:box=1:boxcolor=black@0.5:boxborderw=5`,
-            `drawtext=text='VORTEX LIVE':fontsize=20:fontcolor=white@0.4:x=w-text_w-20:y=h-text_h-20`
+            `drawtext=text='${cleanHome}  ${score}  ${cleanAway}':fontsize=32:fontcolor=white:x=(w-text_w)/2:y=30:box=1:boxcolor=black@0.7:boxborderw=8`,
+            `drawtext=text='${league} | ${minute}':fontsize=18:fontcolor=yellow:x=(w-text_w)/2:y=75:box=1:boxcolor=black@0.5:boxborderw=5`,
+            `drawtext=text='VORTEX LIVE':fontsize=16:fontcolor=white@0.4:x=w-text_w-15:y=h-text_h-15`
         ];
 
         return new Promise((resolve, reject) => {
@@ -143,6 +149,24 @@ class VideoProcessor {
         await file.makePublic();
         
         return `https://storage.googleapis.com/${bucketName}/highlights/${destination}`;
+    }
+
+    async sendVideoToTelegram(videoUrl, metadata, eventType) {
+        try {
+            const { home, away, score, league } = metadata;
+            const caption = `🎥 *NEW HIGHLIGHT* ${CONFIG.VIDEO.EVENT_TYPES[eventType.toUpperCase()]?.icon || '🎬'}\n\n🏆 ${league}\n⚽ ${home} ${score} ${away}\n\n⚡ *Vortex Live Exclusives*`;
+            
+            const url = `https://api.telegram.org/bot${CONFIG.TELEGRAM.TOKEN}/sendVideo`;
+            await axios.post(url, {
+                chat_id: CONFIG.TELEGRAM.CHAT,
+                video: videoUrl,
+                caption: caption,
+                parse_mode: 'Markdown'
+            });
+            console.log("Highlight sent to Telegram successfully.");
+        } catch (err) {
+            console.error("Failed to send highlight to Telegram:", err.message);
+        }
     }
 
     cleanupFiles(...files) {
@@ -184,30 +208,31 @@ exports.generateHighlight = functions.runWith({
         if (!matchDoc.exists) throw new Error('Match not found in database');
 
         const matchData = matchDoc.data();
-        let streamUrl = Utils.decode64(matchData.streamUrl1 || matchData.streamUrl2);
+
+        // Use automated streams for recording
+        let streamUrl = Utils.decode64(matchData.streamUrl1 || matchData.streamUrl2 || matchData.streamUrl3);
 
         if (!streamUrl || !streamUrl.includes('.m3u8')) {
-            throw new Error('No valid .m3u8 stream source found.');
+            throw new Error('Highlight Capture requires a direct .m3u8 stream. Manual iframes cannot be recorded.');
         }
 
         console.log(`Starting highlight for ${matchData.home?.name} vs ${matchData.away?.name}`);
 
-        // Step 1: Download
-        await processor.downloadClip(streamUrl, timestamp, duration, rawVideo);
-
-        // Step 2: Overlay
-        await processor.addMatchOverlay(rawVideo, finalVideo, {
+        const meta = {
             home: matchData.home?.name || 'Home',
             away: matchData.away?.name || 'Away',
             score: `${matchData.home?.score || 0}-${matchData.away?.score || 0}`,
             league: matchData.league || 'Live Match',
             minute: matchData.minute || "LIVE"
-        });
+        };
 
-        // Step 3: Upload
+        await processor.downloadClip(streamUrl, timestamp, duration, rawVideo);
+
+        await processor.addMatchOverlay(rawVideo, finalVideo, meta);
+
         const videoUrl = await processor.uploadToStorage(finalVideo, `${matchId}_${Date.now()}.mp4`);
         
-        // Step 4: Record
+        // Update database with highlight entry
         const highlightId = `hl_${uuidv4().substring(0,8)}`;
         await db.collection("videoHighlights").doc(highlightId).set({
             matchId,
@@ -216,6 +241,9 @@ exports.generateHighlight = functions.runWith({
             generatedAt: admin.firestore.FieldValue.serverTimestamp(),
             metadata: { home: matchData.home?.name, away: matchData.away?.name }
         });
+
+        // SEND TO TELEGRAM CHANNEL
+        await processor.sendVideoToTelegram(videoUrl, meta, eventType);
 
         return res.status(200).json({ success: true, videoUrl, highlightId });
 
