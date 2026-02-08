@@ -233,6 +233,8 @@ export const normalizeMatch = (data, id) => {
             lastStatus: data.lastStatus || normalizeStatus(data.status),
             hasVideoHighlights: !!data.hasVideoHighlights,
             videoHighlightCount: Number(data.videoHighlightCount || 0),
+            // ADDED: Video duration from database or default to 12 seconds
+            videoDuration: data.videoDuration || 0.2,
             _rawData: data
         };
     } catch (error) {
@@ -242,7 +244,7 @@ export const normalizeMatch = (data, id) => {
 };
 
 // ============================================================
-// VIDEO HIGHLIGHT FUNCTIONS (UPDATED FOR MP4)
+// VIDEO HIGHLIGHT FUNCTIONS (UPDATED FOR 12-SECOND DURATION)
 // ============================================================
 
 const getAPIBase = () => {
@@ -275,14 +277,14 @@ export const canGenerateVideoHighlight = (match) => {
   return (isMatchLive(match) || isMatchFinished(match)) && validStatuses.includes(status);
 };
 
-export const generateVideoHighlightTitle = (match, duration = 15, eventType = 'goal') => {
+export const generateVideoHighlightTitle = (match, duration = 12, eventType = 'goal') => {
   if (!match || !match.home || !match.away) return 'Vortex Video Highlight';
   const score = `${match.home.score || 0}-${match.away.score || 0}`;
   const eventLabels = { 'goal': 'Goal', 'save': 'Great Save', 'foul': 'Foul', 'card': 'Card', 'chance': 'Chance', 'custom': 'Highlight' };
   return `${eventLabels[eventType] || 'Highlight'}: ${match.home.name} ${score} ${match.away.name} (${duration}s) - Vortex Live`;
 };
 
-export const generateVideoFilename = (match, duration = 15, eventType = 'goal') => {
+export const generateVideoFilename = (match, duration = 12, eventType = 'goal') => {
   if (!match || !match.home || !match.away) return `vortex_video_${Date.now()}.mp4`;
   const home = String(match.home.name || 'Home').replace(/[^a-zA-Z0-9]/g, '_').substring(0, 20);
   const away = String(match.away.name || 'Away').replace(/[^a-zA-Z0-9]/g, '_').substring(0, 20);
@@ -291,12 +293,18 @@ export const generateVideoFilename = (match, duration = 15, eventType = 'goal') 
 
 export const generateVideoHighlight = async (matchId, options = {}) => {
   try {
+    // Use 12 seconds as default duration
+    const defaultOptions = {
+      duration: 12, // 12 seconds as requested
+      vortexEngine: 'v3-flash'
+    };
+    
     const response = await fetch(VIDEO_HIGHLIGHT_API.generate, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ 
           matchId, 
-          vortexEngine: 'v3-flash',
+          ...defaultOptions,
           ...options 
       })
     });
@@ -352,14 +360,12 @@ export const getVideoHighlightStats = async () => {
 };
 
 // ============================================================
-// VIDEO UI & FORMATTING HELPERS
+// VIDEO UI & FORMATTING HELPERS (UPDATED FOR 12 SECONDS)
 // ============================================================
 
 export const getVideoDurationOptions = () => [
-  { label: '8 SEC', value: 8, description: 'Short clip for stories' },
-  { label: '15 SEC', value: 15, description: 'Standard highlight' },
-  { label: '30 SEC', value: 30, description: 'Extended highlight' },
-  { label: '45 SEC', value: 45, description: 'Detailed sequence' }
+  { label: '12 SEC', value: 12, description: 'Max duration for highlights' },
+  { label: '8 SEC', value: 8, description: 'Short clip for stories' }
 ];
 
 export const VIDEO_EVENT_TYPES = [
@@ -387,13 +393,14 @@ export const formatVideoFileSize = (bytes) => {
 };
 
 export const estimateVideoFileSize = (durationSeconds, quality = 'hd') => {
-  const bitrates = { 'sd': 1000, 'hd': 2500, 'fhd': 5000 };
-  const bytes = ((bitrates[quality] || 2500) * 1000 * durationSeconds) / 8;
+  // For 12 seconds, adjust estimates
+  const bitrates = { 'sd': 800, 'hd': 1500, 'fhd': 3000 };
+  const bytes = ((bitrates[quality] || 1500) * 1000 * durationSeconds) / 8;
   return formatVideoFileSize(bytes);
 };
 
 export const getVideoFeatures = () => [
-  'Slow motion effects (normal → slow → super slow)',
+  '12-second max duration for efficiency',
   'Dynamic overlays (score, teams, league, minute)',
   'Vortex Live watermark branding',
   'MP4 format (H.264) for social media',
@@ -401,7 +408,7 @@ export const getVideoFeatures = () => [
 ];
 
 export const getVideoProcessingStages = () => [
-  { stage: 0, label: 'Downloading stream segment...', progress: 30 },
+  { stage: 0, label: 'Downloading 12-second stream segment...', progress: 30 },
   { stage: 1, label: 'Applying slow motion effects...', progress: 60 },
   { stage: 2, label: 'Adding overlays and graphics...', progress: 80 },
   { stage: 3, label: 'Uploading to cloud storage...', progress: 95 },
@@ -415,7 +422,7 @@ export const calculateVideoTimestamp = (minute) => {
 
 export const shareVideoToSocial = (videoUrl, match, platform = 'whatsapp') => {
   if (!videoUrl || !match) return;
-  const message = `🎥 Watch this highlight from ${match.home.name} vs ${match.away.name} on Vortex Live!`;
+  const message = `🎥 Watch this 12-second highlight from ${match.home.name} vs ${match.away.name} on Vortex Live!`;
   const platforms = {
     whatsapp: `https://api.whatsapp.com/send?text=${encodeURIComponent(message + ' ' + videoUrl)}`,
     telegram: `https://t.me/share/url?url=${encodeURIComponent(videoUrl)}&text=${encodeURIComponent(message)}`,
@@ -426,7 +433,7 @@ export const shareVideoToSocial = (videoUrl, match, platform = 'whatsapp') => {
 };
 
 export const getVideoProgressLabel = (progress) => {
-    if (progress < 30) return 'Downloading stream segment...';
+    if (progress < 30) return 'Downloading 12-second stream segment...';
     if (progress < 60) return 'Applying slow motion effects...';
     if (progress < 90) return 'Adding overlays and graphics...';
     if (progress < 100) return 'Uploading to cloud storage...';
