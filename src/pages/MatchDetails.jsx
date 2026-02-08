@@ -11,7 +11,7 @@ import {
 } from 'lucide-react';
 import IPTVPlayer from '../components/IPTVPlayer';
 import UltraPlayer from '../components/UltraPlayer';
-import VideoHighlightGenerator from '../components/VideoHighlightGenerator'; // NEW COMPONENT
+import VideoHighlightGenerator from '../components/VideoHighlightGenerator'; 
 import { 
   normalizeMatch, isMatchLive, isMatchUpcoming, 
   isMatchFinished, getMatchStatusText, formatAIPick,
@@ -61,7 +61,18 @@ const MatchDetails = () => {
   const estMinute = calculateEstimatedMinute(match);
   const canGenerateVideo = match && canGenerateVideoHighlight(match);
 
-  // SAFE ACTIONS (Bypass Smartlink)
+  // NEW: Secure Download Logic for Watermarked Clips
+  const handleDownloadHighlight = (videoUrl) => {
+    if (!videoUrl) return;
+    const link = document.createElement('a');
+    link.href = videoUrl;
+    link.setAttribute('download', `Vortex_Highlight_${match.id}.mp4`);
+    link.setAttribute('target', '_blank');
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
+
   const safeRefresh = (e) => { e.stopPropagation(); setRefreshKey(k => k + 1); };
   const safeServerChange = (e, srv) => { e.stopPropagation(); setActiveServer(srv); };
 
@@ -146,16 +157,16 @@ const MatchDetails = () => {
               </div>
             )}
             
-            {/* Video Highlight Generator - ALWAYS SHOW FOR LIVE/FINISHED MATCHES */}
+            {/* Video Highlight Generator */}
             {canGenerateVideo && (
               <div className="bg-gradient-to-br from-zinc-900/50 to-zinc-800/30 border border-white/10 rounded-[2rem] p-6 backdrop-blur-sm">
                 <div className="flex items-center justify-between mb-6">
                   <div className="flex items-center gap-3">
                     <Film className="text-red-500" size={24} />
-                    <h3 className="text-sm font-black tracking-widest uppercase">Video Highlights</h3>
+                    <h3 className="text-sm font-black tracking-widest uppercase">Top Highlights</h3>
                     {match.videoHighlightCount > 0 && (
                       <span className="px-2 py-1 text-[10px] font-black uppercase bg-green-600/20 border border-green-600/30 rounded-full">
-                        {match.videoHighlightCount} Generated
+                        {match.videoHighlightCount} Ready
                       </span>
                     )}
                   </div>
@@ -163,7 +174,7 @@ const MatchDetails = () => {
                     onClick={() => setShowVideoHighlights(!showVideoHighlights)}
                     className="flex items-center gap-2 px-4 py-2 text-[10px] font-black uppercase border border-white/10 rounded-xl bg-white/5 hover:bg-white/10"
                   >
-                    {showVideoHighlights ? 'Hide' : 'Show'}
+                    {showVideoHighlights ? 'Hide Panel' : 'Generate / Download'}
                     <Video size={14} />
                   </button>
                 </div>
@@ -175,26 +186,18 @@ const MatchDetails = () => {
                     <div className="inline-flex items-center justify-center w-16 h-16 mb-4 rounded-full bg-gradient-to-br from-red-600/20 to-red-800/20">
                       <Play size={24} className="text-red-500" />
                     </div>
-                    <h4 className="mb-2 text-lg font-black">Generate Video Highlights</h4>
-                    <p className="mb-6 text-sm text-white/60">
-                      Create professional MP4 video clips with slow motion, overlays, and Vortex Live branding
+                    <h4 className="mb-2 text-lg font-black tracking-tighter uppercase">Pro Highlight Engine</h4>
+                    <p className="max-w-sm mx-auto mb-6 text-sm text-white/60">
+                      Auto-detects goals and key moments. Generates 4K clips with official Vortex watermarks.
                     </p>
                     <div className="flex flex-wrap justify-center gap-3">
                       <div className="flex items-center gap-2 px-4 py-2 border border-white/10 rounded-xl bg-white/5">
                         <Target size={14} className="text-green-500" />
-                        <span className="text-[10px] font-black">Goals</span>
+                        <span className="text-[10px] font-black">AI GOAL DETECTION</span>
                       </div>
                       <div className="flex items-center gap-2 px-4 py-2 border border-white/10 rounded-xl bg-white/5">
                         <SaveIcon size={14} className="text-blue-500" />
-                        <span className="text-[10px] font-black">Saves</span>
-                      </div>
-                      <div className="flex items-center gap-2 px-4 py-2 border border-white/10 rounded-xl bg-white/5">
-                        <AlertTriangle size={14} className="text-yellow-500" />
-                        <span className="text-[10px] font-black">Cards</span>
-                      </div>
-                      <div className="flex items-center gap-2 px-4 py-2 border border-white/10 rounded-xl bg-white/5">
-                        <Timer size={14} className="text-purple-500" />
-                        <span className="text-[10px] font-black">Custom</span>
+                        <span className="text-[10px] font-black">WATERMARKED</span>
                       </div>
                     </div>
                   </div>
@@ -208,8 +211,8 @@ const MatchDetails = () => {
                     <h3 className="text-sm font-black tracking-widest uppercase">Vortex Engine Analytics</h3>
                 </div>
                 <div className="grid grid-cols-1 gap-8 md:grid-cols-2">
-                    <StatBar label="Win Probability" home={50} away={50} suffix="%" />
-                    <StatBar label="Possession" home={50} away={50} suffix="%" />
+                    <StatBar label="Win Probability" home={match.home.winProb || 50} away={match.away.winProb || 50} suffix="%" />
+                    <StatBar label="Possession" home={match.home.possession || 50} away={match.away.possession || 50} suffix="%" />
                 </div>
             </div>
           </div>
@@ -235,12 +238,11 @@ const MatchDetails = () => {
                 <TeamUI logo={match.away.logo} name={match.away.name} />
               </div>
               
-              {/* Video Highlights Quick Stats */}
               {match.videoHighlightCount > 0 && (
                 <div className="p-4 mt-6 border border-green-600/20 rounded-xl bg-green-600/10">
                   <div className="flex items-center justify-center gap-2 mb-2">
                     <Film size={14} className="text-green-500" />
-                    <span className="text-[10px] font-black uppercase">Video Highlights</span>
+                    <span className="text-[10px] font-black uppercase">Vortex Archive</span>
                   </div>
                   <div className="text-2xl font-black text-green-500">{match.videoHighlightCount}</div>
                   <div className="text-[8px] text-white/60 uppercase">Clips Generated</div>
@@ -259,30 +261,29 @@ const MatchDetails = () => {
               </p>
             </div>
             
-            {/* Quick Links */}
             <div className="p-6 border border-white/10 rounded-[2rem] bg-zinc-900/40">
               <h4 className="mb-4 text-sm font-black tracking-wider uppercase">Quick Actions</h4>
               <div className="space-y-3">
-                <a
-                  href={`/highlights/${match.id}`}
+                <Link
+                  to={`/highlights/${match.id}`}
                   className="flex items-center gap-3 p-3 transition-all border border-white/10 rounded-xl bg-black/30 hover:bg-black/50 hover:border-red-600/30"
                 >
                   <Film size={18} className="text-red-500" />
                   <div>
-                    <div className="text-sm font-bold">All Video Highlights</div>
+                    <div className="text-sm font-bold">Vortex Gallery</div>
                     <div className="text-xs text-white/60">View all generated clips</div>
                   </div>
-                </a>
+                </Link>
                 
                 {canGenerateVideo && (
                   <button
                     onClick={() => setShowVideoHighlights(true)}
                     className="flex items-center w-full gap-3 p-3 transition-all border border-white/10 rounded-xl bg-black/30 hover:bg-black/50 hover:border-green-600/30"
                   >
-                    <Video size={18} className="text-green-500" />
+                    <Download size={18} className="text-green-500" />
                     <div>
-                      <div className="text-sm font-bold">Generate New Clip</div>
-                      <div className="text-xs text-white/60">Create new video highlight</div>
+                      <div className="text-sm font-bold">Download Center</div>
+                      <div className="text-xs text-white/60">Get watermarked MP4s</div>
                     </div>
                   </button>
                 )}
@@ -311,7 +312,7 @@ const MatchDetails = () => {
 const LoadingScreen = ({ id }) => (
   <div className="flex flex-col items-center justify-center min-h-screen bg-[#020202]">
     <div className="w-16 h-16 mb-6 border-4 border-red-600 rounded-full border-t-transparent animate-spin" />
-    <p className="text-[10px] font-black uppercase tracking-[0.4em] text-white/20">Syncing {id}...</p>
+    <p className="text-[10px] font-black uppercase tracking-[0.4em] text-white/20">Syncing Uplink {id}...</p>
   </div>
 );
 
